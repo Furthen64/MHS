@@ -23,7 +23,7 @@ public sealed class PlacePartTool : IEditorTool
 
         var hovered = context.HoveredVoxel.Value;
         var voxel = new VoxelCoord(hovered.X, hovered.Y, context.EditorState.ActiveAbsoluteZ);
-        if (!context.EditorState.FitsWithinGrid(voxel, _partDefinition.Size))
+        if (!context.EditorState.FitsWithinActiveFloor(voxel, _partDefinition.Size))
         {
             context.EditorState.GhostPreview = null;
             return;
@@ -48,7 +48,7 @@ public sealed class PlacePartTool : IEditorTool
         }
 
         var position = hovered.Value with { Z = context.EditorState.ActiveAbsoluteZ };
-        if (!context.EditorState.FitsWithinGrid(position, _partDefinition.Size) || !context.EditorState.CanPlaceAt(_partDefinition, position))
+        if (!context.EditorState.FitsWithinActiveFloor(position, _partDefinition.Size) || !context.EditorState.CanPlaceAt(_partDefinition, position))
         {
             return;
         }
