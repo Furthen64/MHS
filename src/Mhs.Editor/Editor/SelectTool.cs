@@ -12,6 +12,12 @@ public sealed class SelectTool : IEditorTool
 
     public void OnPointerPressed(ViewportPointerContext context)
     {
+        if (!context.HoveredVoxel.HasValue)
+        {
+            context.EditorState.SelectedObject = null;
+            return;
+        }
+
         var picked = context.PickObjectAtPoint(context.PointerPoint);
         context.EditorState.SelectedObject = picked;
     }

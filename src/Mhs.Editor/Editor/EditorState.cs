@@ -99,9 +99,28 @@ public sealed class EditorState : INotifyPropertyChanged
 
     public int ActiveFloorEndZ => ActiveFloorStartZ + WorldVerticalSettings.LayersPerFloor - 1;
 
+    public bool IsWithinGrid(VoxelCoord position)
+        => position.X >= WorldGridSettings.MinCoord
+        && position.X <= WorldGridSettings.MaxCoord
+        && position.Y >= WorldGridSettings.MinCoord
+        && position.Y <= WorldGridSettings.MaxCoord
+        && position.Z >= WorldVerticalSettings.MinZ
+        && position.Z <= WorldVerticalSettings.MaxZ;
+
+    public bool FitsWithinGrid(VoxelCoord position, VoxelSize size)
+        => position.X >= WorldGridSettings.MinCoord
+        && position.Y >= WorldGridSettings.MinCoord
+        && position.Z >= WorldVerticalSettings.MinZ
+        && position.X + size.WidthX - 1 <= WorldGridSettings.MaxCoord
+        && position.Y + size.DepthY - 1 <= WorldGridSettings.MaxCoord
+        && position.Z + size.HeightZ - 1 <= WorldVerticalSettings.MaxZ;
+
+    public bool IsObjectWithinGrid(SceneObject sceneObject)
+        => FitsWithinGrid(sceneObject.Position, sceneObject.Size);
+
     public bool CanPlaceAt(PartDefinition part, VoxelCoord position, Guid? excludeId = null)
     {
-        if (position.Z < WorldVerticalSettings.MinZ || position.Z + part.Size.HeightZ - 1 > WorldVerticalSettings.MaxZ)
+        if (!FitsWithinGrid(position, part.Size))
         {
             return false;
         }
@@ -155,21 +174,24 @@ public sealed class EditorState : INotifyPropertyChanged
         if (HoveredVoxel.HasValue)
         {
             var hovered = HoveredVoxel.Value;
-            HoveredVoxel = hovered with { Z = ActiveAbsoluteZ };
+            hovered = hovered with { Z = ActiveAbsoluteZ };
+            HoveredVoxel = IsWithinGrid(hovered) ? hovered : null;
         }
 
         if (GhostPreview is { } ghost)
         {
             var position = ghost.Position with { Z = ActiveAbsoluteZ };
-            GhostPreview = new GhostPreview
-            {
-                Part = ghost.Part,
-                Position = position,
-                IsValid = CanPlaceAt(ghost.Part, position)
-            };
+            GhostPreview = FitsWithinGrid(position, ghost.Part.Size)
+                ? new GhostPreview
+                {
+                    Part = ghost.Part,
+                    Position = position,
+                    IsValid = CanPlaceAt(ghost.Part, position)
+                }
+                : null;
         }
 
-        if (SelectedObject is { } selected && !IntersectsActiveLayer(selected))
+        if (SelectedObject is { } selected && (!IntersectsActiveLayer(selected) || !IsObjectWithinGrid(selected)))
         {
             SelectedObject = null;
         }
