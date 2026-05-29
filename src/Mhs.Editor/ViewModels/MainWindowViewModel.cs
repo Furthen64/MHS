@@ -85,9 +85,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public bool IsLayer0Active => EditorState.ActiveLayer == 0;
     public bool IsLayer1Active => EditorState.ActiveLayer == 1;
     public bool IsLayer2Active => EditorState.ActiveLayer == 2;
+    public string LayerDisplayText => $"Layer: {EditorState.ActiveLayer} of {WorldVerticalSettings.LayersPerFloor - 1}";
+    public string AbsoluteZDisplayText => $"Absolute Z: {EditorState.ActiveAbsoluteZ}";
 
     public string StatusText =>
-        $"Ready | Tool: {EditorState.ActiveTool.Name} | Floor {EditorState.ActiveFloor} · Layer {EditorState.ActiveLayer}/2 · Z {EditorState.ActiveAbsoluteZ} | X {(EditorState.HoveredVoxel?.X.ToString() ?? "-")} Y {(EditorState.HoveredVoxel?.Y.ToString() ?? "-")} | Objects: {EditorState.Scene.Objects.Count}";
+        $"Ready | Tool: {EditorState.ActiveTool.Name} | Floor {EditorState.ActiveFloor} · Layer {EditorState.ActiveLayer} of {WorldVerticalSettings.LayersPerFloor - 1} · Absolute Z {EditorState.ActiveAbsoluteZ} | X {(EditorState.HoveredVoxel?.X.ToString() ?? "-")} Y {(EditorState.HoveredVoxel?.Y.ToString() ?? "-")} | Objects: {EditorState.Scene.Objects.Count}";
 
     public string InspectorSelectedText =>
         EditorState.SelectedObject is null
@@ -191,6 +193,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(IsLayer0Active));
         OnPropertyChanged(nameof(IsLayer1Active));
         OnPropertyChanged(nameof(IsLayer2Active));
+        OnPropertyChanged(nameof(LayerDisplayText));
+        OnPropertyChanged(nameof(AbsoluteZDisplayText));
         OnPropertyChanged(nameof(StatusText));
         OnPropertyChanged(nameof(InspectorSelectedText));
         OnPropertyChanged(nameof(InspectorIdText));

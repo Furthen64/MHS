@@ -58,11 +58,12 @@
                                 <RadioButton Content="2" GroupName="FloorSelect" IsChecked="{Binding IsFloor2Active}" Command="{Binding Floor2Command}" />
                             </StackPanel>
                             <StackPanel Orientation="Horizontal" Spacing="4">
-                                <TextBlock Text="Layer:" Foreground="#E5E9F0" VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding LayerDisplayText}" Foreground="#E5E9F0" VerticalAlignment="Center" />
                                 <RadioButton Content="0" GroupName="LayerSelect" IsChecked="{Binding IsLayer0Active}" Command="{Binding Layer0Command}" />
                                 <RadioButton Content="1" GroupName="LayerSelect" IsChecked="{Binding IsLayer1Active}" Command="{Binding Layer1Command}" />
                                 <RadioButton Content="2" GroupName="LayerSelect" IsChecked="{Binding IsLayer2Active}" Command="{Binding Layer2Command}" />
                             </StackPanel>
+                            <TextBlock Text="{Binding AbsoluteZDisplayText}" Foreground="#D8DEE9" VerticalAlignment="Center" />
                         </StackPanel>
                     </Border>
                     <viewport:SoftwareCubeViewport EditorState="{Binding EditorState}" />

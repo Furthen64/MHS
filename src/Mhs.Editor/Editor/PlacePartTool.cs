@@ -23,6 +23,12 @@ public sealed class PlacePartTool : IEditorTool
 
         var hovered = context.HoveredVoxel.Value;
         var voxel = new VoxelCoord(hovered.X, hovered.Y, context.EditorState.ActiveAbsoluteZ);
+        if (!context.EditorState.FitsWithinGrid(voxel, _partDefinition.Size))
+        {
+            context.EditorState.GhostPreview = null;
+            return;
+        }
+
         var isValid = context.EditorState.CanPlaceAt(_partDefinition, voxel);
 
         context.EditorState.GhostPreview = new GhostPreview
@@ -35,8 +41,14 @@ public sealed class PlacePartTool : IEditorTool
 
     public void OnPointerPressed(ViewportPointerContext context)
     {
-        var ghost = context.EditorState.GhostPreview;
-        if (ghost is null || !ghost.IsValid)
+        var hovered = context.EditorState.HoveredVoxel;
+        if (!hovered.HasValue)
+        {
+            return;
+        }
+
+        var position = hovered.Value with { Z = context.EditorState.ActiveAbsoluteZ };
+        if (!context.EditorState.FitsWithinGrid(position, _partDefinition.Size) || !context.EditorState.CanPlaceAt(_partDefinition, position))
         {
             return;
         }
@@ -44,7 +56,7 @@ public sealed class PlacePartTool : IEditorTool
         var sceneObject = new SceneObject
         {
             PartType = _partDefinition.DisplayName,
-            Position = ghost.Position,
+            Position = position,
             Size = _partDefinition.Size,
             RotationDegrees = 0
         };

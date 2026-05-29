@@ -14,7 +14,6 @@ public sealed class SoftwareCubeViewport : Control
     public static readonly StyledProperty<EditorState?> EditorStateProperty =
         AvaloniaProperty.Register<SoftwareCubeViewport, EditorState?>(nameof(EditorState));
 
-    private const int GridHalfExtent = 12;
     private const double TileWidth = 48;
     private const double TileHeight = 24;
     private const double HeightScale = 24;
@@ -98,10 +97,13 @@ public sealed class SoftwareCubeViewport : Control
 
         if (state.GhostPreview is { } ghost)
         {
-            var ghostColor = ghost.IsValid
-                ? ghost.Part.Color
-                : Color.FromRgb(230, 90, 90);
-            DrawIsoBox(context, ghost.Position, ghost.Part.Size, ghostColor, 0.4, drawOutline: true);
+            if (state.FitsWithinGrid(ghost.Position, ghost.Part.Size))
+            {
+                var ghostColor = ghost.IsValid
+                    ? ghost.Part.Color
+                    : Color.FromRgb(230, 90, 90);
+                DrawIsoBox(context, ghost.Position, ghost.Part.Size, ghostColor, 0.4, drawOutline: true);
+            }
         }
     }
 
@@ -207,7 +209,7 @@ public sealed class SoftwareCubeViewport : Control
         for (var i = state.Scene.Objects.Count - 1; i >= 0; i--)
         {
             var sceneObject = state.Scene.Objects[i];
-            if (!state.IntersectsActiveLayer(sceneObject))
+            if (!state.IntersectsActiveLayer(sceneObject) || !state.IsObjectWithinGrid(sceneObject))
             {
                 continue;
             }
@@ -268,8 +270,13 @@ public sealed class SoftwareCubeViewport : Control
 
         var x = (dx + dy) / 2.0;
         var y = (dy - dx) / 2.0;
-
-        return new VoxelCoord((int)Math.Round(x), (int)Math.Round(y), absoluteZ);
+        var coord = new VoxelCoord((int)Math.Round(x), (int)Math.Round(y), absoluteZ);
+        return coord.X < WorldGridSettings.MinCoord
+            || coord.X > WorldGridSettings.MaxCoord
+            || coord.Y < WorldGridSettings.MinCoord
+            || coord.Y > WorldGridSettings.MaxCoord
+            ? null
+            : coord;
     }
 
     private void DrawFloorOutlines(DrawingContext context, int activeFloor)
@@ -282,10 +289,10 @@ public sealed class SoftwareCubeViewport : Control
                 new SolidColorBrush(isActive ? Color.FromArgb(200, 150, 190, 255) : Color.FromArgb(70, 130, 140, 160)),
                 isActive ? 2 : 1);
 
-            var a = Project(-GridHalfExtent, -GridHalfExtent, z);
-            var b = Project(GridHalfExtent, -GridHalfExtent, z);
-            var c = Project(GridHalfExtent, GridHalfExtent, z);
-            var d = Project(-GridHalfExtent, GridHalfExtent, z);
+            var a = Project(WorldGridSettings.MinCoord, WorldGridSettings.MinCoord, z);
+            var b = Project(WorldGridSettings.MaxCoord, WorldGridSettings.MinCoord, z);
+            var c = Project(WorldGridSettings.MaxCoord, WorldGridSettings.MaxCoord, z);
+            var d = Project(WorldGridSettings.MinCoord, WorldGridSettings.MaxCoord, z);
 
             context.DrawLine(pen, a, b);
             context.DrawLine(pen, b, c);
@@ -298,17 +305,17 @@ public sealed class SoftwareCubeViewport : Control
     {
         var gridPen = new Pen(new SolidColorBrush(Color.FromArgb(125, 160, 190, 220)), 1.2);
 
-        for (var x = -GridHalfExtent; x <= GridHalfExtent; x++)
+        for (var x = WorldGridSettings.MinCoord; x <= WorldGridSettings.MaxCoord; x++)
         {
-            var start = Project(x, -GridHalfExtent, absoluteZ);
-            var end = Project(x, GridHalfExtent, absoluteZ);
+            var start = Project(x, WorldGridSettings.MinCoord, absoluteZ);
+            var end = Project(x, WorldGridSettings.MaxCoord, absoluteZ);
             context.DrawLine(gridPen, start, end);
         }
 
-        for (var y = -GridHalfExtent; y <= GridHalfExtent; y++)
+        for (var y = WorldGridSettings.MinCoord; y <= WorldGridSettings.MaxCoord; y++)
         {
-            var start = Project(-GridHalfExtent, y, absoluteZ);
-            var end = Project(GridHalfExtent, y, absoluteZ);
+            var start = Project(WorldGridSettings.MinCoord, y, absoluteZ);
+            var end = Project(WorldGridSettings.MaxCoord, y, absoluteZ);
             context.DrawLine(gridPen, start, end);
         }
     }
