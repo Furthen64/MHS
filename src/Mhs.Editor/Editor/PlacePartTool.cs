@@ -21,7 +21,8 @@ public sealed class PlacePartTool : IEditorTool
             return;
         }
 
-        var voxel = context.HoveredVoxel.Value;
+        var hovered = context.HoveredVoxel.Value;
+        var voxel = new VoxelCoord(hovered.X, hovered.Y, context.EditorState.ActiveAbsoluteZ);
         var isValid = context.EditorState.CanPlaceAt(_partDefinition, voxel);
 
         context.EditorState.GhostPreview = new GhostPreview

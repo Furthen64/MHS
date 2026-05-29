@@ -69,21 +69,29 @@ public sealed class SoftwareCubeViewport : Control
             return;
         }
 
-        DrawGrid(context);
-
         var state = EditorState;
         if (state is null)
         {
             return;
         }
 
+        DrawFloorOutlines(context, state.ActiveFloor);
+        DrawGrid(context, state.ActiveAbsoluteZ);
+
         foreach (var sceneObject in state.Scene.Objects)
         {
+            if (!state.IntersectsActiveFloor(sceneObject))
+            {
+                continue;
+            }
+
+            var isActiveLayer = state.IntersectsActiveLayer(sceneObject);
+            var opacity = isActiveLayer ? 0.9 : 0.3;
             var color = ColorForPart(sceneObject.PartType);
-            DrawIsoBox(context, sceneObject.Position, sceneObject.Size, color, 0.9, drawOutline: false);
+            DrawIsoBox(context, sceneObject.Position, sceneObject.Size, color, opacity, drawOutline: false);
         }
 
-        if (state.SelectedObject is { } selected)
+        if (state.SelectedObject is { } selected && state.IntersectsActiveLayer(selected))
         {
             DrawSelectionOutline(context, selected);
         }
@@ -93,7 +101,7 @@ public sealed class SoftwareCubeViewport : Control
             var ghostColor = ghost.IsValid
                 ? ghost.Part.Color
                 : Color.FromRgb(230, 90, 90);
-            DrawIsoBox(context, ghost.Position, ghost.Part.Size, ghostColor, 0.35, drawOutline: true);
+            DrawIsoBox(context, ghost.Position, ghost.Part.Size, ghostColor, 0.4, drawOutline: true);
         }
     }
 
@@ -163,7 +171,7 @@ public sealed class SoftwareCubeViewport : Control
         }
 
         var point = e.GetPosition(this);
-        var hovered = TryMapPointToVoxel(point);
+        var hovered = TryMapPointToVoxel(point, state.ActiveAbsoluteZ);
 
         var context = new ViewportPointerContext
         {
@@ -199,6 +207,11 @@ public sealed class SoftwareCubeViewport : Control
         for (var i = state.Scene.Objects.Count - 1; i >= 0; i--)
         {
             var sceneObject = state.Scene.Objects[i];
+            if (!state.IntersectsActiveLayer(sceneObject))
+            {
+                continue;
+            }
+
             var bounds = GetObjectScreenBounds(sceneObject).Inflate(2);
             if (bounds.Contains(point))
             {
@@ -212,16 +225,16 @@ public sealed class SoftwareCubeViewport : Control
     private Rect GetObjectScreenBounds(SceneObject sceneObject)
     {
         var x0 = sceneObject.Position.X;
-        var x1 = sceneObject.Position.X + sceneObject.Size.Width;
+        var x1 = sceneObject.Position.X + sceneObject.Size.WidthX;
         var y0 = sceneObject.Position.Y;
-        var y1 = sceneObject.Position.Y + sceneObject.Size.Height;
+        var y1 = sceneObject.Position.Y + sceneObject.Size.DepthY;
         var z0 = sceneObject.Position.Z;
-        var z1 = sceneObject.Position.Z + sceneObject.Size.Depth;
+        var z1 = sceneObject.Position.Z + sceneObject.Size.HeightZ;
 
         var corners = new[]
         {
-            Project(x0, y0, z0), Project(x1, y0, z0), Project(x1, y0, z1), Project(x0, y0, z1),
-            Project(x0, y1, z0), Project(x1, y1, z0), Project(x1, y1, z1), Project(x0, y1, z1)
+            Project(x0, y0, z0), Project(x1, y0, z0), Project(x1, y1, z0), Project(x0, y1, z0),
+            Project(x0, y0, z1), Project(x1, y0, z1), Project(x1, y1, z1), Project(x0, y1, z1)
         };
 
         var minX = double.MaxValue;
@@ -240,7 +253,7 @@ public sealed class SoftwareCubeViewport : Control
         return new Rect(new Point(minX, minY), new Point(maxX, maxY));
     }
 
-    private VoxelCoord? TryMapPointToVoxel(Point point)
+    private VoxelCoord? TryMapPointToVoxel(Point point, int absoluteZ)
     {
         if (!Bounds.Contains(point))
         {
@@ -251,30 +264,52 @@ public sealed class SoftwareCubeViewport : Control
         var originY = Bounds.Top + Bounds.Height * 0.28;
 
         var dx = (point.X - originX) / (TileWidth / 2.0);
-        var dy = (point.Y - originY) / (TileHeight / 2.0);
+        var dy = (point.Y - originY + absoluteZ * HeightScale) / (TileHeight / 2.0);
 
         var x = (dx + dy) / 2.0;
-        var z = (dy - dx) / 2.0;
+        var y = (dy - dx) / 2.0;
 
-        return new VoxelCoord((int)Math.Round(x), 0, (int)Math.Round(z));
+        return new VoxelCoord((int)Math.Round(x), (int)Math.Round(y), absoluteZ);
     }
 
-    private void DrawGrid(DrawingContext context)
+    private void DrawFloorOutlines(DrawingContext context, int activeFloor)
     {
-        var majorPen = new Pen(new SolidColorBrush(Color.FromArgb(80, 120, 135, 150)), 1);
+        for (var floor = 0; floor < WorldVerticalSettings.FloorCount; floor++)
+        {
+            var z = floor * WorldVerticalSettings.LayersPerFloor;
+            var isActive = floor == activeFloor;
+            var pen = new Pen(
+                new SolidColorBrush(isActive ? Color.FromArgb(200, 150, 190, 255) : Color.FromArgb(70, 130, 140, 160)),
+                isActive ? 2 : 1);
+
+            var a = Project(-GridHalfExtent, -GridHalfExtent, z);
+            var b = Project(GridHalfExtent, -GridHalfExtent, z);
+            var c = Project(GridHalfExtent, GridHalfExtent, z);
+            var d = Project(-GridHalfExtent, GridHalfExtent, z);
+
+            context.DrawLine(pen, a, b);
+            context.DrawLine(pen, b, c);
+            context.DrawLine(pen, c, d);
+            context.DrawLine(pen, d, a);
+        }
+    }
+
+    private void DrawGrid(DrawingContext context, int absoluteZ)
+    {
+        var gridPen = new Pen(new SolidColorBrush(Color.FromArgb(125, 160, 190, 220)), 1.2);
 
         for (var x = -GridHalfExtent; x <= GridHalfExtent; x++)
         {
-            var start = Project(x, 0, -GridHalfExtent);
-            var end = Project(x, 0, GridHalfExtent);
-            context.DrawLine(majorPen, start, end);
+            var start = Project(x, -GridHalfExtent, absoluteZ);
+            var end = Project(x, GridHalfExtent, absoluteZ);
+            context.DrawLine(gridPen, start, end);
         }
 
-        for (var z = -GridHalfExtent; z <= GridHalfExtent; z++)
+        for (var y = -GridHalfExtent; y <= GridHalfExtent; y++)
         {
-            var start = Project(-GridHalfExtent, 0, z);
-            var end = Project(GridHalfExtent, 0, z);
-            context.DrawLine(majorPen, start, end);
+            var start = Project(-GridHalfExtent, y, absoluteZ);
+            var end = Project(GridHalfExtent, y, absoluteZ);
+            context.DrawLine(gridPen, start, end);
         }
     }
 
@@ -283,14 +318,14 @@ public sealed class SoftwareCubeViewport : Control
         var pen = new Pen(new SolidColorBrush(Color.FromRgb(120, 180, 255)), 2);
 
         var x0 = sceneObject.Position.X;
-        var x1 = sceneObject.Position.X + sceneObject.Size.Width;
+        var x1 = sceneObject.Position.X + sceneObject.Size.WidthX;
         var y0 = sceneObject.Position.Y;
-        var y1 = sceneObject.Position.Y + sceneObject.Size.Height;
+        var y1 = sceneObject.Position.Y + sceneObject.Size.DepthY;
         var z0 = sceneObject.Position.Z;
-        var z1 = sceneObject.Position.Z + sceneObject.Size.Depth;
+        var z1 = sceneObject.Position.Z + sceneObject.Size.HeightZ;
 
-        var topA = Project(x0, y1, z0);
-        var topB = Project(x1, y1, z0);
+        var topA = Project(x0, y0, z1);
+        var topB = Project(x1, y0, z1);
         var topC = Project(x1, y1, z1);
         var topD = Project(x0, y1, z1);
 
@@ -301,28 +336,28 @@ public sealed class SoftwareCubeViewport : Control
 
         context.DrawLine(pen, topA, Project(x0, y0, z0));
         context.DrawLine(pen, topB, Project(x1, y0, z0));
-        context.DrawLine(pen, topC, Project(x1, y0, z1));
-        context.DrawLine(pen, topD, Project(x0, y0, z1));
+        context.DrawLine(pen, topC, Project(x1, y1, z0));
+        context.DrawLine(pen, topD, Project(x0, y1, z0));
     }
 
     private void DrawIsoBox(DrawingContext context, VoxelCoord position, VoxelSize size, Color color, double opacity, bool drawOutline)
     {
         var x0 = position.X;
-        var x1 = position.X + size.Width;
+        var x1 = position.X + size.WidthX;
         var y0 = position.Y;
-        var y1 = position.Y + size.Height;
+        var y1 = position.Y + size.DepthY;
         var z0 = position.Z;
-        var z1 = position.Z + size.Depth;
+        var z1 = position.Z + size.HeightZ;
 
-        var topA = Project(x0, y1, z0);
-        var topB = Project(x1, y1, z0);
+        var topA = Project(x0, y0, z1);
+        var topB = Project(x1, y0, z1);
         var topC = Project(x1, y1, z1);
         var topD = Project(x0, y1, z1);
 
         var bottomA = Project(x0, y0, z0);
         var bottomB = Project(x1, y0, z0);
-        var bottomC = Project(x1, y0, z1);
-        var bottomD = Project(x0, y0, z1);
+        var bottomC = Project(x1, y1, z0);
+        var bottomD = Project(x0, y1, z0);
 
         var topBrush = new SolidColorBrush(WithOpacity(color, opacity));
         var rightBrush = new SolidColorBrush(WithOpacity(Darken(color, 0.78), opacity));
@@ -347,8 +382,8 @@ public sealed class SoftwareCubeViewport : Control
         var originY = Bounds.Top + Bounds.Height * 0.28;
 
         return new Point(
-            originX + (x - z) * (TileWidth / 2.0),
-            originY + (x + z) * (TileHeight / 2.0) - y * HeightScale);
+            originX + (x - y) * (TileWidth / 2.0),
+            originY + (x + y) * (TileHeight / 2.0) - z * HeightScale);
     }
 
     private static Color Darken(Color color, double factor)
@@ -383,6 +418,7 @@ public sealed class SoftwareCubeViewport : Control
     private static Color ColorForPart(string partType) => partType switch
     {
         "Hopper" => Color.FromRgb(240, 200, 90),
+        "Tall Hopper" => Color.FromRgb(214, 132, 66),
         "Bin" => Color.FromRgb(90, 150, 240),
         "Conveyor" => Color.FromRgb(70, 80, 90),
         "Chute" => Color.FromRgb(150, 150, 150),
