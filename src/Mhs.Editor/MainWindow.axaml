@@ -6,12 +6,12 @@
         xmlns:viewport="clr-namespace:Mhs.Editor.Viewport"
         mc:Ignorable="d"
         x:DataType="vm:MainWindowViewModel"
-        d:DesignWidth="1280"
-        d:DesignHeight="800"
+        d:DesignWidth="1600"
+        d:DesignHeight="950"
         x:Class="Mhs.Editor.MainWindow"
         Title="MHS Editor PoC"
-        Width="1280"
-        Height="800"
+        Width="1600"
+        Height="950"
         MinWidth="900"
         MinHeight="600">
     <DockPanel>

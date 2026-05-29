@@ -16,7 +16,7 @@ public sealed class SoftwareCubeViewport : Control
 
     private const double TileWidth = 48;
     private const double TileHeight = 24;
-    private const double HeightScale = 24;
+    private const double HeightScale = 36;
 
     static SoftwareCubeViewport()
     {
