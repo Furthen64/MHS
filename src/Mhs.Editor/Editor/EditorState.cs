@@ -115,6 +115,11 @@ public sealed class EditorState : INotifyPropertyChanged
         && position.Y + size.DepthY - 1 <= WorldGridSettings.MaxCoord
         && position.Z + size.HeightZ - 1 <= WorldVerticalSettings.MaxZ;
 
+    public bool FitsWithinActiveFloor(VoxelCoord position, VoxelSize size)
+        => FitsWithinGrid(position, size)
+        && position.Z >= ActiveFloorStartZ
+        && position.Z + size.HeightZ - 1 <= ActiveFloorEndZ;
+
     public bool IsObjectWithinGrid(SceneObject sceneObject)
         => FitsWithinGrid(sceneObject.Position, sceneObject.Size);
 
@@ -181,7 +186,7 @@ public sealed class EditorState : INotifyPropertyChanged
         if (GhostPreview is { } ghost)
         {
             var position = ghost.Position with { Z = ActiveAbsoluteZ };
-            GhostPreview = FitsWithinGrid(position, ghost.Part.Size)
+            GhostPreview = FitsWithinActiveFloor(position, ghost.Part.Size)
                 ? new GhostPreview
                 {
                     Part = ghost.Part,

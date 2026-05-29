@@ -97,7 +97,7 @@ public sealed class SoftwareCubeViewport : Control
 
         if (state.GhostPreview is { } ghost)
         {
-            if (state.FitsWithinGrid(ghost.Position, ghost.Part.Size))
+            if (state.FitsWithinActiveFloor(ghost.Position, ghost.Part.Size))
             {
                 var ghostColor = ghost.IsValid
                     ? ghost.Part.Color
