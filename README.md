@@ -34,11 +34,21 @@ dotnet restore
 dotnet build
 ```
 
+Helper scripts:
+
+- Ubuntu/Linux: `./build.sh`
+- Windows PowerShell: `.\winbuild.ps1`
+
 ## Run
 
 ```bash
 dotnet run --project src/Mhs.Editor/Mhs.Editor.csproj
 ```
+
+Helper scripts:
+
+- Ubuntu/Linux: `./launch.sh`
+- Windows PowerShell: `.\winlaunch.ps1`
 
 ## Notes on the current viewport
 
