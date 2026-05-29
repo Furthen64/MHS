@@ -10,6 +10,7 @@ namespace Mhs.Editor.ViewModels;
 public sealed class MainWindowViewModel : INotifyPropertyChanged
 {
     private readonly IEditorTool _selectTool = new SelectTool();
+    private ViewportInteractionPreset _interactionPreset = ViewportInteractionPreset.BlenderLike;
 
     public MainWindowViewModel()
     {
@@ -24,6 +25,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         Layer0Command = new RelayCommand(() => SetActiveLayer(0));
         Layer1Command = new RelayCommand(() => SetActiveLayer(1));
         Layer2Command = new RelayCommand(() => SetActiveLayer(2));
+        BlenderLikeSettingsCommand = new RelayCommand(() => SetInteractionPreset(ViewportInteractionPreset.BlenderLike));
+        AutoCadLikeSettingsCommand = new RelayCommand(() => SetInteractionPreset(ViewportInteractionPreset.AutoCadLike));
 
         foreach (var part in EditorState.PartDefinitions)
         {
@@ -72,6 +75,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand Layer0Command { get; }
     public ICommand Layer1Command { get; }
     public ICommand Layer2Command { get; }
+    public ICommand BlenderLikeSettingsCommand { get; }
+    public ICommand AutoCadLikeSettingsCommand { get; }
 
     public bool IsSelectActive => EditorState.ActiveTool is SelectTool;
     public bool IsHopperActive => EditorState.ActiveTool.Name == "Hopper";
@@ -85,11 +90,14 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public bool IsLayer0Active => EditorState.ActiveLayer == 0;
     public bool IsLayer1Active => EditorState.ActiveLayer == 1;
     public bool IsLayer2Active => EditorState.ActiveLayer == 2;
+    public bool IsBlenderLikeSettingsActive => _interactionPreset == ViewportInteractionPreset.BlenderLike;
+    public bool IsAutoCadLikeSettingsActive => _interactionPreset == ViewportInteractionPreset.AutoCadLike;
+    public ViewportInteractionPreset InteractionPreset => _interactionPreset;
     public string LayerDisplayText => $"Layer: {EditorState.ActiveLayer} of {WorldVerticalSettings.LayersPerFloor - 1}";
     public string AbsoluteZDisplayText => $"Absolute Z: {EditorState.ActiveAbsoluteZ}";
 
     public string StatusText =>
-        $"Ready | Tool: {EditorState.ActiveTool.Name} | Floor {EditorState.ActiveFloor} · Layer {EditorState.ActiveLayer} of {WorldVerticalSettings.LayersPerFloor - 1} · Absolute Z {EditorState.ActiveAbsoluteZ} | X {(EditorState.HoveredVoxel?.X.ToString() ?? "-")} Y {(EditorState.HoveredVoxel?.Y.ToString() ?? "-")} | Objects: {EditorState.Scene.Objects.Count}";
+        $"Ready | Tool: {EditorState.ActiveTool.Name} | Viewport: {(_interactionPreset == ViewportInteractionPreset.BlenderLike ? "Blender-like" : "AutoCAD-like")} | Floor {EditorState.ActiveFloor} · Layer {EditorState.ActiveLayer} of {WorldVerticalSettings.LayersPerFloor - 1} · Absolute Z {EditorState.ActiveAbsoluteZ} | X {(EditorState.HoveredVoxel?.X.ToString() ?? "-")} Y {(EditorState.HoveredVoxel?.Y.ToString() ?? "-")} | Objects: {EditorState.Scene.Objects.Count}";
 
     public string InspectorSelectedText =>
         EditorState.SelectedObject is null
@@ -169,6 +177,17 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         RaiseComputed();
     }
 
+    private void SetInteractionPreset(ViewportInteractionPreset preset)
+    {
+        if (_interactionPreset == preset)
+        {
+            return;
+        }
+
+        _interactionPreset = preset;
+        RaiseComputed();
+    }
+
     private void OnEditorStatePropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         RaiseComputed();
@@ -193,6 +212,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(IsLayer0Active));
         OnPropertyChanged(nameof(IsLayer1Active));
         OnPropertyChanged(nameof(IsLayer2Active));
+        OnPropertyChanged(nameof(IsBlenderLikeSettingsActive));
+        OnPropertyChanged(nameof(IsAutoCadLikeSettingsActive));
+        OnPropertyChanged(nameof(InteractionPreset));
         OnPropertyChanged(nameof(LayerDisplayText));
         OnPropertyChanged(nameof(AbsoluteZDisplayText));
         OnPropertyChanged(nameof(StatusText));

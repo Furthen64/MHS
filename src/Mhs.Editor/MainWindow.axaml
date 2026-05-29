@@ -16,6 +16,16 @@
         MinHeight="600">
     <DockPanel>
         <Menu DockPanel.Dock="Top">
+            <MenuItem Header="☰">
+                <MenuItem Header="_Settings">
+                    <MenuItem Header="I want _Blender like settings"
+                              IsChecked="{Binding IsBlenderLikeSettingsActive}"
+                              Command="{Binding BlenderLikeSettingsCommand}" />
+                    <MenuItem Header="I want _AutoCAD like settings"
+                              IsChecked="{Binding IsAutoCadLikeSettingsActive}"
+                              Command="{Binding AutoCadLikeSettingsCommand}" />
+                </MenuItem>
+            </MenuItem>
             <MenuItem Header="_File">
                 <MenuItem Header="_New" />
                 <MenuItem Header="_Open..." />
@@ -66,7 +76,8 @@
                             <TextBlock Text="{Binding AbsoluteZDisplayText}" Foreground="#D8DEE9" VerticalAlignment="Center" />
                         </StackPanel>
                     </Border>
-                    <viewport:SoftwareCubeViewport EditorState="{Binding EditorState}" />
+                    <viewport:SoftwareCubeViewport EditorState="{Binding EditorState}"
+                                                   InteractionPreset="{Binding InteractionPreset}" />
                 </DockPanel>
             </Border>
 

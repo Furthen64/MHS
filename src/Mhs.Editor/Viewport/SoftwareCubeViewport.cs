@@ -13,15 +13,27 @@ public sealed class SoftwareCubeViewport : Control
 {
     public static readonly StyledProperty<EditorState?> EditorStateProperty =
         AvaloniaProperty.Register<SoftwareCubeViewport, EditorState?>(nameof(EditorState));
+    public static readonly StyledProperty<ViewportInteractionPreset> InteractionPresetProperty =
+        AvaloniaProperty.Register<SoftwareCubeViewport, ViewportInteractionPreset>(
+            nameof(InteractionPreset),
+            defaultValue: ViewportInteractionPreset.BlenderLike);
 
     private const double TileWidth = 48;
     private const double TileHeight = 24;
     private const double HeightScale = 36;
+    private const double MinZoom = 0.45;
+    private const double MaxZoom = 2.75;
 
     static SoftwareCubeViewport()
     {
-        AffectsRender<SoftwareCubeViewport>(EditorStateProperty);
+        AffectsRender<SoftwareCubeViewport>(EditorStateProperty, InteractionPresetProperty);
     }
+
+    private bool _isPanning;
+    private Point _lastPanPoint;
+    private double _panOffsetX;
+    private double _panOffsetY;
+    private double _zoom = 1.0;
 
     public SoftwareCubeViewport()
     {
@@ -31,12 +43,19 @@ public sealed class SoftwareCubeViewport : Control
         PointerPressed += OnPointerPressed;
         PointerReleased += OnPointerReleased;
         PointerExited += OnPointerExited;
+        PointerWheelChanged += OnPointerWheelChanged;
     }
 
     public EditorState? EditorState
     {
         get => GetValue(EditorStateProperty);
         set => SetValue(EditorStateProperty, value);
+    }
+
+    public ViewportInteractionPreset InteractionPreset
+    {
+        get => GetValue(InteractionPresetProperty);
+        set => SetValue(InteractionPresetProperty, value);
     }
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
@@ -132,16 +151,45 @@ public sealed class SoftwareCubeViewport : Control
 
     private void OnPointerMoved(object? sender, PointerEventArgs e)
     {
+        if (_isPanning)
+        {
+            var point = e.GetPosition(this);
+            _panOffsetX += point.X - _lastPanPoint.X;
+            _panOffsetY += point.Y - _lastPanPoint.Y;
+            _lastPanPoint = point;
+            InvalidateVisual();
+            e.Handled = true;
+            return;
+        }
+
         RoutePointerEvent(e, isPressed: false, isReleased: false);
     }
 
     private void OnPointerPressed(object? sender, PointerPressedEventArgs e)
     {
+        var current = e.GetCurrentPoint(this);
+        if (CanStartPan(current.Properties, e.KeyModifiers))
+        {
+            _isPanning = true;
+            _lastPanPoint = e.GetPosition(this);
+            e.Pointer.Capture(this);
+            e.Handled = true;
+            return;
+        }
+
         RoutePointerEvent(e, isPressed: true, isReleased: false);
     }
 
     private void OnPointerReleased(object? sender, PointerReleasedEventArgs e)
     {
+        if (_isPanning && IsPanReleased(e.GetCurrentPoint(this).Properties))
+        {
+            _isPanning = false;
+            e.Pointer.Capture(null);
+            e.Handled = true;
+            return;
+        }
+
         RoutePointerEvent(e, isPressed: false, isReleased: true);
     }
 
@@ -162,6 +210,32 @@ public sealed class SoftwareCubeViewport : Control
         };
 
         state.ActiveTool.OnPointerMoved(context);
+    }
+
+    private void OnPointerWheelChanged(object? sender, PointerWheelEventArgs e)
+    {
+        var zoomStep = InteractionPreset == ViewportInteractionPreset.BlenderLike ? 1.08 : 1.12;
+        var factor = e.Delta.Y > 0 ? zoomStep : 1 / zoomStep;
+        var nextZoom = Math.Clamp(_zoom * factor, MinZoom, MaxZoom);
+
+        if (Math.Abs(nextZoom - _zoom) < 0.0001)
+        {
+            return;
+        }
+
+        var pointer = e.GetPosition(this);
+        var originBefore = GetViewOrigin();
+        var worldOffsetX = (pointer.X - originBefore.X) / _zoom;
+        var worldOffsetY = (pointer.Y - originBefore.Y) / _zoom;
+
+        _zoom = nextZoom;
+
+        var originAfter = GetViewOrigin();
+        _panOffsetX = pointer.X - originAfter.X - worldOffsetX * _zoom;
+        _panOffsetY = pointer.Y - originAfter.Y - worldOffsetY * _zoom;
+
+        InvalidateVisual();
+        e.Handled = true;
     }
 
     private void RoutePointerEvent(PointerEventArgs e, bool isPressed, bool isReleased)
@@ -262,11 +336,13 @@ public sealed class SoftwareCubeViewport : Control
             return null;
         }
 
-        var originX = Bounds.Center.X;
-        var originY = Bounds.Top + Bounds.Height * 0.28;
+        var origin = GetTransformedOrigin();
+        var tileWidth = TileWidth * _zoom;
+        var tileHeight = TileHeight * _zoom;
+        var heightScale = HeightScale * _zoom;
 
-        var dx = (point.X - originX) / (TileWidth / 2.0);
-        var dy = (point.Y - originY + absoluteZ * HeightScale) / (TileHeight / 2.0);
+        var dx = (point.X - origin.X) / (tileWidth / 2.0);
+        var dy = (point.Y - origin.Y + absoluteZ * heightScale) / (tileHeight / 2.0);
 
         var x = (dx + dy) / 2.0;
         var y = (dy - dx) / 2.0;
@@ -385,13 +461,37 @@ public sealed class SoftwareCubeViewport : Control
 
     private Point Project(double x, double y, double z)
     {
-        var originX = Bounds.Center.X;
-        var originY = Bounds.Top + Bounds.Height * 0.28;
+        var origin = GetTransformedOrigin();
+        var tileWidth = TileWidth * _zoom;
+        var tileHeight = TileHeight * _zoom;
+        var heightScale = HeightScale * _zoom;
 
         return new Point(
-            originX + (x - y) * (TileWidth / 2.0),
-            originY + (x + y) * (TileHeight / 2.0) - z * HeightScale);
+            origin.X + (x - y) * (tileWidth / 2.0),
+            origin.Y + (x + y) * (tileHeight / 2.0) - z * heightScale);
     }
+
+    private Point GetViewOrigin() =>
+        new(Bounds.Center.X, Bounds.Top + Bounds.Height * 0.28);
+
+    private Point GetTransformedOrigin()
+    {
+        var origin = GetViewOrigin();
+        return new Point(origin.X + _panOffsetX, origin.Y + _panOffsetY);
+    }
+
+    private bool CanStartPan(PointerPointProperties pointerProperties, KeyModifiers keyModifiers)
+    {
+        return InteractionPreset switch
+        {
+            ViewportInteractionPreset.BlenderLike =>
+                pointerProperties.IsMiddleButtonPressed && keyModifiers.HasFlag(KeyModifiers.Shift),
+            ViewportInteractionPreset.AutoCadLike => pointerProperties.IsMiddleButtonPressed,
+            _ => false
+        };
+    }
+
+    private bool IsPanReleased(PointerPointProperties pointerProperties) => !pointerProperties.IsMiddleButtonPressed;
 
     private static Color Darken(Color color, double factor)
     {
