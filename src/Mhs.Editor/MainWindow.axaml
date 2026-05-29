@@ -27,7 +27,7 @@
         </Menu>
 
         <Border DockPanel.Dock="Top" Background="#2A2E36" Padding="8">
-            <TextBlock Foreground="#E5E9F0" FontWeight="SemiBold" Text="Material Handling System Editor - PoC 1" />
+            <TextBlock Foreground="#E5E9F0" FontWeight="SemiBold" Text="Material Handling System Editor - PoC 2" />
         </Border>
 
         <Border DockPanel.Dock="Bottom" Background="#20232A" Padding="8,6">
@@ -43,11 +43,30 @@
                     <RadioButton Content="Bin" GroupName="Tools" IsChecked="{Binding IsBinActive}" Command="{Binding BinToolCommand}" />
                     <RadioButton Content="Conveyor" GroupName="Tools" IsChecked="{Binding IsConveyorActive}" Command="{Binding ConveyorToolCommand}" />
                     <RadioButton Content="Chute" GroupName="Tools" IsChecked="{Binding IsChuteActive}" Command="{Binding ChuteToolCommand}" />
+                    <RadioButton Content="Tall Hopper" GroupName="Tools" IsChecked="{Binding IsTallHopperActive}" Command="{Binding TallHopperToolCommand}" />
                 </StackPanel>
             </Border>
 
             <Border Grid.Column="1" Margin="8" Background="#121519" CornerRadius="4" BorderThickness="1" BorderBrush="#3B4252">
-                <viewport:SoftwareCubeViewport EditorState="{Binding EditorState}" />
+                <DockPanel>
+                    <Border DockPanel.Dock="Top" Background="#1A1F27" Padding="8">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                <TextBlock Text="Floor:" Foreground="#E5E9F0" VerticalAlignment="Center" />
+                                <RadioButton Content="0" GroupName="FloorSelect" IsChecked="{Binding IsFloor0Active}" Command="{Binding Floor0Command}" />
+                                <RadioButton Content="1" GroupName="FloorSelect" IsChecked="{Binding IsFloor1Active}" Command="{Binding Floor1Command}" />
+                                <RadioButton Content="2" GroupName="FloorSelect" IsChecked="{Binding IsFloor2Active}" Command="{Binding Floor2Command}" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                <TextBlock Text="Layer:" Foreground="#E5E9F0" VerticalAlignment="Center" />
+                                <RadioButton Content="0" GroupName="LayerSelect" IsChecked="{Binding IsLayer0Active}" Command="{Binding Layer0Command}" />
+                                <RadioButton Content="1" GroupName="LayerSelect" IsChecked="{Binding IsLayer1Active}" Command="{Binding Layer1Command}" />
+                                <RadioButton Content="2" GroupName="LayerSelect" IsChecked="{Binding IsLayer2Active}" Command="{Binding Layer2Command}" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                    <viewport:SoftwareCubeViewport EditorState="{Binding EditorState}" />
+                </DockPanel>
             </Border>
 
             <Border Grid.Column="2" Margin="8" Padding="10" Background="#232833" CornerRadius="4">
@@ -59,6 +78,8 @@
                     <TextBlock Text="{Binding InspectorSizeText}" Foreground="#D8DEE9" />
                     <TextBlock Text="{Binding InspectorRotationText}" Foreground="#D8DEE9" />
                     <TextBlock Text="{Binding InspectorStatusText}" Foreground="#D8DEE9" />
+                    <TextBlock Text="{Binding InspectorContextText}" Foreground="#D8DEE9" />
+                    <TextBlock Text="{Binding InspectorRangeText}" Foreground="#D8DEE9" />
                 </StackPanel>
             </Border>
         </Grid>
