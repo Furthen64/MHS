@@ -27,42 +27,38 @@
         </Menu>
 
         <Border DockPanel.Dock="Top" Background="#2A2E36" Padding="8">
-            <TextBlock Foreground="#E5E9F0" FontWeight="SemiBold" Text="Material Handling System Editor - UI Proof of Concept" />
+            <TextBlock Foreground="#E5E9F0" FontWeight="SemiBold" Text="Material Handling System Editor - PoC 1" />
         </Border>
 
         <Border DockPanel.Dock="Bottom" Background="#20232A" Padding="8,6">
             <TextBlock Foreground="#D8DEE9" Text="{Binding StatusText}" />
         </Border>
 
-        <Grid ColumnDefinitions="220,*,260" Background="#1B1D23">
+        <Grid ColumnDefinitions="220,*,280" Background="#1B1D23">
             <Border Grid.Column="0" Margin="8" Padding="10" Background="#232833" CornerRadius="4">
                 <StackPanel Spacing="8">
                     <TextBlock Text="Parts Palette" FontWeight="Bold" Foreground="#ECEFF4" FontSize="14" />
-                    <TextBlock Text="Transport" Foreground="#A3BE8C" FontWeight="SemiBold" />
-                    <TextBlock Text="• Conveyor" Foreground="#D8DEE9" />
-                    <TextBlock Text="• Incline Conveyor" Foreground="#D8DEE9" />
-                    <TextBlock Text="• Curve Conveyor" Foreground="#D8DEE9" />
-                    <TextBlock Text="Feed &amp; Discharge" Foreground="#A3BE8C" FontWeight="SemiBold" Margin="0,8,0,0" />
-                    <TextBlock Text="• Hopper" Foreground="#D8DEE9" />
-                    <TextBlock Text="• Chute" Foreground="#D8DEE9" />
-                    <TextBlock Text="• Bin" Foreground="#D8DEE9" />
-                    <TextBlock Text="Structure" Foreground="#A3BE8C" FontWeight="SemiBold" Margin="0,8,0,0" />
-                    <TextBlock Text="• Support Frame" Foreground="#D8DEE9" />
-                    <TextBlock Text="• Platform" Foreground="#D8DEE9" />
+                    <RadioButton Content="Select" GroupName="Tools" IsChecked="{Binding IsSelectActive}" Command="{Binding SelectToolCommand}" />
+                    <RadioButton Content="Hopper" GroupName="Tools" IsChecked="{Binding IsHopperActive}" Command="{Binding HopperToolCommand}" />
+                    <RadioButton Content="Bin" GroupName="Tools" IsChecked="{Binding IsBinActive}" Command="{Binding BinToolCommand}" />
+                    <RadioButton Content="Conveyor" GroupName="Tools" IsChecked="{Binding IsConveyorActive}" Command="{Binding ConveyorToolCommand}" />
+                    <RadioButton Content="Chute" GroupName="Tools" IsChecked="{Binding IsChuteActive}" Command="{Binding ChuteToolCommand}" />
                 </StackPanel>
             </Border>
 
             <Border Grid.Column="1" Margin="8" Background="#121519" CornerRadius="4" BorderThickness="1" BorderBrush="#3B4252">
-                <viewport:SoftwareCubeViewport />
+                <viewport:SoftwareCubeViewport EditorState="{Binding EditorState}" />
             </Border>
 
             <Border Grid.Column="2" Margin="8" Padding="10" Background="#232833" CornerRadius="4">
                 <StackPanel Spacing="8">
                     <TextBlock Text="Inspector" FontWeight="Bold" Foreground="#ECEFF4" FontSize="14" />
-                    <TextBlock Text="Selected: Cube Preview" Foreground="#D8DEE9" />
-                    <TextBlock Text="Position: 0, 0, 0" Foreground="#D8DEE9" />
-                    <TextBlock Text="Rotation: animated" Foreground="#D8DEE9" />
-                    <TextBlock Text="Status: Preview Only" Foreground="#D8DEE9" />
+                    <TextBlock Text="{Binding InspectorSelectedText}" Foreground="#D8DEE9" />
+                    <TextBlock Text="{Binding InspectorIdText}" Foreground="#D8DEE9" />
+                    <TextBlock Text="{Binding InspectorPositionText}" Foreground="#D8DEE9" />
+                    <TextBlock Text="{Binding InspectorSizeText}" Foreground="#D8DEE9" />
+                    <TextBlock Text="{Binding InspectorRotationText}" Foreground="#D8DEE9" />
+                    <TextBlock Text="{Binding InspectorStatusText}" Foreground="#D8DEE9" />
                 </StackPanel>
             </Border>
         </Grid>
