@@ -111,8 +111,8 @@ public sealed class EditorState : INotifyPropertyChanged
         => position.X >= WorldGridSettings.MinCoord
         && position.Y >= WorldGridSettings.MinCoord
         && position.Z >= WorldVerticalSettings.MinZ
-        && position.X + size.WidthX - 1 <= WorldGridSettings.MaxCoord
-        && position.Y + size.DepthY - 1 <= WorldGridSettings.MaxCoord
+        && position.X + size.WidthX <= WorldGridSettings.MaxCoord
+        && position.Y + size.DepthY <= WorldGridSettings.MaxCoord
         && position.Z + size.HeightZ - 1 <= WorldVerticalSettings.MaxZ;
 
     public bool FitsWithinActiveFloor(VoxelCoord position, VoxelSize size)
