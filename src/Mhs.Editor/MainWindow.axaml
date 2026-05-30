@@ -73,11 +73,22 @@
                                 <RadioButton Content="1" GroupName="LayerSelect" IsChecked="{Binding IsLayer1Active}" Command="{Binding Layer1Command}" />
                                 <RadioButton Content="2" GroupName="LayerSelect" IsChecked="{Binding IsLayer2Active}" Command="{Binding Layer2Command}" />
                             </StackPanel>
+                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                <TextBlock Text="Renderer:" Foreground="#E5E9F0" VerticalAlignment="Center" />
+                                <RadioButton Content="Software" GroupName="RendererMode" IsChecked="{Binding IsSoftwareViewportMode}" Command="{Binding UseSoftwareViewportCommand}" />
+                                <RadioButton Content="OpenGL Spike" GroupName="RendererMode" IsChecked="{Binding IsOpenGlViewportMode}" Command="{Binding UseOpenGlViewportCommand}" />
+                            </StackPanel>
                             <TextBlock Text="{Binding AbsoluteZDisplayText}" Foreground="#D8DEE9" VerticalAlignment="Center" />
                         </StackPanel>
                     </Border>
-                    <viewport:SoftwareCubeViewport EditorState="{Binding EditorState}"
-                                                   InteractionPreset="{Binding InteractionPreset}" />
+                    <Grid>
+                        <viewport:SoftwareCubeViewport IsVisible="{Binding IsSoftwareViewportMode}"
+                                                       EditorState="{Binding EditorState}"
+                                                       InteractionPreset="{Binding InteractionPreset}" />
+                        <viewport:OpenGlViewportControl IsVisible="{Binding IsOpenGlViewportMode}"
+                                                        EditorState="{Binding EditorState}"
+                                                        InteractionPreset="{Binding InteractionPreset}" />
+                    </Grid>
                 </DockPanel>
             </Border>
 
