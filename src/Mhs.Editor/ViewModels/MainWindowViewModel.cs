@@ -12,6 +12,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 {
     private readonly IEditorTool _selectTool = new SelectTool();
     private ViewportInteractionPreset _interactionPreset = ViewportInteractionPreset.BlenderLike;
+    private bool _useOpenGlViewport = true;
 
     public MainWindowViewModel()
     {
@@ -28,6 +29,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         Layer2Command = new RelayCommand(() => SetActiveLayer(2));
         BlenderLikeSettingsCommand = new RelayCommand(() => SetInteractionPreset(ViewportInteractionPreset.BlenderLike));
         AutoCadLikeSettingsCommand = new RelayCommand(() => SetInteractionPreset(ViewportInteractionPreset.AutoCadLike));
+        UseSoftwareViewportCommand = new RelayCommand(() => SetViewportMode(useOpenGl: false));
+        UseOpenGlViewportCommand = new RelayCommand(() => SetViewportMode(useOpenGl: true));
 
         foreach (var part in EditorState.PartDefinitions)
         {
@@ -78,6 +81,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand Layer2Command { get; }
     public ICommand BlenderLikeSettingsCommand { get; }
     public ICommand AutoCadLikeSettingsCommand { get; }
+    public ICommand UseSoftwareViewportCommand { get; }
+    public ICommand UseOpenGlViewportCommand { get; }
 
     public bool IsSelectActive => EditorState.ActiveTool is SelectTool;
     public bool IsHopperActive => EditorState.ActiveTool.Name == "Hopper";
@@ -93,6 +98,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public bool IsLayer2Active => EditorState.ActiveLayer == 2;
     public bool IsBlenderLikeSettingsActive => _interactionPreset == ViewportInteractionPreset.BlenderLike;
     public bool IsAutoCadLikeSettingsActive => _interactionPreset == ViewportInteractionPreset.AutoCadLike;
+    public bool IsSoftwareViewportMode => !_useOpenGlViewport;
+    public bool IsOpenGlViewportMode => _useOpenGlViewport;
     public ViewportInteractionPreset InteractionPreset => _interactionPreset;
     public string LayerDisplayText => $"Layer: {EditorState.ActiveLayer} of {WorldVerticalSettings.LayersPerFloor - 1}";
     public string AbsoluteZDisplayText => $"Absolute Z: {EditorState.ActiveAbsoluteZ}";
@@ -126,8 +133,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             var rotation = EditorState.ActiveTool is PlacePartTool
                 ? $" | Rot {EditorState.ActivePlacementRotationZDegrees}°"
                 : string.Empty;
+            var viewportMode = _useOpenGlViewport ? "Viewport: OpenGL/Silk.NET" : "Viewport: Software";
 
-            return $"{EditorState.StatusMessage} | Tool: {EditorState.ActiveTool.Name}{rotation} | Floor {EditorState.ActiveFloor} · Layer {EditorState.ActiveLayer}/{WorldVerticalSettings.LayersPerFloor - 1} · Z {EditorState.ActiveAbsoluteZ} | X {(EditorState.HoveredVoxel?.X.ToString() ?? "-")} Y {(EditorState.HoveredVoxel?.Y.ToString() ?? "-")} | Objects: {EditorState.Scene.Objects.Count} | {hotkeys}";
+            return $"{EditorState.StatusMessage} | {viewportMode} | Tool: {EditorState.ActiveTool.Name}{rotation} | Floor {EditorState.ActiveFloor} · Layer {EditorState.ActiveLayer}/{WorldVerticalSettings.LayersPerFloor - 1} · Z {EditorState.ActiveAbsoluteZ} | X {(EditorState.HoveredVoxel?.X.ToString() ?? "-")} Y {(EditorState.HoveredVoxel?.Y.ToString() ?? "-")} | Objects: {EditorState.Scene.Objects.Count} | {hotkeys}";
         }
     }
 
@@ -290,6 +298,17 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         RaiseComputed();
     }
 
+    private void SetViewportMode(bool useOpenGl)
+    {
+        if (_useOpenGlViewport == useOpenGl)
+        {
+            return;
+        }
+
+        _useOpenGlViewport = useOpenGl;
+        RaiseComputed();
+    }
+
     private void RotateAction()
     {
         if (EditorState.ActiveTool is PlacePartTool placeTool)
@@ -428,6 +447,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(IsLayer2Active));
         OnPropertyChanged(nameof(IsBlenderLikeSettingsActive));
         OnPropertyChanged(nameof(IsAutoCadLikeSettingsActive));
+        OnPropertyChanged(nameof(IsSoftwareViewportMode));
+        OnPropertyChanged(nameof(IsOpenGlViewportMode));
         OnPropertyChanged(nameof(InteractionPreset));
         OnPropertyChanged(nameof(LayerDisplayText));
         OnPropertyChanged(nameof(AbsoluteZDisplayText));
