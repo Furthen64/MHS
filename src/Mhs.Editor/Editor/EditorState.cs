@@ -34,6 +34,7 @@ public sealed class EditorState : INotifyPropertyChanged
     private double _viewportZoom = 1.0;
     private double _viewportPanX;
     private double _viewportPanY;
+    private string _openGlBackendInfo = "N/A";
     private string _statusMessage = "Ready";
 
     public EditorState()
@@ -225,6 +226,12 @@ public sealed class EditorState : INotifyPropertyChanged
     {
         get => _statusMessage;
         set => SetField(ref _statusMessage, string.IsNullOrWhiteSpace(value) ? "Ready" : value);
+    }
+
+    public string OpenGlBackendInfo
+    {
+        get => _openGlBackendInfo;
+        set => SetField(ref _openGlBackendInfo, string.IsNullOrWhiteSpace(value) ? "N/A" : value);
     }
 
     public int ActiveAbsoluteZ => WorldVerticalSettings.ToAbsoluteZ(ActiveFloor, ActiveLayer);

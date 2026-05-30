@@ -22,12 +22,6 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
             nameof(InteractionPreset),
             defaultValue: ViewportInteractionPreset.BlenderLike);
 
-    private const double TileWidth = 48;
-    private const double TileHeight = 24;
-    private const double HeightScale = 36;
-    private const double MinZoom = 0.45;
-    private const double MaxZoom = 2.75;
-
     private GlRenderer? _renderer;
     private string? _initError;
     private bool _isPanning;
@@ -94,7 +88,16 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
             _initError = null;
             _renderer?.Dispose();
             _renderer = new GlRenderer(gl);
-            Console.WriteLine($"[OpenGL] Initialized: {_renderer.Vendor} | {_renderer.Renderer} | {_renderer.Version}");
+            var diagnostics = $"{_renderer.Vendor} | {_renderer.Renderer} | {_renderer.Version}";
+            Console.WriteLine($"[OpenGL] Initialized: {diagnostics}");
+            if (EditorState is { } state)
+            {
+                state.OpenGlBackendInfo = diagnostics;
+                if (state.StatusMessage.StartsWith("OpenGL", StringComparison.OrdinalIgnoreCase))
+                {
+                    state.StatusMessage = "Ready";
+                }
+            }
         }
         catch (Exception ex)
         {
@@ -102,6 +105,7 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
             Console.Error.WriteLine($"[OpenGL] Initialization failed: {ex}");
             if (EditorState is { } state)
             {
+                state.OpenGlBackendInfo = $"Init failed: {_initError}";
                 state.StatusMessage = $"OpenGL init failed: {_initError}";
             }
         }
@@ -133,7 +137,8 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
 
         foreach (var sceneObject in state.Scene.Objects)
         {
-            if (!state.IntersectsActiveFloor(sceneObject))
+            var visibility = ObjectVisibility.GetVisibility(sceneObject, state.ActiveFloor, state.ActiveAbsoluteZ);
+            if (visibility == ObjectVisibilityMode.Hidden)
             {
                 continue;
             }
@@ -150,23 +155,25 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
                 drawSize = RotationHelper.GetEffectiveSize(sceneObject.BaseSize, drawRotation);
             }
 
-            var isActiveLayer = state.IntersectsActiveLayer(sceneObject);
-            var opacity = isActiveLayer ? 0.9 : 0.3;
+            var opacity = visibility == ObjectVisibilityMode.SolidActiveLayer ? 0.9 : 0.3;
             if (state.IsMovingSelection && state.SelectedObject?.Id == sceneObject.Id)
             {
                 opacity = 0.2;
             }
 
-            var color = ColorForPart(sceneObject.PartType);
+            var renderInfo = PartRenderCatalog.Resolve(sceneObject.PartType);
+            var color = renderInfo.BaseColor.ToAvaloniaColor();
             DrawIsoBox(drawPosition, drawSize, color, opacity, drawOutline: false, state);
-            DrawFacingMarker(drawPosition, drawSize, drawRotation, sceneObject.PartType, opacity, state);
+            DrawFacingMarker(drawPosition, drawSize, drawRotation, renderInfo, opacity, state);
         }
 
         if (state.IsMovingSelection && state.SelectedObject is { } moving && state.MovePreviewPosition is { } target)
         {
-            var moveColor = state.MovePreviewIsValid ? ColorForPart(moving.PartType) : Color.FromRgb(230, 90, 90);
+            var moveColor = state.MovePreviewIsValid
+                ? PartRenderCatalog.Resolve(moving.PartType).BaseColor.ToAvaloniaColor()
+                : Color.FromRgb(230, 90, 90);
             DrawIsoBox(target, moving.EffectiveSize, moveColor, 0.45, drawOutline: true, state);
-            DrawFacingMarker(target, moving.EffectiveSize, moving.RotationZDegrees, moving.PartType, 0.45, state);
+            DrawFacingMarker(target, moving.EffectiveSize, moving.RotationZDegrees, PartRenderCatalog.Resolve(moving.PartType), 0.45, state);
         }
 
         if (state.GhostPreview is { } ghost)
@@ -175,7 +182,7 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
                 ? ghost.Part.Color
                 : Color.FromRgb(230, 90, 90);
             DrawIsoBox(ghost.Position, ghost.EffectiveSize, ghostColor, 0.4, drawOutline: true, state);
-            DrawFacingMarker(ghost.Position, ghost.EffectiveSize, ghost.RotationZDegrees, ghost.Part.DisplayName, 0.4, state);
+            DrawFacingMarker(ghost.Position, ghost.EffectiveSize, ghost.RotationZDegrees, PartRenderCatalog.Resolve(ghost.Part.Id), 0.4, state);
         }
 
         if (state.HoveredObject is { } hovered
@@ -206,13 +213,17 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
     {
         _renderer?.Dispose();
         _renderer = null;
+        _initError = null;
     }
 
     protected override void OnOpenGlLost()
     {
         _initError = "OpenGL context was lost";
+        _renderer?.Dispose();
+        _renderer = null;
         if (EditorState is { } state)
         {
+            state.OpenGlBackendInfo = "Context lost";
             state.StatusMessage = "OpenGL context lost";
         }
     }
@@ -320,23 +331,11 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
             return;
         }
 
-        var zoomStep = 1.1;
-        var factor = e.Delta.Y > 0 ? zoomStep : 1 / zoomStep;
-        var nextZoom = Math.Clamp(state.ViewportZoom * factor, MinZoom, MaxZoom);
-
-        if (Math.Abs(nextZoom - state.ViewportZoom) < 0.0001)
+        var pointer = e.GetPosition(this);
+        if (!ViewportMath.ApplyZoomAtPointer(state, Bounds, pointer, e.Delta.Y))
         {
             return;
         }
-
-        var pointer = e.GetPosition(this);
-        var originBefore = GetViewOrigin();
-        var worldOffsetX = (pointer.X - originBefore.X - state.ViewportPanX) / state.ViewportZoom;
-        var worldOffsetY = (pointer.Y - originBefore.Y - state.ViewportPanY) / state.ViewportZoom;
-
-        state.ViewportZoom = nextZoom;
-        state.ViewportPanX = pointer.X - originBefore.X - worldOffsetX * state.ViewportZoom;
-        state.ViewportPanY = pointer.Y - originBefore.Y - worldOffsetY * state.ViewportZoom;
 
         RequestNextFrameRendering();
         e.Handled = true;
@@ -442,33 +441,12 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
 
     private VoxelCoord? TryMapPointToVoxel(Point point, int absoluteZ)
     {
-        if (!Bounds.Contains(point))
-        {
-            return null;
-        }
-
         if (EditorState is not { } state)
         {
             return null;
         }
 
-        var origin = GetTransformedOrigin(state);
-        var tileWidth = TileWidth * state.ViewportZoom;
-        var tileHeight = TileHeight * state.ViewportZoom;
-        var heightScale = HeightScale * state.ViewportZoom;
-
-        var dx = (point.X - origin.X) / (tileWidth / 2.0);
-        var dy = (point.Y - origin.Y + absoluteZ * heightScale) / (tileHeight / 2.0);
-
-        var x = (dx + dy) / 2.0;
-        var y = (dy - dx) / 2.0;
-        var coord = new VoxelCoord((int)Math.Round(x), (int)Math.Round(y), absoluteZ);
-        return coord.X < WorldGridSettings.MinCoord
-            || coord.X > WorldGridSettings.MaxCoord
-            || coord.Y < WorldGridSettings.MinCoord
-            || coord.Y > WorldGridSettings.MaxCoord
-            ? null
-            : coord;
+        return ViewportMath.TryMapPointToVoxel(point, Bounds, state, absoluteZ);
     }
 
     private void DrawFloorOutlines(int activeFloor)
@@ -656,34 +634,18 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
 
     private Point Project(double x, double y, double z, EditorState state)
     {
-        var origin = GetTransformedOrigin(state);
-        var tileWidth = TileWidth * state.ViewportZoom;
-        var tileHeight = TileHeight * state.ViewportZoom;
-        var heightScale = HeightScale * state.ViewportZoom;
-
-        return new Point(
-            origin.X + (x - y) * (tileWidth / 2.0),
-            origin.Y + (x + y) * (tileHeight / 2.0) - z * heightScale);
-    }
-
-    private Point GetViewOrigin() =>
-        new(Bounds.Center.X, Bounds.Top + Bounds.Height * 0.28);
-
-    private Point GetTransformedOrigin(EditorState state)
-    {
-        var origin = GetViewOrigin();
-        return new Point(origin.X + state.ViewportPanX, origin.Y + state.ViewportPanY);
+        return ViewportMath.Project(x, y, z, Bounds, state);
     }
 
     private void DrawFacingMarker(VoxelCoord position, VoxelSize effectiveSize,
-        int rotationZDegrees, string partType, double opacity, EditorState state)
+        int rotationZDegrees, PartRenderInfo renderInfo, double opacity, EditorState state)
     {
         if (_renderer is null)
         {
             return;
         }
 
-        if (partType is not ("Conveyor" or "Hopper" or "Tall Hopper" or "Chute"))
+        if (!renderInfo.ShowFacingMarker)
         {
             return;
         }
@@ -719,14 +681,7 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
         var base2 = Project(tailX - px * arrowBase, tailY - py * arrowBase, z1, state);
         var tip = Project(tipX, tipY, z1, state);
 
-        var markerColor = partType switch
-        {
-            "Conveyor" => Color.FromRgb(255, 230, 60),
-            "Hopper" or "Tall Hopper" => Color.FromRgb(255, 110, 40),
-            "Chute" => Color.FromRgb(180, 220, 255),
-            _ => Color.FromRgb(240, 240, 240)
-        };
-
+        var markerColor = renderInfo.FacingMarkerColor.ToAvaloniaColor();
         _renderer.AddFilledTriangle(tip, base1, base2, markerColor, Math.Min(opacity + 0.25, 1.0));
     }
 
@@ -746,13 +701,4 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
             (byte)Math.Clamp((int)(color.B * factor), 0, 255));
     }
 
-    private static Color ColorForPart(string partType) => partType switch
-    {
-        "Hopper" => Color.FromRgb(240, 200, 90),
-        "Tall Hopper" => Color.FromRgb(214, 132, 66),
-        "Bin" => Color.FromRgb(90, 150, 240),
-        "Conveyor" => Color.FromRgb(70, 80, 90),
-        "Chute" => Color.FromRgb(150, 150, 150),
-        _ => Color.FromRgb(180, 180, 180)
-    };
 }
