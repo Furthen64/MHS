@@ -253,12 +253,12 @@ public sealed class ConveyorRouteTool : IEditorTool
                 cell.Z >= existing.MinZ && cell.Z <= existing.MaxZ)
             {
                 return true;
+                    }
+                }
+
+                return false;
             }
 
             private static int GetPreviewLength(VoxelCoord start, VoxelCoord end)
                 => Math.Abs(end.X - start.X) + Math.Abs(end.Y - start.Y) + 1;
-        }
-
-        return false;
-    }
 }
