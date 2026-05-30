@@ -40,6 +40,8 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
     public OpenGlViewportControl()
     {
         ClipToBounds = true;
+        IsHitTestVisible = true;
+        Focusable = true;
 
         PointerMoved += OnPointerMoved;
         PointerPressed += OnPointerPressed;
@@ -256,6 +258,8 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
 
     private void OnPointerPressed(object? sender, PointerPressedEventArgs e)
     {
+        Focus(NavigationMethod.Pointer, KeyModifiers.None);
+
         var current = e.GetCurrentPoint(this);
         if (CanStartPan(current.Properties, EditorState))
         {
