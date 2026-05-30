@@ -101,6 +101,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         get
         {
+            var hotkeys = _interactionPreset == ViewportInteractionPreset.BlenderLike
+                ? "G=Move  R=Rotate  Del=Delete  Esc=Cancel"
+                : "M=Move  R=Rotate  Del=Delete  Esc=Cancel";
+
             if (EditorState.IsMovingSelection)
             {
                 var moveTarget = EditorState.MovePreviewPosition is { } target
@@ -109,14 +113,14 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 var validity = EditorState.MovePreviewPosition.HasValue
                     ? (EditorState.MovePreviewIsValid ? "Valid" : "Blocked")
                     : "Preview";
-                return $"Move | Selected: {EditorState.SelectedObject?.PartType ?? "None"} | {moveTarget} | {validity} | Objects: {EditorState.Scene.Objects.Count}";
+                return $"Move | Selected: {EditorState.SelectedObject?.PartType ?? "None"} | {moveTarget} | {validity} | Objects: {EditorState.Scene.Objects.Count} | {hotkeys}";
             }
 
             var rotation = EditorState.ActiveTool is PlacePartTool
                 ? $" | Rot {EditorState.ActivePlacementRotationZDegrees}°"
                 : string.Empty;
 
-            return $"{EditorState.StatusMessage} | Tool: {EditorState.ActiveTool.Name}{rotation} | Floor {EditorState.ActiveFloor} · Layer {EditorState.ActiveLayer}/{WorldVerticalSettings.LayersPerFloor - 1} · Z {EditorState.ActiveAbsoluteZ} | X {(EditorState.HoveredVoxel?.X.ToString() ?? "-")} Y {(EditorState.HoveredVoxel?.Y.ToString() ?? "-")} | Objects: {EditorState.Scene.Objects.Count}";
+            return $"{EditorState.StatusMessage} | Tool: {EditorState.ActiveTool.Name}{rotation} | Floor {EditorState.ActiveFloor} · Layer {EditorState.ActiveLayer}/{WorldVerticalSettings.LayersPerFloor - 1} · Z {EditorState.ActiveAbsoluteZ} | X {(EditorState.HoveredVoxel?.X.ToString() ?? "-")} Y {(EditorState.HoveredVoxel?.Y.ToString() ?? "-")} | Objects: {EditorState.Scene.Objects.Count} | {hotkeys}";
         }
     }
 
@@ -184,6 +188,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 DeleteSelection();
                 break;
             case Key.M:
+                StartMoveSelection();
+                break;
+            case Key.G when _interactionPreset == ViewportInteractionPreset.BlenderLike:
                 StartMoveSelection();
                 break;
             case Key.Escape:
