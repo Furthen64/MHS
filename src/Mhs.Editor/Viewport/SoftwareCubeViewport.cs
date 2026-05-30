@@ -109,12 +109,14 @@ public sealed class SoftwareCubeViewport : Control
 
             var color = ColorForPart(sceneObject.PartType);
             DrawIsoBox(context, sceneObject.Position, sceneObject.EffectiveSize, color, opacity, drawOutline: false, state);
+            DrawFacingMarker(context, sceneObject.Position, sceneObject.EffectiveSize, sceneObject.RotationZDegrees, sceneObject.PartType, opacity, state);
         }
 
         if (state.IsMovingSelection && state.SelectedObject is { } moving && state.MovePreviewPosition is { } target)
         {
             var moveColor = state.MovePreviewIsValid ? ColorForPart(moving.PartType) : Color.FromRgb(230, 90, 90);
             DrawIsoBox(context, target, moving.EffectiveSize, moveColor, 0.45, drawOutline: true, state);
+            DrawFacingMarker(context, target, moving.EffectiveSize, moving.RotationZDegrees, moving.PartType, 0.45, state);
         }
 
         if (state.GhostPreview is { } ghost)
@@ -125,6 +127,7 @@ public sealed class SoftwareCubeViewport : Control
                     ? ghost.Part.Color
                     : Color.FromRgb(230, 90, 90);
                 DrawIsoBox(context, ghost.Position, ghost.EffectiveSize, ghostColor, 0.4, drawOutline: true, state);
+                DrawFacingMarker(context, ghost.Position, ghost.EffectiveSize, ghost.RotationZDegrees, ghost.Part.DisplayName, 0.4, state);
             }
         }
 
@@ -551,6 +554,59 @@ public sealed class SoftwareCubeViewport : Control
 
         stream.EndFigure(isClosed: true);
         return geometry;
+    }
+
+    private void DrawFacingMarker(DrawingContext context, VoxelCoord position, VoxelSize effectiveSize,
+        int rotationZDegrees, string partType, double opacity, EditorState state)
+    {
+        if (partType is not ("Conveyor" or "Hopper" or "Tall Hopper" or "Chute"))
+        {
+            return;
+        }
+
+        var normalized = RotationHelper.NormalizeDegrees(rotationZDegrees);
+        var (fdx, fdy) = normalized switch
+        {
+            0   => (1.0,  0.0),
+            90  => (0.0,  1.0),
+            180 => (-1.0, 0.0),
+            _   => (0.0, -1.0)  // 270
+        };
+
+        var z1 = position.Z + effectiveSize.HeightZ;
+        var cx = position.X + effectiveSize.WidthX / 2.0;
+        var cy = position.Y + effectiveSize.DepthY / 2.0;
+
+        // Arrow length proportional to the extent in the facing direction; base to the transverse extent
+        var halfFacing    = (Math.Abs(fdx) > 0.5 ? effectiveSize.WidthX : effectiveSize.DepthY) / 2.0;
+        var halfTransverse = (Math.Abs(fdx) > 0.5 ? effectiveSize.DepthY : effectiveSize.WidthX) / 2.0;
+
+        var arrowLen  = halfFacing    * 0.55;
+        var arrowBase = halfTransverse * 0.40;
+
+        var tipX  = cx + fdx * arrowLen;
+        var tipY  = cy + fdy * arrowLen;
+
+        // Perpendicular direction for arrowhead base
+        var px = -fdy;
+        var py =  fdx;
+        var tailX = cx - fdx * arrowLen * 0.3;
+        var tailY = cy - fdy * arrowLen * 0.3;
+
+        var base1 = Project(tailX + px * arrowBase, tailY + py * arrowBase, z1, state);
+        var base2 = Project(tailX - px * arrowBase, tailY - py * arrowBase, z1, state);
+        var tip   = Project(tipX, tipY, z1, state);
+
+        var markerColor = partType switch
+        {
+            "Conveyor"              => Color.FromRgb(255, 230, 60),
+            "Hopper" or "Tall Hopper" => Color.FromRgb(255, 110, 40),
+            "Chute"                 => Color.FromRgb(180, 220, 255),
+            _                       => Color.FromRgb(240, 240, 240)
+        };
+
+        var brush = new SolidColorBrush(WithOpacity(markerColor, Math.Min(opacity + 0.25, 1.0)));
+        context.DrawGeometry(brush, null, Polygon(tip, base1, base2));
     }
 
     private static Color ColorForPart(string partType) => partType switch
