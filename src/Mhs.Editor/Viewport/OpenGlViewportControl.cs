@@ -171,14 +171,11 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
 
         if (state.GhostPreview is { } ghost)
         {
-            if (state.FitsWithinActiveFloor(ghost.Position, ghost.EffectiveSize))
-            {
-                var ghostColor = ghost.IsValid
-                    ? ghost.Part.Color
-                    : Color.FromRgb(230, 90, 90);
-                DrawIsoBox(ghost.Position, ghost.EffectiveSize, ghostColor, 0.4, drawOutline: true, state);
-                DrawFacingMarker(ghost.Position, ghost.EffectiveSize, ghost.RotationZDegrees, ghost.Part.DisplayName, 0.4, state);
-            }
+            var ghostColor = ghost.IsValid
+                ? ghost.Part.Color
+                : Color.FromRgb(230, 90, 90);
+            DrawIsoBox(ghost.Position, ghost.EffectiveSize, ghostColor, 0.4, drawOutline: true, state);
+            DrawFacingMarker(ghost.Position, ghost.EffectiveSize, ghost.RotationZDegrees, ghost.Part.DisplayName, 0.4, state);
         }
 
         if (state.HoveredObject is { } hovered
