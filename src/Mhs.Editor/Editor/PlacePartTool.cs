@@ -1,3 +1,6 @@
+using System;
+using System.Linq;
+
 namespace Mhs.Editor.Editor;
 
 public sealed class PlacePartTool : IEditorTool
@@ -21,6 +24,12 @@ public sealed class PlacePartTool : IEditorTool
     public void OnPointerPressed(ViewportPointerContext context)
     {
         var state = context.EditorState;
+        if (!IsKnownPartDefinition(state))
+        {
+            state.StatusMessage = "Blocked | Placement blocked: unknown part definition";
+            return;
+        }
+
         var hovered = state.HoveredVoxel;
         if (!hovered.HasValue)
         {
@@ -29,9 +38,8 @@ public sealed class PlacePartTool : IEditorTool
 
         var position = hovered.Value with { Z = state.ActiveAbsoluteZ };
         var rotation = state.ActivePlacementRotationZDegrees;
-        var effectiveSize = RotationHelper.GetEffectiveSize(_partDefinition.Size, rotation);
         var validation = state.ValidatePartPlacement(_partDefinition, position, rotation);
-        if (!state.FitsWithinActiveFloor(position, effectiveSize) || !validation.IsValid)
+        if (!validation.IsValid)
         {
             state.StatusMessage = $"Blocked | Placement blocked: {validation.Reason ?? "invalid"}";
             return;
@@ -63,6 +71,12 @@ public sealed class PlacePartTool : IEditorTool
 
     private void UpdateGhost(EditorState state)
     {
+        if (!IsKnownPartDefinition(state))
+        {
+            state.GhostPreview = null;
+            return;
+        }
+
         if (!state.HoveredVoxel.HasValue)
         {
             state.GhostPreview = null;
@@ -72,13 +86,6 @@ public sealed class PlacePartTool : IEditorTool
         var hovered = state.HoveredVoxel.Value;
         var voxel = new VoxelCoord(hovered.X, hovered.Y, state.ActiveAbsoluteZ);
         var rotation = state.ActivePlacementRotationZDegrees;
-        var effectiveSize = RotationHelper.GetEffectiveSize(_partDefinition.Size, rotation);
-        if (!state.FitsWithinActiveFloor(voxel, effectiveSize))
-        {
-            state.GhostPreview = null;
-            return;
-        }
-
         var validation = state.ValidatePartPlacement(_partDefinition, voxel, rotation);
 
         state.GhostPreview = new GhostPreview
@@ -90,4 +97,8 @@ public sealed class PlacePartTool : IEditorTool
             InvalidReason = validation.Reason
         };
     }
+
+    private bool IsKnownPartDefinition(EditorState state)
+        => !string.IsNullOrWhiteSpace(_partDefinition.Id)
+           && state.PartDefinitions.Any(part => string.Equals(part.Id, _partDefinition.Id, StringComparison.Ordinal));
 }

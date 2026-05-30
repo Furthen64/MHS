@@ -316,9 +316,16 @@ public sealed class EditorState : INotifyPropertyChanged
 
     public PlacementValidationResult ValidatePlacement(VoxelCoord position, VoxelSize size, Guid? excludeId = null)
     {
+        var exceedsVerticalBounds = position.Z < WorldVerticalSettings.MinZ
+            || position.Z + size.HeightZ - 1 > WorldVerticalSettings.MaxZ;
+        if (exceedsVerticalBounds)
+        {
+            return PlacementValidationResult.Invalid("out of vertical bounds");
+        }
+
         if (!FitsWithinGrid(position, size))
         {
-            return PlacementValidationResult.Invalid("Out of grid bounds");
+            return PlacementValidationResult.Invalid("out of grid bounds");
         }
 
         foreach (var existing in Scene.Objects)
@@ -330,7 +337,7 @@ public sealed class EditorState : INotifyPropertyChanged
 
             if (Intersects(position, size, existing.Position, existing.EffectiveSize))
             {
-                return PlacementValidationResult.Invalid("Collision");
+                return PlacementValidationResult.Invalid("collision");
             }
         }
 
