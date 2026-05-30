@@ -215,7 +215,7 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
     {
         state.PropertyChanged += OnStatePropertyChanged;
         state.Scene.Objects.CollectionChanged += OnObjectsChanged;
-        InvalidateVisual();
+        RequestNextFrameRendering();
     }
 
     private void DetachState(EditorState state)
@@ -226,12 +226,12 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
 
     private void OnStatePropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        InvalidateVisual();
+        RequestNextFrameRendering();
     }
 
     private void OnObjectsChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
-        InvalidateVisual();
+        RequestNextFrameRendering();
     }
 
     private void OnPointerMoved(object? sender, PointerEventArgs e)
@@ -246,7 +246,7 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
             }
 
             _lastPanPoint = point;
-            InvalidateVisual();
+            RequestNextFrameRendering();
             e.Handled = true;
             return;
         }
@@ -301,7 +301,7 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
         };
 
         state.ActiveTool.OnPointerMoved(context);
-        InvalidateVisual();
+        RequestNextFrameRendering();
     }
 
     private void OnPointerWheelChanged(object? sender, PointerWheelEventArgs e)
@@ -330,7 +330,7 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
         state.ViewportPanX = pointer.X - originBefore.X - worldOffsetX * state.ViewportZoom;
         state.ViewportPanY = pointer.Y - originBefore.Y - worldOffsetY * state.ViewportZoom;
 
-        InvalidateVisual();
+        RequestNextFrameRendering();
         e.Handled = true;
     }
 
@@ -371,7 +371,7 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
             state.ActiveTool.OnPointerReleased(context);
         }
 
-        InvalidateVisual();
+        RequestNextFrameRendering();
         e.Handled = true;
     }
 
