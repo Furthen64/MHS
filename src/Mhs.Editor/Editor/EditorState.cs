@@ -10,10 +10,21 @@ public sealed class EditorState : INotifyPropertyChanged
 {
     private IEditorTool _activeTool;
     private SceneObject? _selectedObject;
+    private SceneObject? _hoveredObject;
     private VoxelCoord? _hoveredVoxel;
     private GhostPreview? _ghostPreview;
     private int _activeFloor;
     private int _activeLayer;
+    private int _activePlacementRotationZDegrees;
+    private bool _isMovingSelection;
+    private VoxelCoord? _moveOriginalPosition;
+    private VoxelCoord? _movePreviewPosition;
+    private bool _movePreviewIsValid;
+    private string? _movePreviewInvalidReason;
+    private double _viewportZoom = 1.0;
+    private double _viewportPanX;
+    private double _viewportPanY;
+    private string _statusMessage = "Ready";
 
     public EditorState()
     {
@@ -47,6 +58,12 @@ public sealed class EditorState : INotifyPropertyChanged
     {
         get => _selectedObject;
         set => SetField(ref _selectedObject, value);
+    }
+
+    public SceneObject? HoveredObject
+    {
+        get => _hoveredObject;
+        set => SetField(ref _hoveredObject, value);
     }
 
     public VoxelCoord? HoveredVoxel
@@ -93,6 +110,66 @@ public sealed class EditorState : INotifyPropertyChanged
         }
     }
 
+    public int ActivePlacementRotationZDegrees
+    {
+        get => _activePlacementRotationZDegrees;
+        set => SetField(ref _activePlacementRotationZDegrees, RotationHelper.NormalizeDegrees(value));
+    }
+
+    public bool IsMovingSelection
+    {
+        get => _isMovingSelection;
+        set => SetField(ref _isMovingSelection, value);
+    }
+
+    public VoxelCoord? MoveOriginalPosition
+    {
+        get => _moveOriginalPosition;
+        set => SetField(ref _moveOriginalPosition, value);
+    }
+
+    public VoxelCoord? MovePreviewPosition
+    {
+        get => _movePreviewPosition;
+        set => SetField(ref _movePreviewPosition, value);
+    }
+
+    public bool MovePreviewIsValid
+    {
+        get => _movePreviewIsValid;
+        set => SetField(ref _movePreviewIsValid, value);
+    }
+
+    public string? MovePreviewInvalidReason
+    {
+        get => _movePreviewInvalidReason;
+        set => SetField(ref _movePreviewInvalidReason, value);
+    }
+
+    public double ViewportZoom
+    {
+        get => _viewportZoom;
+        set => SetField(ref _viewportZoom, value);
+    }
+
+    public double ViewportPanX
+    {
+        get => _viewportPanX;
+        set => SetField(ref _viewportPanX, value);
+    }
+
+    public double ViewportPanY
+    {
+        get => _viewportPanY;
+        set => SetField(ref _viewportPanY, value);
+    }
+
+    public string StatusMessage
+    {
+        get => _statusMessage;
+        set => SetField(ref _statusMessage, string.IsNullOrWhiteSpace(value) ? "Ready" : value);
+    }
+
     public int ActiveAbsoluteZ => WorldVerticalSettings.ToAbsoluteZ(ActiveFloor, ActiveLayer);
 
     public int ActiveFloorStartZ => ActiveFloor * WorldVerticalSettings.LayersPerFloor;
@@ -111,8 +188,8 @@ public sealed class EditorState : INotifyPropertyChanged
         => position.X >= WorldGridSettings.MinCoord
         && position.Y >= WorldGridSettings.MinCoord
         && position.Z >= WorldVerticalSettings.MinZ
-        && position.X + size.WidthX <= WorldGridSettings.MaxCoord
-        && position.Y + size.DepthY <= WorldGridSettings.MaxCoord
+        && position.X + size.WidthX - 1 <= WorldGridSettings.MaxCoord
+        && position.Y + size.DepthY - 1 <= WorldGridSettings.MaxCoord
         && position.Z + size.HeightZ - 1 <= WorldVerticalSettings.MaxZ;
 
     public bool FitsWithinActiveFloor(VoxelCoord position, VoxelSize size)
@@ -121,13 +198,13 @@ public sealed class EditorState : INotifyPropertyChanged
         && position.Z + size.HeightZ - 1 <= ActiveFloorEndZ;
 
     public bool IsObjectWithinGrid(SceneObject sceneObject)
-        => FitsWithinGrid(sceneObject.Position, sceneObject.Size);
+        => FitsWithinGrid(sceneObject.Position, sceneObject.EffectiveSize);
 
-    public bool CanPlaceAt(PartDefinition part, VoxelCoord position, Guid? excludeId = null)
+    public PlacementValidationResult ValidatePlacement(VoxelCoord position, VoxelSize size, Guid? excludeId = null)
     {
-        if (!FitsWithinGrid(position, part.Size))
+        if (!FitsWithinGrid(position, size))
         {
-            return false;
+            return PlacementValidationResult.Invalid("Out of grid bounds");
         }
 
         foreach (var existing in Scene.Objects)
@@ -137,14 +214,23 @@ public sealed class EditorState : INotifyPropertyChanged
                 continue;
             }
 
-            if (Intersects(position, part.Size, existing.Position, existing.Size))
+            if (Intersects(position, size, existing.Position, existing.EffectiveSize))
             {
-                return false;
+                return PlacementValidationResult.Invalid("Collision");
             }
         }
 
-        return true;
+        return PlacementValidationResult.Valid;
     }
+
+    public PlacementValidationResult ValidatePartPlacement(PartDefinition part, VoxelCoord position, int rotationZDegrees, Guid? excludeId = null)
+    {
+        var effectiveSize = RotationHelper.GetEffectiveSize(part.Size, rotationZDegrees);
+        return ValidatePlacement(position, effectiveSize, excludeId);
+    }
+
+    public bool CanPlaceAt(PartDefinition part, VoxelCoord position, int rotationZDegrees, Guid? excludeId = null)
+        => ValidatePartPlacement(part, position, rotationZDegrees, excludeId).IsValid;
 
     public bool IsObjectSelected(SceneObject sceneObject) => SelectedObject?.Id == sceneObject.Id;
 
@@ -160,7 +246,7 @@ public sealed class EditorState : INotifyPropertyChanged
     public static bool IntersectsFloor(SceneObject obj, int floorStartZ, int floorEndZ)
         => obj.MinZ <= floorEndZ && obj.MaxZ >= floorStartZ;
 
-    private static bool Intersects(VoxelCoord aPos, VoxelSize aSize, VoxelCoord bPos, VoxelSize bSize)
+    public static bool Intersects(VoxelCoord aPos, VoxelSize aSize, VoxelCoord bPos, VoxelSize bSize)
     {
         static bool Overlaps(int aMin, int aSize, int bMin, int bSize)
         {
@@ -172,6 +258,22 @@ public sealed class EditorState : INotifyPropertyChanged
         return Overlaps(aPos.X, aSize.WidthX, bPos.X, bSize.WidthX)
             && Overlaps(aPos.Y, aSize.DepthY, bPos.Y, bSize.DepthY)
             && Overlaps(aPos.Z, aSize.HeightZ, bPos.Z, bSize.HeightZ);
+    }
+
+    public void SetMovePreview(VoxelCoord? position, bool isValid, string? reason)
+    {
+        MovePreviewPosition = position;
+        MovePreviewIsValid = isValid;
+        MovePreviewInvalidReason = reason;
+    }
+
+    public void ClearMoveState()
+    {
+        IsMovingSelection = false;
+        MoveOriginalPosition = null;
+        MovePreviewPosition = null;
+        MovePreviewInvalidReason = null;
+        MovePreviewIsValid = false;
     }
 
     private void OnActiveLayerContextChanged()
@@ -186,12 +288,15 @@ public sealed class EditorState : INotifyPropertyChanged
         if (GhostPreview is { } ghost)
         {
             var position = ghost.Position with { Z = ActiveAbsoluteZ };
-            GhostPreview = FitsWithinActiveFloor(position, ghost.Part.Size)
+            var validation = ValidatePartPlacement(ghost.Part, position, ghost.RotationZDegrees);
+            GhostPreview = FitsWithinActiveFloor(position, ghost.EffectiveSize)
                 ? new GhostPreview
                 {
                     Part = ghost.Part,
                     Position = position,
-                    IsValid = CanPlaceAt(ghost.Part, position)
+                    RotationZDegrees = ghost.RotationZDegrees,
+                    IsValid = validation.IsValid,
+                    InvalidReason = validation.Reason
                 }
                 : null;
         }
@@ -199,6 +304,18 @@ public sealed class EditorState : INotifyPropertyChanged
         if (SelectedObject is { } selected && (!IntersectsActiveLayer(selected) || !IsObjectWithinGrid(selected)))
         {
             SelectedObject = null;
+        }
+
+        if (HoveredObject is { } hoveredObject && (!IntersectsActiveLayer(hoveredObject) || !IsObjectWithinGrid(hoveredObject)))
+        {
+            HoveredObject = null;
+        }
+
+        if (IsMovingSelection && SelectedObject is not null)
+        {
+            MovePreviewPosition = MovePreviewPosition is { } movePosition
+                ? movePosition with { Z = ActiveAbsoluteZ }
+                : null;
         }
     }
 

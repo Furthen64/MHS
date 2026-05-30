@@ -14,42 +14,26 @@ public sealed class PlacePartTool : IEditorTool
     public void OnPointerMoved(ViewportPointerContext context)
     {
         context.EditorState.HoveredVoxel = context.HoveredVoxel;
-
-        if (!context.HoveredVoxel.HasValue)
-        {
-            context.EditorState.GhostPreview = null;
-            return;
-        }
-
-        var hovered = context.HoveredVoxel.Value;
-        var voxel = new VoxelCoord(hovered.X, hovered.Y, context.EditorState.ActiveAbsoluteZ);
-        if (!context.EditorState.FitsWithinActiveFloor(voxel, _partDefinition.Size))
-        {
-            context.EditorState.GhostPreview = null;
-            return;
-        }
-
-        var isValid = context.EditorState.CanPlaceAt(_partDefinition, voxel);
-
-        context.EditorState.GhostPreview = new GhostPreview
-        {
-            Part = _partDefinition,
-            Position = voxel,
-            IsValid = isValid
-        };
+        context.EditorState.HoveredObject = null;
+        UpdateGhost(context.EditorState);
     }
 
     public void OnPointerPressed(ViewportPointerContext context)
     {
-        var hovered = context.EditorState.HoveredVoxel;
+        var state = context.EditorState;
+        var hovered = state.HoveredVoxel;
         if (!hovered.HasValue)
         {
             return;
         }
 
-        var position = hovered.Value with { Z = context.EditorState.ActiveAbsoluteZ };
-        if (!context.EditorState.FitsWithinActiveFloor(position, _partDefinition.Size) || !context.EditorState.CanPlaceAt(_partDefinition, position))
+        var position = hovered.Value with { Z = state.ActiveAbsoluteZ };
+        var rotation = state.ActivePlacementRotationZDegrees;
+        var effectiveSize = RotationHelper.GetEffectiveSize(_partDefinition.Size, rotation);
+        var validation = state.ValidatePartPlacement(_partDefinition, position, rotation);
+        if (!state.FitsWithinActiveFloor(position, effectiveSize) || !validation.IsValid)
         {
+            state.StatusMessage = $"Blocked | Placement blocked: {validation.Reason ?? "invalid"}";
             return;
         }
 
@@ -57,12 +41,13 @@ public sealed class PlacePartTool : IEditorTool
         {
             PartType = _partDefinition.DisplayName,
             Position = position,
-            Size = _partDefinition.Size,
-            RotationDegrees = 0
+            BaseSize = _partDefinition.Size,
+            RotationZDegrees = rotation
         };
 
-        context.EditorState.Scene.Objects.Add(sceneObject);
-        context.EditorState.SelectedObject = sceneObject;
+        state.Scene.Objects.Add(sceneObject);
+        state.SelectedObject = sceneObject;
+        state.StatusMessage = "Ready";
     }
 
     public void OnPointerReleased(ViewportPointerContext context)
@@ -72,5 +57,37 @@ public sealed class PlacePartTool : IEditorTool
     public void OnCancel(EditorState editorState)
     {
         editorState.GhostPreview = null;
+    }
+
+    public void RefreshPreview(EditorState editorState) => UpdateGhost(editorState);
+
+    private void UpdateGhost(EditorState state)
+    {
+        if (!state.HoveredVoxel.HasValue)
+        {
+            state.GhostPreview = null;
+            return;
+        }
+
+        var hovered = state.HoveredVoxel.Value;
+        var voxel = new VoxelCoord(hovered.X, hovered.Y, state.ActiveAbsoluteZ);
+        var rotation = state.ActivePlacementRotationZDegrees;
+        var effectiveSize = RotationHelper.GetEffectiveSize(_partDefinition.Size, rotation);
+        if (!state.FitsWithinActiveFloor(voxel, effectiveSize))
+        {
+            state.GhostPreview = null;
+            return;
+        }
+
+        var validation = state.ValidatePartPlacement(_partDefinition, voxel, rotation);
+
+        state.GhostPreview = new GhostPreview
+        {
+            Part = _partDefinition,
+            Position = voxel,
+            RotationZDegrees = rotation,
+            IsValid = validation.IsValid,
+            InvalidReason = validation.Reason
+        };
     }
 }
