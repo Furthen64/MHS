@@ -213,6 +213,13 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         if (EditorState.ActiveTool is ConveyorRouteTool routeTool && EditorState.ActiveConveyorRoute is not null)
         {
+            if (key == Key.Enter)
+            {
+                routeTool.FinishRoute(EditorState);
+                RaiseComputed();
+                return true;
+            }
+
             switch (key)
             {
                 case Key.Back:
@@ -221,11 +228,6 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                     return true;
                 case Key.Escape:
                     CancelAction();
-                    RaiseComputed();
-                    return true;
-                case Key.Enter:
-                case Key.Return:
-                    routeTool.FinishRoute(EditorState);
                     RaiseComputed();
                     return true;
             }
