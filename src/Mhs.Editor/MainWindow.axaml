@@ -37,14 +37,14 @@
         </Menu>
 
         <Border DockPanel.Dock="Top" Background="#2A2E36" Padding="8">
-            <TextBlock Foreground="#E5E9F0" FontWeight="SemiBold" Text="Material Handling System Editor - PoC 2" />
+            <TextBlock Foreground="#E5E9F0" FontWeight="SemiBold" Text="Material Handling System Editor - PoC 3" />
         </Border>
 
         <Border DockPanel.Dock="Bottom" Background="#20232A" Padding="8,6">
             <TextBlock Foreground="#D8DEE9" Text="{Binding StatusText}" />
         </Border>
 
-        <Grid ColumnDefinitions="220,*,280" Background="#1B1D23">
+        <Grid ColumnDefinitions="220,*,300" Background="#1B1D23">
             <Border Grid.Column="0" Margin="8" Padding="10" Background="#232833" CornerRadius="4">
                 <StackPanel Spacing="8">
                     <TextBlock Text="Parts Palette" FontWeight="Bold" Foreground="#ECEFF4" FontSize="14" />
@@ -91,7 +91,17 @@
                     <TextBlock Text="{Binding InspectorRotationText}" Foreground="#D8DEE9" />
                     <TextBlock Text="{Binding InspectorStatusText}" Foreground="#D8DEE9" />
                     <TextBlock Text="{Binding InspectorContextText}" Foreground="#D8DEE9" />
-                    <TextBlock Text="{Binding InspectorRangeText}" Foreground="#D8DEE9" />
+                    <TextBlock Text="{Binding InspectorRangeText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding InspectorExtraText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
+
+                    <Separator Margin="0,6,0,6" />
+                    <TextBlock Text="Floor / Layer" FontWeight="SemiBold" Foreground="#ECEFF4" />
+                    <TextBlock Text="{Binding Floor2StackText}" Foreground="#C7D0E0" />
+                    <TextBlock Text="{Binding Floor1StackText}" Foreground="#C7D0E0" />
+                    <TextBlock Text="{Binding Floor0StackText}" Foreground="#C7D0E0" />
+                    <TextBlock Text="{Binding ActiveFloorSummaryText}" Foreground="#D8DEE9" Margin="0,6,0,0" />
+                    <TextBlock Text="{Binding ActiveLayerSummaryText}" Foreground="#D8DEE9" />
+                    <TextBlock Text="{Binding ActiveAbsoluteZSummaryText}" Foreground="#D8DEE9" />
                 </StackPanel>
             </Border>
         </Grid>

@@ -31,9 +31,6 @@ public sealed class SoftwareCubeViewport : Control
 
     private bool _isPanning;
     private Point _lastPanPoint;
-    private double _panOffsetX;
-    private double _panOffsetY;
-    private double _zoom = 1.0;
 
     public SoftwareCubeViewport()
     {
@@ -105,24 +102,42 @@ public sealed class SoftwareCubeViewport : Control
 
             var isActiveLayer = state.IntersectsActiveLayer(sceneObject);
             var opacity = isActiveLayer ? 0.9 : 0.3;
+            if (state.IsMovingSelection && state.SelectedObject?.Id == sceneObject.Id)
+            {
+                opacity = 0.2;
+            }
+
             var color = ColorForPart(sceneObject.PartType);
-            DrawIsoBox(context, sceneObject.Position, sceneObject.Size, color, opacity, drawOutline: false);
+            DrawIsoBox(context, sceneObject.Position, sceneObject.EffectiveSize, color, opacity, drawOutline: false, state);
         }
 
-        if (state.SelectedObject is { } selected && state.IntersectsActiveLayer(selected))
+        if (state.IsMovingSelection && state.SelectedObject is { } moving && state.MovePreviewPosition is { } target)
         {
-            DrawSelectionOutline(context, selected);
+            var moveColor = state.MovePreviewIsValid ? ColorForPart(moving.PartType) : Color.FromRgb(230, 90, 90);
+            DrawIsoBox(context, target, moving.EffectiveSize, moveColor, 0.45, drawOutline: true, state);
         }
 
         if (state.GhostPreview is { } ghost)
         {
-            if (state.FitsWithinActiveFloor(ghost.Position, ghost.Part.Size))
+            if (state.FitsWithinActiveFloor(ghost.Position, ghost.EffectiveSize))
             {
                 var ghostColor = ghost.IsValid
                     ? ghost.Part.Color
                     : Color.FromRgb(230, 90, 90);
-                DrawIsoBox(context, ghost.Position, ghost.Part.Size, ghostColor, 0.4, drawOutline: true);
+                DrawIsoBox(context, ghost.Position, ghost.EffectiveSize, ghostColor, 0.4, drawOutline: true, state);
             }
+        }
+
+        if (state.HoveredObject is { } hovered
+            && state.IntersectsActiveLayer(hovered)
+            && state.SelectedObject?.Id != hovered.Id)
+        {
+            DrawOutline(context, hovered.Position, hovered.EffectiveSize, Color.FromRgb(215, 215, 130), 1.5, state);
+        }
+
+        if (state.SelectedObject is { } selected && state.IntersectsActiveLayer(selected))
+        {
+            DrawOutline(context, selected.Position, selected.EffectiveSize, Color.FromRgb(120, 180, 255), 2, state);
         }
     }
 
@@ -154,8 +169,12 @@ public sealed class SoftwareCubeViewport : Control
         if (_isPanning)
         {
             var point = e.GetPosition(this);
-            _panOffsetX += point.X - _lastPanPoint.X;
-            _panOffsetY += point.Y - _lastPanPoint.Y;
+            if (EditorState is { } state)
+            {
+                state.ViewportPanX += point.X - _lastPanPoint.X;
+                state.ViewportPanY += point.Y - _lastPanPoint.Y;
+            }
+
             _lastPanPoint = point;
             InvalidateVisual();
             e.Handled = true;
@@ -168,7 +187,7 @@ public sealed class SoftwareCubeViewport : Control
     private void OnPointerPressed(object? sender, PointerPressedEventArgs e)
     {
         var current = e.GetCurrentPoint(this);
-        if (CanStartPan(current.Properties, e.KeyModifiers))
+        if (CanStartPan(current.Properties))
         {
             _isPanning = true;
             _lastPanPoint = e.GetPosition(this);
@@ -214,25 +233,29 @@ public sealed class SoftwareCubeViewport : Control
 
     private void OnPointerWheelChanged(object? sender, PointerWheelEventArgs e)
     {
-        var zoomStep = InteractionPreset == ViewportInteractionPreset.BlenderLike ? 1.08 : 1.12;
-        var factor = e.Delta.Y > 0 ? zoomStep : 1 / zoomStep;
-        var nextZoom = Math.Clamp(_zoom * factor, MinZoom, MaxZoom);
+        var state = EditorState;
+        if (state is null)
+        {
+            return;
+        }
 
-        if (Math.Abs(nextZoom - _zoom) < 0.0001)
+        var zoomStep = 1.1;
+        var factor = e.Delta.Y > 0 ? zoomStep : 1 / zoomStep;
+        var nextZoom = Math.Clamp(state.ViewportZoom * factor, MinZoom, MaxZoom);
+
+        if (Math.Abs(nextZoom - state.ViewportZoom) < 0.0001)
         {
             return;
         }
 
         var pointer = e.GetPosition(this);
         var originBefore = GetViewOrigin();
-        var worldOffsetX = (pointer.X - originBefore.X) / _zoom;
-        var worldOffsetY = (pointer.Y - originBefore.Y) / _zoom;
+        var worldOffsetX = (pointer.X - originBefore.X - state.ViewportPanX) / state.ViewportZoom;
+        var worldOffsetY = (pointer.Y - originBefore.Y - state.ViewportPanY) / state.ViewportZoom;
 
-        _zoom = nextZoom;
-
-        var originAfter = GetViewOrigin();
-        _panOffsetX = pointer.X - originAfter.X - worldOffsetX * _zoom;
-        _panOffsetY = pointer.Y - originAfter.Y - worldOffsetY * _zoom;
+        state.ViewportZoom = nextZoom;
+        state.ViewportPanX = pointer.X - originBefore.X - worldOffsetX * state.ViewportZoom;
+        state.ViewportPanY = pointer.Y - originBefore.Y - worldOffsetY * state.ViewportZoom;
 
         InvalidateVisual();
         e.Handled = true;
@@ -288,7 +311,7 @@ public sealed class SoftwareCubeViewport : Control
                 continue;
             }
 
-            var bounds = GetObjectScreenBounds(sceneObject).Inflate(2);
+            var bounds = GetObjectScreenBounds(sceneObject, state).Inflate(2);
             if (bounds.Contains(point))
             {
                 return sceneObject;
@@ -298,19 +321,19 @@ public sealed class SoftwareCubeViewport : Control
         return null;
     }
 
-    private Rect GetObjectScreenBounds(SceneObject sceneObject)
+    private Rect GetObjectScreenBounds(SceneObject sceneObject, EditorState state)
     {
         var x0 = sceneObject.Position.X;
-        var x1 = sceneObject.Position.X + sceneObject.Size.WidthX;
+        var x1 = sceneObject.Position.X + sceneObject.EffectiveSize.WidthX;
         var y0 = sceneObject.Position.Y;
-        var y1 = sceneObject.Position.Y + sceneObject.Size.DepthY;
+        var y1 = sceneObject.Position.Y + sceneObject.EffectiveSize.DepthY;
         var z0 = sceneObject.Position.Z;
-        var z1 = sceneObject.Position.Z + sceneObject.Size.HeightZ;
+        var z1 = sceneObject.Position.Z + sceneObject.EffectiveSize.HeightZ;
 
         var corners = new[]
         {
-            Project(x0, y0, z0), Project(x1, y0, z0), Project(x1, y1, z0), Project(x0, y1, z0),
-            Project(x0, y0, z1), Project(x1, y0, z1), Project(x1, y1, z1), Project(x0, y1, z1)
+            Project(x0, y0, z0, state), Project(x1, y0, z0, state), Project(x1, y1, z0, state), Project(x0, y1, z0, state),
+            Project(x0, y0, z1, state), Project(x1, y0, z1, state), Project(x1, y1, z1, state), Project(x0, y1, z1, state)
         };
 
         var minX = double.MaxValue;
@@ -336,10 +359,15 @@ public sealed class SoftwareCubeViewport : Control
             return null;
         }
 
-        var origin = GetTransformedOrigin();
-        var tileWidth = TileWidth * _zoom;
-        var tileHeight = TileHeight * _zoom;
-        var heightScale = HeightScale * _zoom;
+        if (EditorState is not { } state)
+        {
+            return null;
+        }
+
+        var origin = GetTransformedOrigin(state);
+        var tileWidth = TileWidth * state.ViewportZoom;
+        var tileHeight = TileHeight * state.ViewportZoom;
+        var heightScale = HeightScale * state.ViewportZoom;
 
         var dx = (point.X - origin.X) / (tileWidth / 2.0);
         var dy = (point.Y - origin.Y + absoluteZ * heightScale) / (tileHeight / 2.0);
@@ -357,6 +385,11 @@ public sealed class SoftwareCubeViewport : Control
 
     private void DrawFloorOutlines(DrawingContext context, int activeFloor)
     {
+        if (EditorState is not { } state)
+        {
+            return;
+        }
+
         for (var floor = 0; floor < WorldVerticalSettings.FloorCount; floor++)
         {
             var z = floor * WorldVerticalSettings.LayersPerFloor;
@@ -365,10 +398,10 @@ public sealed class SoftwareCubeViewport : Control
                 new SolidColorBrush(isActive ? Color.FromArgb(200, 150, 190, 255) : Color.FromArgb(70, 130, 140, 160)),
                 isActive ? 2 : 1);
 
-            var a = Project(WorldGridSettings.MinCoord, WorldGridSettings.MinCoord, z);
-            var b = Project(WorldGridSettings.MaxCoord, WorldGridSettings.MinCoord, z);
-            var c = Project(WorldGridSettings.MaxCoord, WorldGridSettings.MaxCoord, z);
-            var d = Project(WorldGridSettings.MinCoord, WorldGridSettings.MaxCoord, z);
+            var a = Project(WorldGridSettings.MinCoord, WorldGridSettings.MinCoord, z, state);
+            var b = Project(WorldGridSettings.MaxCoord, WorldGridSettings.MinCoord, z, state);
+            var c = Project(WorldGridSettings.MaxCoord, WorldGridSettings.MaxCoord, z, state);
+            var d = Project(WorldGridSettings.MinCoord, WorldGridSettings.MaxCoord, z, state);
 
             context.DrawLine(pen, a, b);
             context.DrawLine(pen, b, c);
@@ -379,51 +412,56 @@ public sealed class SoftwareCubeViewport : Control
 
     private void DrawGrid(DrawingContext context, int absoluteZ)
     {
+        if (EditorState is not { } state)
+        {
+            return;
+        }
+
         var gridPen = new Pen(new SolidColorBrush(Color.FromArgb(125, 160, 190, 220)), 1.2);
 
         for (var x = WorldGridSettings.MinCoord; x <= WorldGridSettings.MaxCoord; x++)
         {
-            var start = Project(x, WorldGridSettings.MinCoord, absoluteZ);
-            var end = Project(x, WorldGridSettings.MaxCoord, absoluteZ);
+            var start = Project(x, WorldGridSettings.MinCoord, absoluteZ, state);
+            var end = Project(x, WorldGridSettings.MaxCoord, absoluteZ, state);
             context.DrawLine(gridPen, start, end);
         }
 
         for (var y = WorldGridSettings.MinCoord; y <= WorldGridSettings.MaxCoord; y++)
         {
-            var start = Project(WorldGridSettings.MinCoord, y, absoluteZ);
-            var end = Project(WorldGridSettings.MaxCoord, y, absoluteZ);
+            var start = Project(WorldGridSettings.MinCoord, y, absoluteZ, state);
+            var end = Project(WorldGridSettings.MaxCoord, y, absoluteZ, state);
             context.DrawLine(gridPen, start, end);
         }
     }
 
-    private void DrawSelectionOutline(DrawingContext context, SceneObject sceneObject)
+    private void DrawOutline(DrawingContext context, VoxelCoord position, VoxelSize size, Color color, double thickness, EditorState state)
     {
-        var pen = new Pen(new SolidColorBrush(Color.FromRgb(120, 180, 255)), 2);
+        var pen = new Pen(new SolidColorBrush(color), thickness);
 
-        var x0 = sceneObject.Position.X;
-        var x1 = sceneObject.Position.X + sceneObject.Size.WidthX;
-        var y0 = sceneObject.Position.Y;
-        var y1 = sceneObject.Position.Y + sceneObject.Size.DepthY;
-        var z0 = sceneObject.Position.Z;
-        var z1 = sceneObject.Position.Z + sceneObject.Size.HeightZ;
+        var x0 = position.X;
+        var x1 = position.X + size.WidthX;
+        var y0 = position.Y;
+        var y1 = position.Y + size.DepthY;
+        var z0 = position.Z;
+        var z1 = position.Z + size.HeightZ;
 
-        var topA = Project(x0, y0, z1);
-        var topB = Project(x1, y0, z1);
-        var topC = Project(x1, y1, z1);
-        var topD = Project(x0, y1, z1);
+        var topA = Project(x0, y0, z1, state);
+        var topB = Project(x1, y0, z1, state);
+        var topC = Project(x1, y1, z1, state);
+        var topD = Project(x0, y1, z1, state);
 
         context.DrawLine(pen, topA, topB);
         context.DrawLine(pen, topB, topC);
         context.DrawLine(pen, topC, topD);
         context.DrawLine(pen, topD, topA);
 
-        context.DrawLine(pen, topA, Project(x0, y0, z0));
-        context.DrawLine(pen, topB, Project(x1, y0, z0));
-        context.DrawLine(pen, topC, Project(x1, y1, z0));
-        context.DrawLine(pen, topD, Project(x0, y1, z0));
+        context.DrawLine(pen, topA, Project(x0, y0, z0, state));
+        context.DrawLine(pen, topB, Project(x1, y0, z0, state));
+        context.DrawLine(pen, topC, Project(x1, y1, z0, state));
+        context.DrawLine(pen, topD, Project(x0, y1, z0, state));
     }
 
-    private void DrawIsoBox(DrawingContext context, VoxelCoord position, VoxelSize size, Color color, double opacity, bool drawOutline)
+    private void DrawIsoBox(DrawingContext context, VoxelCoord position, VoxelSize size, Color color, double opacity, bool drawOutline, EditorState state)
     {
         var x0 = position.X;
         var x1 = position.X + size.WidthX;
@@ -432,15 +470,15 @@ public sealed class SoftwareCubeViewport : Control
         var z0 = position.Z;
         var z1 = position.Z + size.HeightZ;
 
-        var topA = Project(x0, y0, z1);
-        var topB = Project(x1, y0, z1);
-        var topC = Project(x1, y1, z1);
-        var topD = Project(x0, y1, z1);
+        var topA = Project(x0, y0, z1, state);
+        var topB = Project(x1, y0, z1, state);
+        var topC = Project(x1, y1, z1, state);
+        var topD = Project(x0, y1, z1, state);
 
-        var bottomA = Project(x0, y0, z0);
-        var bottomB = Project(x1, y0, z0);
-        var bottomC = Project(x1, y1, z0);
-        var bottomD = Project(x0, y1, z0);
+        var bottomA = Project(x0, y0, z0, state);
+        var bottomB = Project(x1, y0, z0, state);
+        var bottomC = Project(x1, y1, z0, state);
+        var bottomD = Project(x0, y1, z0, state);
 
         var topBrush = new SolidColorBrush(WithOpacity(color, opacity));
         var rightBrush = new SolidColorBrush(WithOpacity(Darken(color, 0.78), opacity));
@@ -459,12 +497,12 @@ public sealed class SoftwareCubeViewport : Control
         }
     }
 
-    private Point Project(double x, double y, double z)
+    private Point Project(double x, double y, double z, EditorState state)
     {
-        var origin = GetTransformedOrigin();
-        var tileWidth = TileWidth * _zoom;
-        var tileHeight = TileHeight * _zoom;
-        var heightScale = HeightScale * _zoom;
+        var origin = GetTransformedOrigin(state);
+        var tileWidth = TileWidth * state.ViewportZoom;
+        var tileHeight = TileHeight * state.ViewportZoom;
+        var heightScale = HeightScale * state.ViewportZoom;
 
         return new Point(
             origin.X + (x - y) * (tileWidth / 2.0),
@@ -474,24 +512,17 @@ public sealed class SoftwareCubeViewport : Control
     private Point GetViewOrigin() =>
         new(Bounds.Center.X, Bounds.Top + Bounds.Height * 0.28);
 
-    private Point GetTransformedOrigin()
+    private Point GetTransformedOrigin(EditorState state)
     {
         var origin = GetViewOrigin();
-        return new Point(origin.X + _panOffsetX, origin.Y + _panOffsetY);
+        return new Point(origin.X + state.ViewportPanX, origin.Y + state.ViewportPanY);
     }
 
-    private bool CanStartPan(PointerPointProperties pointerProperties, KeyModifiers keyModifiers)
-    {
-        return InteractionPreset switch
-        {
-            ViewportInteractionPreset.BlenderLike =>
-                pointerProperties.IsMiddleButtonPressed && keyModifiers.HasFlag(KeyModifiers.Shift),
-            ViewportInteractionPreset.AutoCadLike => pointerProperties.IsMiddleButtonPressed,
-            _ => false
-        };
-    }
+    private static bool CanStartPan(PointerPointProperties pointerProperties)
+        => pointerProperties.IsMiddleButtonPressed || pointerProperties.IsRightButtonPressed;
 
-    private bool IsPanReleased(PointerPointProperties pointerProperties) => !pointerProperties.IsMiddleButtonPressed;
+    private static bool IsPanReleased(PointerPointProperties pointerProperties)
+        => !pointerProperties.IsMiddleButtonPressed && !pointerProperties.IsRightButtonPressed;
 
     private static Color Darken(Color color, double factor)
     {
