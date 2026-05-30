@@ -107,12 +107,25 @@
 
                     <Separator Margin="0,6,0,6" />
                     <TextBlock Text="Floor / Layer" FontWeight="SemiBold" Foreground="#ECEFF4" />
-                    <TextBlock Text="{Binding Floor2StackText}" Foreground="#C7D0E0" />
-                    <TextBlock Text="{Binding Floor1StackText}" Foreground="#C7D0E0" />
-                    <TextBlock Text="{Binding Floor0StackText}" Foreground="#C7D0E0" />
+                    <Border Background="{Binding Floor2StackBackground}" BorderBrush="{Binding Floor2StackBorder}" BorderThickness="1" CornerRadius="4" Padding="6,4">
+                        <Button Background="Transparent" BorderThickness="0" HorizontalContentAlignment="Left" Command="{Binding Floor2Command}">
+                            <TextBlock Text="{Binding Floor2StackText}" Foreground="#D8DEE9" />
+                        </Button>
+                    </Border>
+                    <Border Background="{Binding Floor1StackBackground}" BorderBrush="{Binding Floor1StackBorder}" BorderThickness="1" CornerRadius="4" Padding="6,4">
+                        <Button Background="Transparent" BorderThickness="0" HorizontalContentAlignment="Left" Command="{Binding Floor1Command}">
+                            <TextBlock Text="{Binding Floor1StackText}" Foreground="#D8DEE9" />
+                        </Button>
+                    </Border>
+                    <Border Background="{Binding Floor0StackBackground}" BorderBrush="{Binding Floor0StackBorder}" BorderThickness="1" CornerRadius="4" Padding="6,4">
+                        <Button Background="Transparent" BorderThickness="0" HorizontalContentAlignment="Left" Command="{Binding Floor0Command}">
+                            <TextBlock Text="{Binding Floor0StackText}" Foreground="#D8DEE9" />
+                        </Button>
+                    </Border>
                     <TextBlock Text="{Binding ActiveFloorSummaryText}" Foreground="#D8DEE9" Margin="0,6,0,0" />
                     <TextBlock Text="{Binding ActiveLayerSummaryText}" Foreground="#D8DEE9" />
                     <TextBlock Text="{Binding ActiveAbsoluteZSummaryText}" Foreground="#D8DEE9" />
+                    <TextBlock Text="{Binding OpenGlBackendSummaryText}" Foreground="#AFC6E9" TextWrapping="Wrap" />
                 </StackPanel>
             </Border>
         </Grid>

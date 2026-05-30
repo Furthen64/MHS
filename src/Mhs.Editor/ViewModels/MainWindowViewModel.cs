@@ -134,8 +134,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 ? $" | Rot {EditorState.ActivePlacementRotationZDegrees}°"
                 : string.Empty;
             var viewportMode = _useOpenGlViewport ? "Viewport: OpenGL/Silk.NET" : "Viewport: Software";
+            var openGlInfo = _useOpenGlViewport && !string.IsNullOrWhiteSpace(EditorState.OpenGlBackendInfo)
+                ? $" | GL {EditorState.OpenGlBackendInfo}"
+                : string.Empty;
 
-            return $"{EditorState.StatusMessage} | {viewportMode} | Tool: {EditorState.ActiveTool.Name}{rotation} | Floor {EditorState.ActiveFloor} · Layer {EditorState.ActiveLayer}/{WorldVerticalSettings.LayersPerFloor - 1} · Z {EditorState.ActiveAbsoluteZ} | X {(EditorState.HoveredVoxel?.X.ToString() ?? "-")} Y {(EditorState.HoveredVoxel?.Y.ToString() ?? "-")} | Objects: {EditorState.Scene.Objects.Count} | {hotkeys}";
+            return $"{EditorState.StatusMessage} | {viewportMode}{openGlInfo} | Tool: {EditorState.ActiveTool.Name}{rotation} | Floor {EditorState.ActiveFloor} · Layer {EditorState.ActiveLayer}/{WorldVerticalSettings.LayersPerFloor - 1} · Z {EditorState.ActiveAbsoluteZ} | X {(EditorState.HoveredVoxel?.X.ToString() ?? "-")} Y {(EditorState.HoveredVoxel?.Y.ToString() ?? "-")} | Objects: {EditorState.Scene.Objects.Count} | {hotkeys}";
         }
     }
 
@@ -190,6 +193,13 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public string ActiveFloorSummaryText => $"Active Floor: {EditorState.ActiveFloor}";
     public string ActiveLayerSummaryText => $"Layer {EditorState.ActiveLayer} of {WorldVerticalSettings.LayersPerFloor - 1}";
     public string ActiveAbsoluteZSummaryText => $"Absolute Z: {EditorState.ActiveAbsoluteZ}";
+    public string OpenGlBackendSummaryText => $"OpenGL: {EditorState.OpenGlBackendInfo}";
+    public string Floor2StackBackground => EditorState.ActiveFloor == 2 ? "#324563" : "#1E242E";
+    public string Floor1StackBackground => EditorState.ActiveFloor == 1 ? "#324563" : "#1E242E";
+    public string Floor0StackBackground => EditorState.ActiveFloor == 0 ? "#324563" : "#1E242E";
+    public string Floor2StackBorder => EditorState.ActiveFloor == 2 ? "#88B8FF" : "#394454";
+    public string Floor1StackBorder => EditorState.ActiveFloor == 1 ? "#88B8FF" : "#394454";
+    public string Floor0StackBorder => EditorState.ActiveFloor == 0 ? "#88B8FF" : "#394454";
 
     public void HandleKeyDown(Key key)
     {
@@ -468,6 +478,13 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(ActiveFloorSummaryText));
         OnPropertyChanged(nameof(ActiveLayerSummaryText));
         OnPropertyChanged(nameof(ActiveAbsoluteZSummaryText));
+        OnPropertyChanged(nameof(OpenGlBackendSummaryText));
+        OnPropertyChanged(nameof(Floor2StackBackground));
+        OnPropertyChanged(nameof(Floor1StackBackground));
+        OnPropertyChanged(nameof(Floor0StackBackground));
+        OnPropertyChanged(nameof(Floor2StackBorder));
+        OnPropertyChanged(nameof(Floor1StackBorder));
+        OnPropertyChanged(nameof(Floor0StackBorder));
     }
 
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
