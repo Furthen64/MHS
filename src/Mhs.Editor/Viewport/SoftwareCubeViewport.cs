@@ -29,6 +29,7 @@ public sealed class SoftwareCubeViewport : Control
     public SoftwareCubeViewport()
     {
         ClipToBounds = true;
+        Focusable = true;
 
         PointerMoved += OnPointerMoved;
         PointerPressed += OnPointerPressed;
@@ -212,6 +213,8 @@ public sealed class SoftwareCubeViewport : Control
 
     private void OnPointerPressed(object? sender, PointerPressedEventArgs e)
     {
+        Focus(NavigationMethod.Pointer, KeyModifiers.None);
+
         var current = e.GetCurrentPoint(this);
         if (CanStartPan(current.Properties, EditorState))
         {
@@ -307,6 +310,14 @@ public sealed class SoftwareCubeViewport : Control
         if (isPressed)
         {
             state.ActiveTool.OnPointerPressed(context);
+
+            if (e is PointerPressedEventArgs pressed
+                && pressed.ClickCount >= 2
+                && state.ActiveTool is ConveyorRouteTool routeTool
+                && routeTool.HasFinishableRoute(state))
+            {
+                routeTool.FinishRoute(state);
+            }
         }
 
         if (isReleased)

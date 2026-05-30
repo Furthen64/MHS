@@ -376,6 +376,14 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
         if (isPressed)
         {
             state.ActiveTool.OnPointerPressed(context);
+
+            if (e is PointerPressedEventArgs pressed
+                && pressed.ClickCount >= 2
+                && state.ActiveTool is ConveyorRouteTool routeTool
+                && routeTool.HasFinishableRoute(state))
+            {
+                routeTool.FinishRoute(state);
+            }
         }
 
         if (isReleased)

@@ -104,20 +104,26 @@ public sealed class ConveyorRouteTool : IEditorTool
         editorState.ActiveConveyorRoute = null;
     }
 
+    public bool HasFinishableRoute(EditorState state)
+    {
+        var draft = state.ActiveConveyorRoute;
+        return draft is not null && TryGetFinishAnchors(draft, out _);
+    }
+
     public bool FinishRoute(EditorState state)
     {
         var draft = state.ActiveConveyorRoute;
-        if (draft is null || draft.Anchors.Count < 2)
+        if (draft is null || !TryGetFinishAnchors(draft, out var finishAnchors))
         {
-            state.StatusMessage = "Route blocked: add at least one segment";
+            state.StatusMessage = "Route needs at least two points";
             return false;
         }
 
         var created = new List<SceneObject>();
-        for (var i = 1; i < draft.Anchors.Count; i++)
+        for (var i = 1; i < finishAnchors.Count; i++)
         {
-            var start = draft.Anchors[i - 1];
-            var end = draft.Anchors[i];
+            var start = finishAnchors[i - 1];
+            var end = finishAnchors[i];
             if (!ValidateSegment(state, draft, start, end, out var segment, out var reason))
             {
                 state.StatusMessage = $"Route blocked: {reason}";
@@ -140,7 +146,7 @@ public sealed class ConveyorRouteTool : IEditorTool
 
         state.SelectedObject = created.Count > 0 ? created[^1] : null;
         state.ActiveConveyorRoute = null;
-        state.StatusMessage = created.Count > 0 ? $"Ready | Route created: {created.Count} segment(s)" : "Ready";
+        state.StatusMessage = created.Count > 0 ? $"Route finished: {created.Count} segment(s)" : "Route needs at least two points";
         return created.Count > 0;
     }
 
@@ -188,6 +194,19 @@ public sealed class ConveyorRouteTool : IEditorTool
         draft.PreviewIsValid = false;
         draft.InvalidReason = reason;
         draft.PreviewRotationZDegrees = null;
+    }
+
+    private static bool TryGetFinishAnchors(ConveyorRouteDraft draft, out List<VoxelCoord> finishAnchors)
+    {
+        finishAnchors = new List<VoxelCoord>(draft.Anchors);
+        if (draft.PreviewIsValid
+            && draft.PreviewEnd is { } previewEnd
+            && (finishAnchors.Count == 0 || finishAnchors[^1] != previewEnd))
+        {
+            finishAnchors.Add(previewEnd);
+        }
+
+        return finishAnchors.Count >= 2;
     }
 
     private static bool ValidateSegment(

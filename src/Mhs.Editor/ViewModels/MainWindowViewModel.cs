@@ -209,8 +209,28 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public string Floor1StackBorder => EditorState.ActiveFloor == 1 ? "#88B8FF" : "#394454";
     public string Floor0StackBorder => EditorState.ActiveFloor == 0 ? "#88B8FF" : "#394454";
 
-    public void HandleKeyDown(Key key)
+    public bool HandleKeyDown(Key key)
     {
+        if (EditorState.ActiveTool is ConveyorRouteTool routeTool && EditorState.ActiveConveyorRoute is not null)
+        {
+            switch (key)
+            {
+                case Key.Back:
+                    routeTool.RemoveLastAnchor(EditorState);
+                    RaiseComputed();
+                    return true;
+                case Key.Escape:
+                    CancelAction();
+                    RaiseComputed();
+                    return true;
+                case Key.Enter:
+                case Key.Return:
+                    routeTool.FinishRoute(EditorState);
+                    RaiseComputed();
+                    return true;
+            }
+        }
+
         switch (key)
         {
             case Key.R:
@@ -220,14 +240,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 DeleteSelection();
                 break;
             case Key.Back:
-                if (EditorState.ActiveTool is ConveyorRouteTool routeTool && EditorState.ActiveConveyorRoute is not null)
-                {
-                    routeTool.RemoveLastAnchor(EditorState);
-                }
-                else
-                {
-                    DeleteSelection();
-                }
+                DeleteSelection();
                 break;
             case Key.M:
                 StartMoveSelection();
@@ -238,15 +251,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             case Key.Escape:
                 CancelAction();
                 break;
-            case Key.Enter:
-                if (EditorState.ActiveTool is ConveyorRouteTool activeRouteTool)
-                {
-                    activeRouteTool.FinishRoute(EditorState);
-                }
-                break;
+            default:
+                return false;
         }
 
         RaiseComputed();
+        return true;
     }
 
     private string FloorStackText(int floor)
