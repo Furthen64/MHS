@@ -447,15 +447,15 @@ public sealed class SoftwareCubeViewport : Control
         var leftBrush = new SolidColorBrush(WithOpacity(Darken(color, 0.62), opacity));
 
         context.DrawGeometry(topBrush, null, Polygon(topA, topB, topC, topD));
-        context.DrawGeometry(rightBrush, null, Polygon(topA, topB, bottomB, bottomA));
-        context.DrawGeometry(leftBrush, null, Polygon(topA, topD, bottomD, bottomA));
+        context.DrawGeometry(rightBrush, null, Polygon(topB, bottomB, bottomC, topC));
+        context.DrawGeometry(leftBrush, null, Polygon(topD, topC, bottomC, bottomD));
 
         if (drawOutline)
         {
             var outline = new Pen(new SolidColorBrush(WithOpacity(Color.FromRgb(230, 230, 230), Math.Min(opacity + 0.3, 1))), 1);
             context.DrawGeometry(null, outline, Polygon(topA, topB, topC, topD));
-            context.DrawGeometry(null, outline, Polygon(topA, topB, bottomB, bottomA));
-            context.DrawGeometry(null, outline, Polygon(topA, topD, bottomD, bottomA));
+            context.DrawGeometry(null, outline, Polygon(topB, bottomB, bottomC, topC));
+            context.DrawGeometry(null, outline, Polygon(topD, topC, bottomC, bottomD));
         }
     }
 
