@@ -11,6 +11,7 @@ namespace Mhs.Editor.ViewModels;
 public sealed class MainWindowViewModel : INotifyPropertyChanged
 {
     private readonly IEditorTool _selectTool = new SelectTool();
+    private readonly ConveyorRouteTool _conveyorRouteTool = new();
     private ViewportInteractionPreset _interactionPreset = ViewportInteractionPreset.BlenderLike;
     private bool _useOpenGlViewport = true;
 
@@ -21,6 +22,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         EditorState.Scene.Objects.CollectionChanged += OnSceneObjectsChanged;
 
         SelectToolCommand = new RelayCommand(() => SetTool(_selectTool));
+        ConveyorRouteToolCommand = new RelayCommand(() => SetTool(_conveyorRouteTool));
         Floor0Command = new RelayCommand(() => SetActiveFloor(0));
         Floor1Command = new RelayCommand(() => SetActiveFloor(1));
         Floor2Command = new RelayCommand(() => SetActiveFloor(2));
@@ -68,6 +70,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public EditorState EditorState { get; }
 
     public ICommand SelectToolCommand { get; }
+    public ICommand ConveyorRouteToolCommand { get; }
     public ICommand HopperToolCommand { get; }
     public ICommand BinToolCommand { get; }
     public ICommand ConveyorToolCommand { get; }
@@ -88,6 +91,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public bool IsHopperActive => EditorState.ActiveTool.Name == "Hopper";
     public bool IsBinActive => EditorState.ActiveTool.Name == "Bin";
     public bool IsConveyorActive => EditorState.ActiveTool.Name == "Conveyor";
+    public bool IsConveyorRouteActive => EditorState.ActiveTool is ConveyorRouteTool;
     public bool IsChuteActive => EditorState.ActiveTool.Name == "Chute";
     public bool IsTallHopperActive => EditorState.ActiveTool.Name == "Tall Hopper";
     public bool IsFloor0Active => EditorState.ActiveFloor == 0;
@@ -111,6 +115,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             var hotkeys = _interactionPreset == ViewportInteractionPreset.BlenderLike
                 ? "G=Move  R=Rotate  Del=Delete  Esc=Cancel"
                 : "M=Move  R=Rotate  Del=Delete  Esc=Cancel";
+            if (EditorState.ActiveTool is ConveyorRouteTool)
+            {
+                hotkeys = "LMB=Anchor  Enter=Finish  Backspace=Undo  Esc=Cancel";
+            }
 
             if (EditorState.IsMovingSelection)
             {
@@ -209,8 +217,17 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 RotateAction();
                 break;
             case Key.Delete:
-            case Key.Back:
                 DeleteSelection();
+                break;
+            case Key.Back:
+                if (EditorState.ActiveTool is ConveyorRouteTool routeTool && EditorState.ActiveConveyorRoute is not null)
+                {
+                    routeTool.RemoveLastAnchor(EditorState);
+                }
+                else
+                {
+                    DeleteSelection();
+                }
                 break;
             case Key.M:
                 StartMoveSelection();
@@ -220,6 +237,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 break;
             case Key.Escape:
                 CancelAction();
+                break;
+            case Key.Enter:
+                if (EditorState.ActiveTool is ConveyorRouteTool activeRouteTool)
+                {
+                    activeRouteTool.FinishRoute(EditorState);
+                }
                 break;
         }
 
@@ -249,9 +272,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     }
 
     private string PreviewText() =>
-        EditorState.GhostPreview is null
-            ? "Preview: None"
-            : $"Preview: {EditorState.GhostPreview.Part.DisplayName} @ {EditorState.GhostPreview.Position} ({EditorState.GhostPreview.EffectiveSize})";
+        EditorState.ActiveConveyorRoute is { } route
+            ? $"Route: Anchors {route.Anchors.Count} | Z {route.Z} | {(route.PreviewEnd.HasValue ? (route.PreviewIsValid ? "Preview valid" : $"Preview blocked ({route.InvalidReason ?? "invalid"})") : "Click next anchor")}"
+            : EditorState.GhostPreview is null
+                ? "Preview: None"
+                : $"Preview: {EditorState.GhostPreview.Part.DisplayName} @ {EditorState.GhostPreview.Position} ({EditorState.GhostPreview.EffectiveSize})";
 
     private string MovePreviewText()
     {
@@ -423,6 +448,19 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             return;
         }
 
+        if (EditorState.ActiveTool is ConveyorRouteTool routeTool)
+        {
+            if (EditorState.ActiveConveyorRoute is not null)
+            {
+                routeTool.OnCancel(EditorState);
+                EditorState.StatusMessage = "Route canceled";
+                return;
+            }
+
+            SetTool(_selectTool);
+            return;
+        }
+
         if (EditorState.ActiveTool is SelectTool && EditorState.SelectedObject is not null)
         {
             EditorState.SelectedObject = null;
@@ -447,6 +485,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(IsHopperActive));
         OnPropertyChanged(nameof(IsBinActive));
         OnPropertyChanged(nameof(IsConveyorActive));
+        OnPropertyChanged(nameof(IsConveyorRouteActive));
         OnPropertyChanged(nameof(IsChuteActive));
         OnPropertyChanged(nameof(IsTallHopperActive));
         OnPropertyChanged(nameof(IsFloor0Active));

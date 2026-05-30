@@ -21,7 +21,7 @@ public partial class MainWindow : Window
         }
 
         vm.HandleKeyDown(e.Key);
-        if (e.Key is Key.R or Key.Delete or Key.Back or Key.M or Key.Escape)
+        if (e.Key is Key.R or Key.Delete or Key.Back or Key.M or Key.Escape or Key.Enter)
         {
             e.Handled = true;
         }
