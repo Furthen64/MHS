@@ -21,6 +21,11 @@ public sealed class EditorState : INotifyPropertyChanged
     private VoxelCoord? _movePreviewPosition;
     private bool _movePreviewIsValid;
     private string? _movePreviewInvalidReason;
+    private Guid? _rotationAxisObjectId;
+    private double _rotationAxisPivotX;
+    private double _rotationAxisPivotY;
+    private int _rotationAxisMinZ;
+    private int _rotationAxisMaxZ;
     private double _viewportZoom = 1.0;
     private double _viewportPanX;
     private double _viewportPanY;
@@ -57,7 +62,18 @@ public sealed class EditorState : INotifyPropertyChanged
     public SceneObject? SelectedObject
     {
         get => _selectedObject;
-        set => SetField(ref _selectedObject, value);
+        set
+        {
+            if (!SetField(ref _selectedObject, value))
+            {
+                return;
+            }
+
+            if (value is null || _rotationAxisObjectId != value.Id)
+            {
+                ClearRotationAxis();
+            }
+        }
     }
 
     public SceneObject? HoveredObject
@@ -146,6 +162,12 @@ public sealed class EditorState : INotifyPropertyChanged
         set => SetField(ref _movePreviewInvalidReason, value);
     }
 
+    public Guid? RotationAxisObjectId => _rotationAxisObjectId;
+    public double RotationAxisPivotX => _rotationAxisPivotX;
+    public double RotationAxisPivotY => _rotationAxisPivotY;
+    public int RotationAxisMinZ => _rotationAxisMinZ;
+    public int RotationAxisMaxZ => _rotationAxisMaxZ;
+
     public double ViewportZoom
     {
         get => _viewportZoom;
@@ -199,6 +221,34 @@ public sealed class EditorState : INotifyPropertyChanged
 
     public bool IsObjectWithinGrid(SceneObject sceneObject)
         => FitsWithinGrid(sceneObject.Position, sceneObject.EffectiveSize);
+
+    public bool HasRotationAxisFor(Guid objectId)
+        => _rotationAxisObjectId == objectId;
+
+    public void SetRotationAxis(SceneObject sceneObject)
+    {
+        _rotationAxisObjectId = sceneObject.Id;
+        _rotationAxisPivotX = sceneObject.Position.X + sceneObject.EffectiveSize.WidthX / 2.0;
+        _rotationAxisPivotY = sceneObject.Position.Y + sceneObject.EffectiveSize.DepthY / 2.0;
+        _rotationAxisMinZ = WorldVerticalSettings.MinZ;
+        _rotationAxisMaxZ = WorldVerticalSettings.MaxZ + 1;
+        OnPropertyChanged(nameof(RotationAxisObjectId));
+        OnPropertyChanged(nameof(RotationAxisPivotX));
+        OnPropertyChanged(nameof(RotationAxisPivotY));
+        OnPropertyChanged(nameof(RotationAxisMinZ));
+        OnPropertyChanged(nameof(RotationAxisMaxZ));
+    }
+
+    public void ClearRotationAxis()
+    {
+        if (_rotationAxisObjectId is null)
+        {
+            return;
+        }
+
+        _rotationAxisObjectId = null;
+        OnPropertyChanged(nameof(RotationAxisObjectId));
+    }
 
     public PlacementValidationResult ValidatePlacement(VoxelCoord position, VoxelSize size, Guid? excludeId = null)
     {

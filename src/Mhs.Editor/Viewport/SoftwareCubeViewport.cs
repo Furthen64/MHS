@@ -142,6 +142,8 @@ public sealed class SoftwareCubeViewport : Control
         {
             DrawOutline(context, selected.Position, selected.EffectiveSize, Color.FromRgb(120, 180, 255), 2, state);
         }
+
+        DrawRotationAxisGuide(context, state);
     }
 
     private void AttachState(EditorState state)
@@ -435,6 +437,20 @@ public sealed class SoftwareCubeViewport : Control
             var end = Project(WorldGridSettings.MaxCoord, y, absoluteZ, state);
             context.DrawLine(gridPen, start, end);
         }
+    }
+
+    private void DrawRotationAxisGuide(DrawingContext context, EditorState state)
+    {
+        if (state.SelectedObject is not { } selected || !state.HasRotationAxisFor(selected.Id))
+        {
+            return;
+        }
+
+        var axisColor = Color.FromArgb(210, 140, 210, 255);
+        var axisPen = new Pen(new SolidColorBrush(axisColor), 1.6, dashStyle: DashStyle.Dash);
+        var start = Project(state.RotationAxisPivotX, state.RotationAxisPivotY, state.RotationAxisMinZ, state);
+        var end = Project(state.RotationAxisPivotX, state.RotationAxisPivotY, state.RotationAxisMaxZ, state);
+        context.DrawLine(axisPen, start, end);
     }
 
     private void DrawOutline(DrawingContext context, VoxelCoord position, VoxelSize size, Color color, double thickness, EditorState state)
