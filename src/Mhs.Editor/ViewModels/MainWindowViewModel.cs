@@ -116,6 +116,13 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 return $"Move | Selected: {EditorState.SelectedObject?.PartType ?? "None"} | {moveTarget} | {validity} | Objects: {EditorState.Scene.Objects.Count} | {hotkeys}";
             }
 
+            if (EditorState.IsSelectionRotationMode)
+            {
+                var previewRotation = EditorState.SelectionRotationPreviewDegrees;
+                var previewStatus = EditorState.SelectionRotationPreviewIsValid ? "Valid" : "Blocked";
+                return $"Rotate | Selected: {EditorState.SelectedObject?.PartType ?? "None"} | Rot {previewRotation}° | {previewStatus} | RMB=Confirm Esc=Cancel | Objects: {EditorState.Scene.Objects.Count} | {hotkeys}";
+            }
+
             var rotation = EditorState.ActiveTool is PlacePartTool
                 ? $" | Rot {EditorState.ActivePlacementRotationZDegrees}°"
                 : string.Empty;
@@ -250,6 +257,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         EditorState.ActiveTool.OnCancel(EditorState);
         EditorState.ActiveTool = tool;
         EditorState.ClearMoveState();
+        EditorState.ClearSelectionRotationMode();
         if (tool is SelectTool)
         {
             EditorState.ActivePlacementRotationZDegrees = 0;
@@ -299,28 +307,13 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
 
         var selected = EditorState.SelectedObject;
-        if (!EditorState.HasRotationAxisFor(selected.Id))
+        if (EditorState.IsSelectionRotationMode)
         {
-            EditorState.SetRotationAxis(selected);
-        }
-
-        var rotated = RotationHelper.RotateClockwise90(selected.RotationZDegrees);
-        var size = RotationHelper.GetEffectiveSize(selected.BaseSize, rotated);
-        var rotatedPosition = RotationHelper.RotatePositionAroundPivot(
-            selected.Position,
-            size,
-            EditorState.RotationAxisPivotX,
-            EditorState.RotationAxisPivotY);
-        var validation = EditorState.ValidatePlacement(rotatedPosition, size, selected.Id);
-        if (!validation.IsValid)
-        {
-            EditorState.StatusMessage = $"Blocked | Rotation blocked: {validation.Reason ?? "invalid"}";
             return;
         }
 
-        selected.Position = rotatedPosition;
-        selected.RotationZDegrees = rotated;
-        EditorState.StatusMessage = "Ready";
+        EditorState.StartSelectionRotation(selected);
+        EditorState.StatusMessage = "Rotate";
     }
 
     private void DeleteSelection()
@@ -345,7 +338,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private void StartMoveSelection()
     {
-        if (EditorState.ActiveTool is not SelectTool || EditorState.SelectedObject is null || EditorState.IsMovingSelection)
+        if (EditorState.ActiveTool is not SelectTool
+            || EditorState.SelectedObject is null
+            || EditorState.IsMovingSelection
+            || EditorState.IsSelectionRotationMode)
         {
             return;
         }
@@ -371,6 +367,13 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private void CancelAction()
     {
+        if (EditorState.IsSelectionRotationMode)
+        {
+            EditorState.ClearSelectionRotationMode();
+            EditorState.StatusMessage = "Ready";
+            return;
+        }
+
         if (EditorState.IsMovingSelection)
         {
             if (EditorState.SelectedObject is { } selected && EditorState.MoveOriginalPosition.HasValue)

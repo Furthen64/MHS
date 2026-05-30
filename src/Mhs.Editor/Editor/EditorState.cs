@@ -26,6 +26,11 @@ public sealed class EditorState : INotifyPropertyChanged
     private double _rotationAxisPivotY;
     private int _rotationAxisMinZ;
     private int _rotationAxisMaxZ;
+    private bool _isSelectionRotationMode;
+    private int _selectionRotationPreviewDegrees;
+    private VoxelCoord? _selectionRotationPreviewPosition;
+    private bool _selectionRotationPreviewIsValid;
+    private string? _selectionRotationPreviewInvalidReason;
     private double _viewportZoom = 1.0;
     private double _viewportPanX;
     private double _viewportPanY;
@@ -71,6 +76,7 @@ public sealed class EditorState : INotifyPropertyChanged
 
             if (value is null || _rotationAxisObjectId != value.Id)
             {
+                ClearSelectionRotationMode();
                 ClearRotationAxis();
             }
         }
@@ -167,6 +173,35 @@ public sealed class EditorState : INotifyPropertyChanged
     public double RotationAxisPivotY => _rotationAxisPivotY;
     public int RotationAxisMinZ => _rotationAxisMinZ;
     public int RotationAxisMaxZ => _rotationAxisMaxZ;
+    public bool IsSelectionRotationMode
+    {
+        get => _isSelectionRotationMode;
+        set => SetField(ref _isSelectionRotationMode, value);
+    }
+
+    public int SelectionRotationPreviewDegrees
+    {
+        get => _selectionRotationPreviewDegrees;
+        set => SetField(ref _selectionRotationPreviewDegrees, RotationHelper.NormalizeDegrees(value));
+    }
+
+    public VoxelCoord? SelectionRotationPreviewPosition
+    {
+        get => _selectionRotationPreviewPosition;
+        set => SetField(ref _selectionRotationPreviewPosition, value);
+    }
+
+    public bool SelectionRotationPreviewIsValid
+    {
+        get => _selectionRotationPreviewIsValid;
+        set => SetField(ref _selectionRotationPreviewIsValid, value);
+    }
+
+    public string? SelectionRotationPreviewInvalidReason
+    {
+        get => _selectionRotationPreviewInvalidReason;
+        set => SetField(ref _selectionRotationPreviewInvalidReason, value);
+    }
 
     public double ViewportZoom
     {
@@ -241,6 +276,8 @@ public sealed class EditorState : INotifyPropertyChanged
 
     public void ClearRotationAxis()
     {
+        ClearSelectionRotationMode();
+
         if (_rotationAxisObjectId is null)
         {
             return;
@@ -248,6 +285,33 @@ public sealed class EditorState : INotifyPropertyChanged
 
         _rotationAxisObjectId = null;
         OnPropertyChanged(nameof(RotationAxisObjectId));
+    }
+
+    public void StartSelectionRotation(SceneObject selected)
+    {
+        SetRotationAxis(selected);
+        IsSelectionRotationMode = true;
+        SelectionRotationPreviewDegrees = selected.RotationZDegrees;
+        SelectionRotationPreviewPosition = selected.Position;
+        SelectionRotationPreviewIsValid = true;
+        SelectionRotationPreviewInvalidReason = null;
+    }
+
+    public void SetSelectionRotationPreview(int rotationZDegrees, VoxelCoord position, bool isValid, string? reason)
+    {
+        SelectionRotationPreviewDegrees = rotationZDegrees;
+        SelectionRotationPreviewPosition = position;
+        SelectionRotationPreviewIsValid = isValid;
+        SelectionRotationPreviewInvalidReason = reason;
+    }
+
+    public void ClearSelectionRotationMode()
+    {
+        IsSelectionRotationMode = false;
+        SelectionRotationPreviewDegrees = 0;
+        SelectionRotationPreviewPosition = null;
+        SelectionRotationPreviewIsValid = false;
+        SelectionRotationPreviewInvalidReason = null;
     }
 
     public PlacementValidationResult ValidatePlacement(VoxelCoord position, VoxelSize size, Guid? excludeId = null)

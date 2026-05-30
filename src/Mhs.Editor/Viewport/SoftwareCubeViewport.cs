@@ -100,6 +100,18 @@ public sealed class SoftwareCubeViewport : Control
                 continue;
             }
 
+            var drawPosition = sceneObject.Position;
+            var drawRotation = sceneObject.RotationZDegrees;
+            var drawSize = sceneObject.EffectiveSize;
+            if (state.IsSelectionRotationMode
+                && state.SelectedObject?.Id == sceneObject.Id
+                && state.SelectionRotationPreviewPosition.HasValue)
+            {
+                drawPosition = state.SelectionRotationPreviewPosition.Value;
+                drawRotation = state.SelectionRotationPreviewDegrees;
+                drawSize = RotationHelper.GetEffectiveSize(sceneObject.BaseSize, drawRotation);
+            }
+
             var isActiveLayer = state.IntersectsActiveLayer(sceneObject);
             var opacity = isActiveLayer ? 0.9 : 0.3;
             if (state.IsMovingSelection && state.SelectedObject?.Id == sceneObject.Id)
@@ -108,8 +120,8 @@ public sealed class SoftwareCubeViewport : Control
             }
 
             var color = ColorForPart(sceneObject.PartType);
-            DrawIsoBox(context, sceneObject.Position, sceneObject.EffectiveSize, color, opacity, drawOutline: false, state);
-            DrawFacingMarker(context, sceneObject.Position, sceneObject.EffectiveSize, sceneObject.RotationZDegrees, sceneObject.PartType, opacity, state);
+            DrawIsoBox(context, drawPosition, drawSize, color, opacity, drawOutline: false, state);
+            DrawFacingMarker(context, drawPosition, drawSize, drawRotation, sceneObject.PartType, opacity, state);
         }
 
         if (state.IsMovingSelection && state.SelectedObject is { } moving && state.MovePreviewPosition is { } target)
@@ -140,7 +152,14 @@ public sealed class SoftwareCubeViewport : Control
 
         if (state.SelectedObject is { } selected && state.IntersectsActiveLayer(selected))
         {
-            DrawOutline(context, selected.Position, selected.EffectiveSize, Color.FromRgb(120, 180, 255), 2, state);
+            var outlinePosition = state.IsSelectionRotationMode && state.SelectionRotationPreviewPosition.HasValue
+                ? state.SelectionRotationPreviewPosition.Value
+                : selected.Position;
+            var outlineRotation = state.IsSelectionRotationMode
+                ? state.SelectionRotationPreviewDegrees
+                : selected.RotationZDegrees;
+            var outlineSize = RotationHelper.GetEffectiveSize(selected.BaseSize, outlineRotation);
+            DrawOutline(context, outlinePosition, outlineSize, Color.FromRgb(120, 180, 255), 2, state);
         }
 
         DrawRotationAxisGuide(context, state);
@@ -192,7 +211,7 @@ public sealed class SoftwareCubeViewport : Control
     private void OnPointerPressed(object? sender, PointerPressedEventArgs e)
     {
         var current = e.GetCurrentPoint(this);
-        if (CanStartPan(current.Properties))
+        if (CanStartPan(current.Properties, EditorState))
         {
             _isPanning = true;
             _lastPanPoint = e.GetPosition(this);
@@ -230,6 +249,8 @@ public sealed class SoftwareCubeViewport : Control
             EditorState = state,
             PointerPoint = default,
             HoveredVoxel = null,
+            RotationPlaneVoxel = null,
+            IsRightButtonPressed = false,
             PickObjectAtPoint = PickObjectAtPoint
         };
 
@@ -276,12 +297,18 @@ public sealed class SoftwareCubeViewport : Control
 
         var point = e.GetPosition(this);
         var hovered = TryMapPointToVoxel(point, state.ActiveAbsoluteZ);
+        var rotationPlaneVoxel = state.SelectedObject is { } selected && state.IsSelectionRotationMode
+            ? TryMapPointToVoxel(point, selected.Position.Z)
+            : null;
+        var pointerProperties = e.GetCurrentPoint(this).Properties;
 
         var context = new ViewportPointerContext
         {
             EditorState = state,
             PointerPoint = point,
             HoveredVoxel = hovered,
+            RotationPlaneVoxel = rotationPlaneVoxel,
+            IsRightButtonPressed = pointerProperties.IsRightButtonPressed,
             PickObjectAtPoint = PickObjectAtPoint
         };
 
@@ -446,6 +473,48 @@ public sealed class SoftwareCubeViewport : Control
             return;
         }
 
+        if (state.IsSelectionRotationMode)
+        {
+            var previewRotation = state.SelectionRotationPreviewDegrees;
+            var previewSize = RotationHelper.GetEffectiveSize(selected.BaseSize, previewRotation);
+            var previewPosition = state.SelectionRotationPreviewPosition ?? selected.Position;
+            var centerX = state.RotationAxisPivotX;
+            var centerY = state.RotationAxisPivotY;
+            var topZ = previewPosition.Z + previewSize.HeightZ;
+            var radius = Math.Max(previewSize.WidthX, previewSize.DepthY) * 0.65 + 0.35;
+
+            var guidePen = new Pen(new SolidColorBrush(Color.FromArgb(220, 170, 220, 255)), 1.6);
+            Point? previous = null;
+            const int segments = 48;
+            for (var i = 0; i <= segments; i++)
+            {
+                var theta = i * (Math.PI * 2.0 / segments);
+                var x = centerX + Math.Cos(theta) * radius;
+                var y = centerY + Math.Sin(theta) * radius;
+                var point = Project(x, y, topZ, state);
+                if (previous is { } last)
+                {
+                    context.DrawLine(guidePen, last, point);
+                }
+
+                previous = point;
+            }
+
+            var (fdx, fdy) = RotationHelper.NormalizeDegrees(previewRotation) switch
+            {
+                0 => (1.0, 0.0),
+                90 => (0.0, 1.0),
+                180 => (-1.0, 0.0),
+                _ => (0.0, -1.0)
+            };
+            var dot = Project(centerX + fdx * radius, centerY + fdy * radius, topZ, state);
+            var dotBrush = new SolidColorBrush(state.SelectionRotationPreviewIsValid
+                ? Color.FromArgb(245, 255, 240, 90)
+                : Color.FromArgb(245, 255, 95, 95));
+            context.DrawEllipse(dotBrush, null, dot, 4.4, 4.4);
+            return;
+        }
+
         var axisColor = Color.FromArgb(210, 140, 210, 255);
         var axisPen = new Pen(new SolidColorBrush(axisColor), 1.6, dashStyle: DashStyle.Dash);
         var start = Project(state.RotationAxisPivotX, state.RotationAxisPivotY, state.RotationAxisMinZ, state);
@@ -537,8 +606,9 @@ public sealed class SoftwareCubeViewport : Control
         return new Point(origin.X + state.ViewportPanX, origin.Y + state.ViewportPanY);
     }
 
-    private static bool CanStartPan(PointerPointProperties pointerProperties)
-        => pointerProperties.IsMiddleButtonPressed || pointerProperties.IsRightButtonPressed;
+    private static bool CanStartPan(PointerPointProperties pointerProperties, EditorState? state)
+        => pointerProperties.IsMiddleButtonPressed
+            || (pointerProperties.IsRightButtonPressed && state?.IsSelectionRotationMode != true);
 
     private static bool IsPanReleased(PointerPointProperties pointerProperties)
         => !pointerProperties.IsMiddleButtonPressed && !pointerProperties.IsRightButtonPressed;
