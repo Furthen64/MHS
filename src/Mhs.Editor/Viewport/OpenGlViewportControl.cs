@@ -63,6 +63,12 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
         set => SetValue(InteractionPresetProperty, value);
     }
 
+    public override void Render(DrawingContext context)
+    {
+        context.FillRectangle(Brushes.Transparent, Bounds);
+        base.Render(context);
+    }
+
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
