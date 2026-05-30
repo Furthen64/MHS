@@ -34,21 +34,21 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         foreach (var part in EditorState.PartDefinitions)
         {
-            switch (part.DisplayName)
+            switch (part.Id)
             {
-                case "Hopper":
+                case "hopper":
                     HopperToolCommand = new RelayCommand(() => SetTool(new PlacePartTool(part)));
                     break;
-                case "Bin":
+                case "bin":
                     BinToolCommand = new RelayCommand(() => SetTool(new PlacePartTool(part)));
                     break;
-                case "Conveyor":
+                case "conveyor":
                     ConveyorToolCommand = new RelayCommand(() => SetTool(new PlacePartTool(part)));
                     break;
-                case "Chute":
+                case "chute":
                     ChuteToolCommand = new RelayCommand(() => SetTool(new PlacePartTool(part)));
                     break;
-                case "Tall Hopper":
+                case "tall_hopper":
                     TallHopperToolCommand = new RelayCommand(() => SetTool(new PlacePartTool(part)));
                     break;
             }
