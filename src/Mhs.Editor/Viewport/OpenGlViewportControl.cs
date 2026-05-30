@@ -185,6 +185,11 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
             DrawFacingMarker(ghost.Position, ghost.EffectiveSize, ghost.RotationZDegrees, PartRenderCatalog.Resolve(ghost.Part.Id), 0.4, state);
         }
 
+        if (state.ActiveConveyorRoute is { } route)
+        {
+            DrawConveyorRoutePreview(route, state);
+        }
+
         if (state.HoveredObject is { } hovered
             && state.IntersectsActiveLayer(hovered)
             && state.SelectedObject?.Id != hovered.Id)
@@ -635,6 +640,41 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
     private Point Project(double x, double y, double z, EditorState state)
     {
         return ViewportMath.Project(x, y, z, Bounds, state);
+    }
+
+    private void DrawConveyorRoutePreview(ConveyorRouteDraft route, EditorState state)
+    {
+        var renderInfo = PartRenderCatalog.Resolve("conveyor");
+
+        for (var i = 1; i < route.Anchors.Count; i++)
+        {
+            var start = route.Anchors[i - 1];
+            var end = route.Anchors[i];
+            if (!ConveyorRouteGeometry.TryCreateSegment(start, end, out var segment, out _))
+            {
+                continue;
+            }
+
+            DrawIsoBox(segment.Position, segment.Size, Color.FromRgb(78, 158, 216), 0.35, drawOutline: true, state);
+            DrawFacingMarker(segment.Position, segment.Size, segment.RotationZDegrees, renderInfo, 0.35, state);
+        }
+
+        if (route.Anchors.Count > 0 && route.PreviewEnd.HasValue)
+        {
+            var start = route.Anchors[^1];
+            var end = route.PreviewEnd.Value;
+            if (ConveyorRouteGeometry.TryCreateSegment(start, end, out var segment, out _))
+            {
+                var previewColor = route.PreviewIsValid ? Color.FromRgb(70, 190, 90) : Color.FromRgb(230, 90, 90);
+                DrawIsoBox(segment.Position, segment.Size, previewColor, 0.45, drawOutline: true, state);
+                DrawFacingMarker(segment.Position, segment.Size, segment.RotationZDegrees, renderInfo, 0.45, state);
+            }
+        }
+
+        foreach (var anchor in route.Anchors)
+        {
+            DrawIsoBox(anchor, new VoxelSize(1, 1, 1), Color.FromRgb(245, 220, 80), 0.75, drawOutline: true, state);
+        }
     }
 
     private void DrawFacingMarker(VoxelCoord position, VoxelSize effectiveSize,

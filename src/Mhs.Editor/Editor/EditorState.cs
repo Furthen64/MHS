@@ -36,6 +36,7 @@ public sealed class EditorState : INotifyPropertyChanged
     private double _viewportPanY;
     private string _openGlBackendInfo = "N/A";
     private string _statusMessage = "Ready";
+    private ConveyorRouteDraft? _activeConveyorRoute;
 
     public EditorState()
     {
@@ -43,7 +44,7 @@ public sealed class EditorState : INotifyPropertyChanged
         [
             new PartDefinition { Id = "hopper", DisplayName = "Hopper", Size = new VoxelSize(1, 1, 2), Color = Color.FromRgb(240, 200, 90) },
             new PartDefinition { Id = "bin", DisplayName = "Bin", Size = new VoxelSize(2, 2, 1), Color = Color.FromRgb(90, 150, 240) },
-            new PartDefinition { Id = "conveyor", DisplayName = "Conveyor", Size = new VoxelSize(3, 1, 1), Color = Color.FromRgb(70, 80, 90) },
+            new PartDefinition { Id = "conveyor", DisplayName = "Conveyor", Size = new VoxelSize(1, 1, 1), Color = Color.FromRgb(70, 80, 90) },
             new PartDefinition { Id = "chute", DisplayName = "Chute", Size = new VoxelSize(2, 1, 1), Color = Color.FromRgb(150, 150, 150) },
             new PartDefinition { Id = "tall_hopper", DisplayName = "Tall Hopper", Size = new VoxelSize(2, 2, 4), Color = Color.FromRgb(214, 132, 66) }
         ];
@@ -234,6 +235,12 @@ public sealed class EditorState : INotifyPropertyChanged
         set => SetField(ref _openGlBackendInfo, string.IsNullOrWhiteSpace(value) ? "N/A" : value);
     }
 
+    public ConveyorRouteDraft? ActiveConveyorRoute
+    {
+        get => _activeConveyorRoute;
+        set => SetField(ref _activeConveyorRoute, value);
+    }
+
     public int ActiveAbsoluteZ => WorldVerticalSettings.ToAbsoluteZ(ActiveFloor, ActiveLayer);
 
     public int ActiveFloorStartZ => ActiveFloor * WorldVerticalSettings.LayersPerFloor;
@@ -406,6 +413,12 @@ public sealed class EditorState : INotifyPropertyChanged
 
     private void OnActiveLayerContextChanged()
     {
+        if (ActiveConveyorRoute is not null)
+        {
+            ActiveConveyorRoute = null;
+            StatusMessage = "Route canceled: active floor/layer changed";
+        }
+
         if (HoveredVoxel.HasValue)
         {
             var hovered = HoveredVoxel.Value;
