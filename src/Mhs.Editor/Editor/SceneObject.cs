@@ -11,7 +11,12 @@ public sealed class SceneObject
 
     public int RotationZDegrees { get; set; }
 
-    public VoxelSize EffectiveSize => RotationHelper.GetEffectiveSize(BaseSize, RotationZDegrees);
+    public VoxelSize EffectiveSize => GetEffectiveSize(RotationZDegrees);
+
+    public VoxelSize GetEffectiveSize(int rotationZDegrees)
+        => string.Equals(PartType, "Conveyor", StringComparison.OrdinalIgnoreCase)
+            ? BaseSize
+            : RotationHelper.GetEffectiveSize(BaseSize, rotationZDegrees);
 
     public int MinX => Position.X;
     public int MaxX => Position.X + EffectiveSize.WidthX - 1;

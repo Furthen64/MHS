@@ -88,13 +88,10 @@ public sealed class SoftwareCubeViewport : Control
         DrawFloorOutlines(context, state.ActiveFloor);
         DrawGrid(context, state.ActiveAbsoluteZ);
 
-        foreach (var sceneObject in state.Scene.Objects)
+        foreach (var renderable in SceneRenderOrder.GetVisibleBackToFront(state, Bounds))
         {
-            var visibility = ObjectVisibility.GetVisibility(sceneObject, state.ActiveFloor, state.ActiveAbsoluteZ);
-            if (visibility == ObjectVisibilityMode.Hidden)
-            {
-                continue;
-            }
+            var sceneObject = renderable.SceneObject;
+            var visibility = renderable.Visibility;
 
             var drawPosition = sceneObject.Position;
             var drawRotation = sceneObject.RotationZDegrees;
@@ -105,10 +102,12 @@ public sealed class SoftwareCubeViewport : Control
             {
                 drawPosition = state.SelectionRotationPreviewPosition.Value;
                 drawRotation = state.SelectionRotationPreviewDegrees;
-                drawSize = RotationHelper.GetEffectiveSize(sceneObject.BaseSize, drawRotation);
+                drawSize = sceneObject.GetEffectiveSize(drawRotation);
             }
 
-            var opacity = visibility == ObjectVisibilityMode.SolidActiveLayer ? 0.9 : 0.3;
+            var opacity = visibility == ObjectVisibilityMode.SolidActiveLayer
+                ? (string.Equals(sceneObject.PartType, "Conveyor", StringComparison.OrdinalIgnoreCase) ? 1.0 : 0.9)
+                : 0.3;
             if (state.IsMovingSelection && state.SelectedObject?.Id == sceneObject.Id)
             {
                 opacity = 0.2;
@@ -116,9 +115,18 @@ public sealed class SoftwareCubeViewport : Control
 
             var renderInfo = PartRenderCatalog.Resolve(sceneObject.PartType);
             var color = renderInfo.BaseColor.ToAvaloniaColor();
-            DrawIsoBox(context, drawPosition, drawSize, color, opacity, drawOutline: false, state);
-            DrawFacingMarker(context, drawPosition, drawSize, drawRotation, renderInfo, opacity, state);
+            if (string.Equals(sceneObject.PartType, "Conveyor", StringComparison.OrdinalIgnoreCase))
+            {
+                DrawConveyorStrip(context, drawPosition, drawSize, drawRotation, color, renderInfo, opacity, false, state);
+            }
+            else
+            {
+                DrawIsoBox(context, drawPosition, drawSize, color, opacity, drawOutline: false, state);
+                DrawFacingMarker(context, drawPosition, drawSize, drawRotation, renderInfo, opacity, state);
+            }
         }
+
+        DrawConveyorSceneJoins(context, state);
 
         if (state.IsMovingSelection && state.SelectedObject is { } moving && state.MovePreviewPosition is { } target)
         {
@@ -161,7 +169,7 @@ public sealed class SoftwareCubeViewport : Control
             var outlineRotation = state.IsSelectionRotationMode
                 ? state.SelectionRotationPreviewDegrees
                 : selected.RotationZDegrees;
-            var outlineSize = RotationHelper.GetEffectiveSize(selected.BaseSize, outlineRotation);
+            var outlineSize = selected.GetEffectiveSize(outlineRotation);
             DrawOutline(context, outlinePosition, outlineSize, Color.FromRgb(120, 180, 255), 2, state);
         }
 
@@ -255,6 +263,7 @@ public sealed class SoftwareCubeViewport : Control
             PointerPoint = default,
             HoveredVoxel = null,
             RotationPlaneVoxel = null,
+            IsLeftButtonPressed = false,
             IsRightButtonPressed = false,
             PickObjectAtPoint = PickObjectAtPoint
         };
@@ -301,6 +310,7 @@ public sealed class SoftwareCubeViewport : Control
             PointerPoint = point,
             HoveredVoxel = hovered,
             RotationPlaneVoxel = rotationPlaneVoxel,
+            IsLeftButtonPressed = pointerProperties.IsLeftButtonPressed,
             IsRightButtonPressed = pointerProperties.IsRightButtonPressed,
             PickObjectAtPoint = PickObjectAtPoint
         };
@@ -456,7 +466,7 @@ public sealed class SoftwareCubeViewport : Control
         if (state.IsSelectionRotationMode)
         {
             var previewRotation = state.SelectionRotationPreviewDegrees;
-            var previewSize = RotationHelper.GetEffectiveSize(selected.BaseSize, previewRotation);
+            var previewSize = selected.GetEffectiveSize(previewRotation);
             var previewPosition = state.SelectionRotationPreviewPosition ?? selected.Position;
             var centerX = state.RotationAxisPivotX;
             var centerY = state.RotationAxisPivotY;
@@ -524,6 +534,16 @@ public sealed class SoftwareCubeViewport : Control
 
             DrawIsoBox(context, position, size, Color.FromRgb(78, 158, 216), 0.35, drawOutline: true, state);
             DrawFacingMarker(context, position, size, segment.RotationZDegrees, renderInfo, 0.35, state);
+
+            if (i < route.Anchors.Count - 1)
+            {
+                var nextStart = route.Anchors[i];
+                var nextEnd = route.Anchors[i + 1];
+                if (ConveyorRouteRendering.TryGetTurnJoinCell(start, end, nextStart, nextEnd, out var joinCell))
+                {
+                    DrawConveyorJoinCap(context, joinCell, Color.FromRgb(78, 158, 216), 0.42, state);
+                }
+            }
         }
 
         if (route.Anchors.Count > 0 && route.PreviewEnd.HasValue)
@@ -540,8 +560,17 @@ public sealed class SoftwareCubeViewport : Control
                 }
 
                 var previewColor = route.PreviewIsValid ? Color.FromRgb(70, 190, 90) : Color.FromRgb(230, 90, 90);
-                DrawIsoBox(context, position, size, previewColor, 0.45, drawOutline: true, state);
-                DrawFacingMarker(context, position, size, segment.RotationZDegrees, renderInfo, 0.45, state);
+                DrawConveyorStrip(context, position, size, segment.RotationZDegrees, previewColor, renderInfo, 0.45, true, state);
+
+                if (route.Anchors.Count > 1)
+                {
+                    var previousStart = route.Anchors[^2];
+                    var previousEnd = route.Anchors[^1];
+                    if (ConveyorRouteRendering.TryGetTurnJoinCell(previousStart, previousEnd, start, end, out var joinCell))
+                    {
+                        DrawConveyorJoinCap(context, joinCell, previewColor, 0.52, state);
+                    }
+                }
             }
         }
 
@@ -614,6 +643,100 @@ public sealed class SoftwareCubeViewport : Control
         }
     }
 
+    private void DrawConveyorStrip(DrawingContext context, VoxelCoord position, VoxelSize size, int rotationZDegrees,
+        Color color, PartRenderInfo renderInfo, double opacity, bool drawOutline, EditorState state)
+    {
+        var visualHeight = Math.Min(0.28, size.HeightZ);
+        var x0 = position.X;
+        var x1 = position.X + size.WidthX;
+        var y0 = position.Y;
+        var y1 = position.Y + size.DepthY;
+        var z0 = position.Z;
+        var z1 = position.Z + visualHeight;
+
+        var topA = Project(x0, y0, z1, state);
+        var topB = Project(x1, y0, z1, state);
+        var topC = Project(x1, y1, z1, state);
+        var topD = Project(x0, y1, z1, state);
+
+        var bottomB = Project(x1, y0, z0, state);
+        var bottomC = Project(x1, y1, z0, state);
+        var bottomD = Project(x0, y1, z0, state);
+
+        var topBrush = new SolidColorBrush(WithOpacity(Darken(color, 0.92), opacity));
+        var rightBrush = new SolidColorBrush(WithOpacity(Darken(color, 0.70), opacity * 0.7));
+        var leftBrush = new SolidColorBrush(WithOpacity(Darken(color, 0.58), opacity * 0.7));
+
+        context.DrawGeometry(topBrush, null, Polygon(topA, topB, topC, topD));
+        context.DrawGeometry(rightBrush, null, Polygon(topB, bottomB, bottomC, topC));
+        context.DrawGeometry(leftBrush, null, Polygon(topD, topC, bottomC, bottomD));
+
+        DrawConveyorMarker(context, position, size, rotationZDegrees, renderInfo, opacity, state);
+
+        if (drawOutline)
+        {
+            var outline = new Pen(new SolidColorBrush(WithOpacity(Color.FromRgb(230, 230, 230), Math.Min(opacity + 0.18, 1))), 1);
+            context.DrawGeometry(null, outline, Polygon(topA, topB, topC, topD));
+        }
+    }
+
+    private void DrawConveyorJoinCap(DrawingContext context, VoxelCoord position, Color color, double opacity, EditorState state)
+    {
+        var capSize = new VoxelSize(1, 1, 1);
+        var visualHeight = Math.Min(0.34, capSize.HeightZ);
+        var x0 = position.X;
+        var x1 = position.X + capSize.WidthX;
+        var y0 = position.Y;
+        var y1 = position.Y + capSize.DepthY;
+        var z0 = position.Z;
+        var z1 = position.Z + visualHeight;
+
+        var topA = Project(x0, y0, z1, state);
+        var topB = Project(x1, y0, z1, state);
+        var topC = Project(x1, y1, z1, state);
+        var topD = Project(x0, y1, z1, state);
+
+        var bottomB = Project(x1, y0, z0, state);
+        var bottomC = Project(x1, y1, z0, state);
+        var bottomD = Project(x0, y1, z0, state);
+
+        var topBrush = new SolidColorBrush(WithOpacity(Darken(color, 0.96), opacity));
+        var rightBrush = new SolidColorBrush(WithOpacity(Darken(color, 0.76), opacity * 0.8));
+        var leftBrush = new SolidColorBrush(WithOpacity(Darken(color, 0.68), opacity * 0.8));
+
+        context.DrawGeometry(topBrush, null, Polygon(topA, topB, topC, topD));
+        context.DrawGeometry(rightBrush, null, Polygon(topB, bottomB, bottomC, topC));
+        context.DrawGeometry(leftBrush, null, Polygon(topD, topC, bottomC, bottomD));
+
+        var outline = new Pen(new SolidColorBrush(WithOpacity(Color.FromRgb(230, 230, 230), Math.Min(opacity + 0.12, 1))), 1);
+        context.DrawGeometry(null, outline, Polygon(topA, topB, topC, topD));
+    }
+
+    private void DrawConveyorSceneJoins(DrawingContext context, EditorState state)
+    {
+        for (var i = 1; i < state.Scene.Objects.Count; i++)
+        {
+            var previous = state.Scene.Objects[i - 1];
+            var next = state.Scene.Objects[i];
+            if (!ConveyorRouteRendering.TryGetSceneTurnJoinCell(previous, next, out var joinCell))
+            {
+                continue;
+            }
+
+            var previousVisibility = ObjectVisibility.GetVisibility(previous, state.ActiveFloor, state.ActiveAbsoluteZ);
+            var nextVisibility = ObjectVisibility.GetVisibility(next, state.ActiveFloor, state.ActiveAbsoluteZ);
+            if (previousVisibility == ObjectVisibilityMode.Hidden || nextVisibility == ObjectVisibilityMode.Hidden)
+            {
+                continue;
+            }
+
+            var opacity = previousVisibility == ObjectVisibilityMode.SolidActiveLayer || nextVisibility == ObjectVisibilityMode.SolidActiveLayer
+                ? 1.0
+                : 0.3;
+            DrawConveyorJoinCap(context, joinCell, Color.FromRgb(78, 158, 216), opacity, state);
+        }
+    }
+
     private Point Project(double x, double y, double z, EditorState state)
     {
         return ViewportMath.Project(x, y, z, Bounds, state);
@@ -663,6 +786,12 @@ public sealed class SoftwareCubeViewport : Control
             return;
         }
 
+        if (string.Equals(renderInfo.PartId, "conveyor", StringComparison.OrdinalIgnoreCase))
+        {
+            DrawConveyorMarker(context, position, effectiveSize, rotationZDegrees, renderInfo, opacity, state);
+            return;
+        }
+
         var normalized = RotationHelper.NormalizeDegrees(rotationZDegrees);
         var (fdx, fdy) = normalized switch
         {
@@ -699,5 +828,28 @@ public sealed class SoftwareCubeViewport : Control
         var markerColor = renderInfo.FacingMarkerColor.ToAvaloniaColor();
         var brush = new SolidColorBrush(WithOpacity(markerColor, Math.Min(opacity + 0.25, 1.0)));
         context.DrawGeometry(brush, null, Polygon(tip, base1, base2));
+    }
+
+    private void DrawConveyorMarker(DrawingContext context, VoxelCoord position, VoxelSize effectiveSize, int rotationZDegrees,
+        PartRenderInfo renderInfo, double opacity, EditorState state)
+    {
+        var normalized = RotationHelper.NormalizeDegrees(rotationZDegrees);
+        var z = position.Z + Math.Min(0.32, effectiveSize.HeightZ);
+        var markerColor = renderInfo.FacingMarkerColor.ToAvaloniaColor();
+        var pen = new Pen(new SolidColorBrush(WithOpacity(markerColor, Math.Min(opacity + 0.22, 1.0))), 1.6);
+
+        if (normalized is 0 or 180)
+        {
+            var y = position.Y + effectiveSize.DepthY / 2.0;
+            var start = Project(position.X + 0.12, y, z, state);
+            var end = Project(position.X + effectiveSize.WidthX - 0.12, y, z, state);
+            context.DrawLine(pen, start, end);
+            return;
+        }
+
+        var x = position.X + effectiveSize.WidthX / 2.0;
+        var startY = Project(x, position.Y + 0.12, z, state);
+        var endY = Project(x, position.Y + effectiveSize.DepthY - 0.12, z, state);
+        context.DrawLine(pen, startY, endY);
     }
 }

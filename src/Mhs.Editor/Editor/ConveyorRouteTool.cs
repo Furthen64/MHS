@@ -5,6 +5,8 @@ namespace Mhs.Editor.Editor;
 
 public sealed class ConveyorRouteTool : IEditorTool
 {
+    private bool _awaitingLeftButtonRelease;
+
     public string Name => "Conveyor Route";
 
     public void OnPointerMoved(ViewportPointerContext context)
@@ -45,6 +47,13 @@ public sealed class ConveyorRouteTool : IEditorTool
         {
             return;
         }
+
+        if (_awaitingLeftButtonRelease)
+        {
+            return;
+        }
+
+        _awaitingLeftButtonRelease = true;
 
         var state = context.EditorState;
         if (!context.HoveredVoxel.HasValue)
@@ -97,10 +106,15 @@ public sealed class ConveyorRouteTool : IEditorTool
 
     public void OnPointerReleased(ViewportPointerContext context)
     {
+        if (!context.IsLeftButtonPressed)
+        {
+            _awaitingLeftButtonRelease = false;
+        }
     }
 
     public void OnCancel(EditorState editorState)
     {
+        _awaitingLeftButtonRelease = false;
         editorState.ActiveConveyorRoute = null;
     }
 

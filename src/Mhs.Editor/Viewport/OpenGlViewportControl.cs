@@ -135,13 +135,10 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
         DrawFloorOutlines(state.ActiveFloor);
         DrawGrid(state.ActiveAbsoluteZ);
 
-        foreach (var sceneObject in state.Scene.Objects)
+        foreach (var renderable in SceneRenderOrder.GetVisibleBackToFront(state, Bounds))
         {
-            var visibility = ObjectVisibility.GetVisibility(sceneObject, state.ActiveFloor, state.ActiveAbsoluteZ);
-            if (visibility == ObjectVisibilityMode.Hidden)
-            {
-                continue;
-            }
+            var sceneObject = renderable.SceneObject;
+            var visibility = renderable.Visibility;
 
             var drawPosition = sceneObject.Position;
             var drawRotation = sceneObject.RotationZDegrees;
@@ -152,10 +149,12 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
             {
                 drawPosition = state.SelectionRotationPreviewPosition.Value;
                 drawRotation = state.SelectionRotationPreviewDegrees;
-                drawSize = RotationHelper.GetEffectiveSize(sceneObject.BaseSize, drawRotation);
+                drawSize = sceneObject.GetEffectiveSize(drawRotation);
             }
 
-            var opacity = visibility == ObjectVisibilityMode.SolidActiveLayer ? 0.9 : 0.3;
+            var opacity = visibility == ObjectVisibilityMode.SolidActiveLayer
+                ? (string.Equals(sceneObject.PartType, "Conveyor", StringComparison.OrdinalIgnoreCase) ? 1.0 : 0.9)
+                : 0.3;
             if (state.IsMovingSelection && state.SelectedObject?.Id == sceneObject.Id)
             {
                 opacity = 0.2;
@@ -163,9 +162,18 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
 
             var renderInfo = PartRenderCatalog.Resolve(sceneObject.PartType);
             var color = renderInfo.BaseColor.ToAvaloniaColor();
-            DrawIsoBox(drawPosition, drawSize, color, opacity, drawOutline: false, state);
-            DrawFacingMarker(drawPosition, drawSize, drawRotation, renderInfo, opacity, state);
+            if (string.Equals(sceneObject.PartType, "Conveyor", StringComparison.OrdinalIgnoreCase))
+            {
+                DrawConveyorStrip(drawPosition, drawSize, drawRotation, color, renderInfo, opacity, false, state);
+            }
+            else
+            {
+                DrawIsoBox(drawPosition, drawSize, color, opacity, drawOutline: false, state);
+                DrawFacingMarker(drawPosition, drawSize, drawRotation, renderInfo, opacity, state);
+            }
         }
+
+        DrawConveyorSceneJoins(state);
 
         if (state.IsMovingSelection && state.SelectedObject is { } moving && state.MovePreviewPosition is { } target)
         {
@@ -205,7 +213,7 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
             var outlineRotation = state.IsSelectionRotationMode
                 ? state.SelectionRotationPreviewDegrees
                 : selected.RotationZDegrees;
-            var outlineSize = RotationHelper.GetEffectiveSize(selected.BaseSize, outlineRotation);
+            var outlineSize = selected.GetEffectiveSize(outlineRotation);
             DrawOutline(outlinePosition, outlineSize, Color.FromRgb(120, 180, 255), 1.0, state);
         }
 
@@ -320,6 +328,7 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
             PointerPoint = default,
             HoveredVoxel = null,
             RotationPlaneVoxel = null,
+            IsLeftButtonPressed = false,
             IsRightButtonPressed = false,
             PickObjectAtPoint = PickObjectAtPoint
         };
@@ -367,6 +376,7 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
             PointerPoint = point,
             HoveredVoxel = hovered,
             RotationPlaneVoxel = rotationPlaneVoxel,
+            IsLeftButtonPressed = pointerProperties.IsLeftButtonPressed,
             IsRightButtonPressed = pointerProperties.IsRightButtonPressed,
             PickObjectAtPoint = PickObjectAtPoint
         };
@@ -521,7 +531,7 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
         if (state.IsSelectionRotationMode)
         {
             var previewRotation = state.SelectionRotationPreviewDegrees;
-            var previewSize = RotationHelper.GetEffectiveSize(selected.BaseSize, previewRotation);
+            var previewSize = selected.GetEffectiveSize(previewRotation);
             var previewPosition = state.SelectionRotationPreviewPosition ?? selected.Position;
             var centerX = state.RotationAxisPivotX;
             var centerY = state.RotationAxisPivotY;
@@ -645,6 +655,100 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
         }
     }
 
+    private void DrawConveyorStrip(VoxelCoord position, VoxelSize size, int rotationZDegrees, Color color,
+        PartRenderInfo renderInfo, double opacity, bool drawOutline, EditorState state)
+    {
+        if (_renderer is null)
+        {
+            return;
+        }
+
+        var visualHeight = Math.Min(0.28, size.HeightZ);
+        var x0 = position.X;
+        var x1 = position.X + size.WidthX;
+        var y0 = position.Y;
+        var y1 = position.Y + size.DepthY;
+        var z0 = position.Z;
+        var z1 = position.Z + visualHeight;
+
+        var topA = Project(x0, y0, z1, state);
+        var topB = Project(x1, y0, z1, state);
+        var topC = Project(x1, y1, z1, state);
+        var topD = Project(x0, y1, z1, state);
+
+        var bottomB = Project(x1, y0, z0, state);
+        var bottomC = Project(x1, y1, z0, state);
+        var bottomD = Project(x0, y1, z0, state);
+
+        _renderer.AddFilledQuad(topA, topB, topC, topD, Darken(color, 0.92), opacity);
+        _renderer.AddFilledQuad(topB, bottomB, bottomC, topC, Darken(color, 0.70), opacity * 0.7);
+        _renderer.AddFilledQuad(topD, topC, bottomC, bottomD, Darken(color, 0.58), opacity * 0.7);
+
+        DrawConveyorMarker(position, size, rotationZDegrees, renderInfo, opacity, state);
+
+        if (drawOutline)
+        {
+            DrawOutline(position, new VoxelSize(size.WidthX, size.DepthY, 1), Color.FromRgb(230, 230, 230), Math.Min(opacity + 0.18, 1), state);
+        }
+    }
+
+    private void DrawConveyorJoinCap(VoxelCoord position, Color color, double opacity, EditorState state)
+    {
+        if (_renderer is null)
+        {
+            return;
+        }
+
+        var capSize = new VoxelSize(1, 1, 1);
+        var visualHeight = Math.Min(0.34, capSize.HeightZ);
+        var x0 = position.X;
+        var x1 = position.X + capSize.WidthX;
+        var y0 = position.Y;
+        var y1 = position.Y + capSize.DepthY;
+        var z0 = position.Z;
+        var z1 = position.Z + visualHeight;
+
+        var topA = Project(x0, y0, z1, state);
+        var topB = Project(x1, y0, z1, state);
+        var topC = Project(x1, y1, z1, state);
+        var topD = Project(x0, y1, z1, state);
+
+        var bottomB = Project(x1, y0, z0, state);
+        var bottomC = Project(x1, y1, z0, state);
+        var bottomD = Project(x0, y1, z0, state);
+
+        _renderer.AddFilledQuad(topA, topB, topC, topD, Darken(color, 0.96), opacity);
+        _renderer.AddFilledQuad(topB, bottomB, bottomC, topC, Darken(color, 0.76), opacity * 0.8);
+        _renderer.AddFilledQuad(topD, topC, bottomC, bottomD, Darken(color, 0.68), opacity * 0.8);
+
+        DrawOutline(position, capSize, Color.FromRgb(230, 230, 230), Math.Min(opacity + 0.12, 1), state);
+    }
+
+    private void DrawConveyorSceneJoins(EditorState state)
+    {
+        for (var i = 1; i < state.Scene.Objects.Count; i++)
+        {
+            var previous = state.Scene.Objects[i - 1];
+            var next = state.Scene.Objects[i];
+            if (!ConveyorRouteRendering.TryGetSceneTurnJoinCell(previous, next, out var joinCell))
+            {
+                continue;
+            }
+
+            var previousVisibility = ObjectVisibility.GetVisibility(previous, state.ActiveFloor, state.ActiveAbsoluteZ);
+            var nextVisibility = ObjectVisibility.GetVisibility(next, state.ActiveFloor, state.ActiveAbsoluteZ);
+            if (previousVisibility == ObjectVisibilityMode.Hidden || nextVisibility == ObjectVisibilityMode.Hidden)
+            {
+                continue;
+            }
+
+            var opacity = previousVisibility == ObjectVisibilityMode.SolidActiveLayer || nextVisibility == ObjectVisibilityMode.SolidActiveLayer
+                ? 1.0
+                : 0.3;
+            DrawConveyorJoinCap(joinCell, Color.FromRgb(78, 158, 216), opacity, state);
+        }
+    }
+
     private Point Project(double x, double y, double z, EditorState state)
     {
         return ViewportMath.Project(x, y, z, Bounds, state);
@@ -672,6 +776,16 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
 
             DrawIsoBox(position, size, Color.FromRgb(78, 158, 216), 0.35, drawOutline: true, state);
             DrawFacingMarker(position, size, segment.RotationZDegrees, renderInfo, 0.35, state);
+
+            if (i < route.Anchors.Count - 1)
+            {
+                var nextStart = route.Anchors[i];
+                var nextEnd = route.Anchors[i + 1];
+                if (ConveyorRouteGeometry.TryGetTurnJoinCell(start, end, nextStart, nextEnd, out var joinCell))
+                {
+                    DrawConveyorJoinCap(joinCell, Color.FromRgb(78, 158, 216), 0.42, state);
+                }
+            }
         }
 
         if (route.Anchors.Count > 0 && route.PreviewEnd.HasValue)
@@ -688,8 +802,17 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
                 }
 
                 var previewColor = route.PreviewIsValid ? Color.FromRgb(70, 190, 90) : Color.FromRgb(230, 90, 90);
-                DrawIsoBox(position, size, previewColor, 0.45, drawOutline: true, state);
-                DrawFacingMarker(position, size, segment.RotationZDegrees, renderInfo, 0.45, state);
+                DrawConveyorStrip(position, size, segment.RotationZDegrees, previewColor, renderInfo, 0.45, true, state);
+
+                if (route.Anchors.Count > 1)
+                {
+                    var previousStart = route.Anchors[^2];
+                    var previousEnd = route.Anchors[^1];
+                    if (ConveyorRouteGeometry.TryGetTurnJoinCell(previousStart, previousEnd, start, end, out var joinCell))
+                    {
+                        DrawConveyorJoinCap(joinCell, previewColor, 0.52, state);
+                    }
+                }
             }
         }
 
@@ -709,6 +832,12 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
 
         if (!renderInfo.ShowFacingMarker)
         {
+            return;
+        }
+
+        if (string.Equals(renderInfo.PartId, "conveyor", StringComparison.OrdinalIgnoreCase))
+        {
+            DrawConveyorMarker(position, effectiveSize, rotationZDegrees, renderInfo, opacity, state);
             return;
         }
 
@@ -745,6 +874,33 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
 
         var markerColor = renderInfo.FacingMarkerColor.ToAvaloniaColor();
         _renderer.AddFilledTriangle(tip, base1, base2, markerColor, Math.Min(opacity + 0.25, 1.0));
+    }
+
+    private void DrawConveyorMarker(VoxelCoord position, VoxelSize effectiveSize, int rotationZDegrees,
+        PartRenderInfo renderInfo, double opacity, EditorState state)
+    {
+        if (_renderer is null)
+        {
+            return;
+        }
+
+        var normalized = RotationHelper.NormalizeDegrees(rotationZDegrees);
+        var z = position.Z + Math.Min(0.32, effectiveSize.HeightZ);
+        var markerColor = renderInfo.FacingMarkerColor.ToAvaloniaColor();
+
+        if (normalized is 0 or 180)
+        {
+            var y = position.Y + effectiveSize.DepthY / 2.0;
+            var start = Project(position.X + 0.12, y, z, state);
+            var end = Project(position.X + effectiveSize.WidthX - 0.12, y, z, state);
+            _renderer.AddLine(start, end, markerColor, Math.Min(opacity + 0.22, 1.0));
+            return;
+        }
+
+        var x = position.X + effectiveSize.WidthX / 2.0;
+        var startY = Project(x, position.Y + 0.12, z, state);
+        var endY = Project(x, position.Y + effectiveSize.DepthY - 0.12, z, state);
+        _renderer.AddLine(startY, endY, markerColor, Math.Min(opacity + 0.22, 1.0));
     }
 
     private static bool CanStartPan(PointerPointProperties pointerProperties, EditorState? state)

@@ -119,7 +119,7 @@ public sealed class SelectTool : IEditorTool
             ? (dx >= 0 ? 0 : 180)
             : (dy >= 0 ? 90 : 270);
 
-        var targetSize = RotationHelper.GetEffectiveSize(selected.BaseSize, targetRotation);
+        var targetSize = selected.GetEffectiveSize(targetRotation);
         var targetPosition = RotationHelper.RotatePositionAroundPivot(
             selected.Position,
             targetSize,
