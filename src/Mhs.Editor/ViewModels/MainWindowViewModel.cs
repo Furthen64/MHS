@@ -224,113 +224,6 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 return true;
             }
 
-            public void NewScene()
-            {
-                LoadSceneFileData(new SceneFileData());
-                EditorState.StatusMessage = "New scene";
-                RaiseComputed();
-            }
-
-            public SceneFileData CreateSceneFileData()
-            {
-                var objects = new List<SceneFileObjectData>(EditorState.Scene.Objects.Count);
-                foreach (var sceneObject in EditorState.Scene.Objects)
-                {
-                    var partDefinition = TryResolvePartDefinition(sceneObject, out var resolvedPartId);
-                    if (string.IsNullOrWhiteSpace(resolvedPartId))
-                    {
-                        throw new InvalidDataException($"Cannot save object with unknown part type '{sceneObject.PartType}'.");
-                    }
-
-                    VoxelSize? sizeOverride = null;
-                    if (partDefinition is null || partDefinition.Size != sceneObject.BaseSize)
-                    {
-                        sizeOverride = sceneObject.BaseSize;
-                    }
-
-                    objects.Add(new SceneFileObjectData
-                    {
-                        PartId = resolvedPartId,
-                        Position = sceneObject.Position,
-                        RotationZDegrees = sceneObject.RotationZDegrees,
-                        SizeOverride = sizeOverride
-                    });
-                }
-
-                return new SceneFileData
-                {
-                    ActiveFloor = EditorState.ActiveFloor,
-                    ActiveLayer = EditorState.ActiveLayer,
-                    RendererMode = _useOpenGlViewport ? "opengl" : "software",
-                    Objects = objects
-                };
-            }
-
-            public void LoadSceneFileData(SceneFileData data)
-            {
-                ArgumentNullException.ThrowIfNull(data);
-
-                var loadedObjects = new List<SceneObject>(data.Objects.Count);
-                foreach (var objectData in data.Objects)
-                {
-                    var partDefinition = ResolvePartDefinition(objectData.PartId);
-                    var baseSize = objectData.SizeOverride ?? partDefinition.Size;
-                    if (baseSize.WidthX <= 0 || baseSize.DepthY <= 0 || baseSize.HeightZ <= 0)
-                    {
-                        throw new InvalidDataException($"Scene object '{objectData.PartId}' has an invalid size.");
-                    }
-
-                    var sceneObject = new SceneObject
-                    {
-                        PartId = partDefinition.Id,
-                        PartType = partDefinition.DisplayName,
-                        Position = objectData.Position,
-                        BaseSize = baseSize,
-                        RotationZDegrees = RotationHelper.NormalizeDegrees(objectData.RotationZDegrees)
-                    };
-
-                    if (!EditorState.IsObjectWithinGrid(sceneObject))
-                    {
-                        throw new InvalidDataException($"Scene object '{objectData.PartId}' is out of bounds.");
-                    }
-
-                    loadedObjects.Add(sceneObject);
-                }
-
-                EditorState.ActiveTool.OnCancel(EditorState);
-                EditorState.Scene.Objects.Clear();
-                foreach (var sceneObject in loadedObjects)
-                {
-                    EditorState.Scene.Objects.Add(sceneObject);
-                }
-
-                EditorState.SelectedObject = null;
-                EditorState.HoveredObject = null;
-                EditorState.HoveredVoxel = null;
-                EditorState.GhostPreview = null;
-                EditorState.ActiveConveyorRoute = null;
-                EditorState.ClearMoveState();
-                EditorState.ClearRotationAxis();
-                EditorState.ActivePlacementRotationZDegrees = 0;
-                EditorState.ActiveFloor = data.ActiveFloor;
-                EditorState.ActiveLayer = data.ActiveLayer;
-
-                if (!string.IsNullOrWhiteSpace(data.RendererMode))
-                {
-                    _useOpenGlViewport = string.Equals(data.RendererMode, "opengl", StringComparison.OrdinalIgnoreCase);
-                }
-
-                SetTool(_selectTool);
-                EditorState.StatusMessage = "Ready";
-                RaiseComputed();
-            }
-
-            public void SetSceneStatus(string status)
-            {
-                EditorState.StatusMessage = status;
-                RaiseComputed();
-            }
-
             switch (key)
             {
                 case Key.Back:
@@ -370,6 +263,114 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         RaiseComputed();
         return true;
+    }
+
+    public void NewScene()
+    {
+        LoadSceneFileData(new SceneFileData());
+        EditorState.StatusMessage = "New scene";
+        RaiseComputed();
+    }
+
+    public SceneFileData CreateSceneFileData()
+    {
+        var objects = new List<SceneFileObjectData>(EditorState.Scene.Objects.Count);
+        foreach (var sceneObject in EditorState.Scene.Objects)
+        {
+            var partDefinition = TryResolvePartDefinition(sceneObject, out var resolvedPartId);
+            if (string.IsNullOrWhiteSpace(resolvedPartId))
+            {
+                throw new InvalidDataException($"Cannot save object with unknown part type '{sceneObject.PartType}'.");
+            }
+
+            VoxelSize? sizeOverride = null;
+            if (partDefinition is null || partDefinition.Size != sceneObject.BaseSize)
+            {
+                sizeOverride = sceneObject.BaseSize;
+            }
+
+            objects.Add(new SceneFileObjectData
+            {
+                PartId = resolvedPartId,
+                Position = sceneObject.Position,
+                RotationZDegrees = sceneObject.RotationZDegrees,
+                SizeOverride = sizeOverride
+            });
+        }
+
+        return new SceneFileData
+        {
+            ActiveFloor = EditorState.ActiveFloor,
+            ActiveLayer = EditorState.ActiveLayer,
+            RendererMode = _useOpenGlViewport ? "opengl" : "software",
+            Objects = objects
+        };
+    }
+
+    public void LoadSceneFileData(SceneFileData data)
+    {
+        ArgumentNullException.ThrowIfNull(data);
+
+        var objectDataItems = data.Objects ?? new List<SceneFileObjectData>();
+        var loadedObjects = new List<SceneObject>(objectDataItems.Count);
+        foreach (var objectData in objectDataItems)
+        {
+            var partDefinition = ResolvePartDefinition(objectData.PartId);
+            var baseSize = objectData.SizeOverride ?? partDefinition.Size;
+            if (baseSize.WidthX <= 0 || baseSize.DepthY <= 0 || baseSize.HeightZ <= 0)
+            {
+                throw new InvalidDataException($"Scene object '{objectData.PartId}' has an invalid size.");
+            }
+
+            var sceneObject = new SceneObject
+            {
+                PartId = partDefinition.Id,
+                PartType = partDefinition.DisplayName,
+                Position = objectData.Position,
+                BaseSize = baseSize,
+                RotationZDegrees = RotationHelper.NormalizeDegrees(objectData.RotationZDegrees)
+            };
+
+            if (!EditorState.IsObjectWithinGrid(sceneObject))
+            {
+                throw new InvalidDataException($"Scene object '{objectData.PartId}' is out of bounds.");
+            }
+
+            loadedObjects.Add(sceneObject);
+        }
+
+        EditorState.ActiveTool.OnCancel(EditorState);
+        EditorState.Scene.Objects.Clear();
+        foreach (var sceneObject in loadedObjects)
+        {
+            EditorState.Scene.Objects.Add(sceneObject);
+        }
+
+        EditorState.SelectedObject = null;
+        EditorState.HoveredObject = null;
+        EditorState.HoveredVoxel = null;
+        EditorState.GhostPreview = null;
+        EditorState.ActiveConveyorRoute = null;
+        EditorState.ClearMoveState();
+        EditorState.ClearRotationAxis();
+        EditorState.ActivePlacementRotationZDegrees = 0;
+        EditorState.ActiveFloor = data.ActiveFloor;
+        EditorState.ActiveLayer = data.ActiveLayer;
+
+        if (!string.IsNullOrWhiteSpace(data.RendererMode))
+        {
+            _useOpenGlViewport = string.Equals(data.RendererMode, "opengl", StringComparison.OrdinalIgnoreCase);
+        }
+
+        SetTool(_selectTool);
+        EditorState.StatusMessage = "Ready";
+        RaiseComputed();
+    }
+
+    public void SetSceneStatus(string status)
+    {
+        EditorState.StatusMessage = status;
+        RaiseComputed();
     }
 
     private string FloorStackText(int floor)

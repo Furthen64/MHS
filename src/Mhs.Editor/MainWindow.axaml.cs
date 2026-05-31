@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -91,13 +92,20 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (_currentSceneFile is null)
+        try
         {
-            await SaveSceneAsAsync(vm);
-            return;
-        }
+            if (_currentSceneFile is null)
+            {
+                await SaveSceneAsAsync(vm);
+                return;
+            }
 
-        await SaveSceneToFileAsync(vm, _currentSceneFile);
+            await SaveSceneToFileAsync(vm, _currentSceneFile);
+        }
+        catch (Exception ex) when (ex is IOException or InvalidDataException or JsonException)
+        {
+            vm.SetSceneStatus($"Save failed: {ex.Message}");
+        }
     }
 
     private async void OnSaveSceneAsClick(object? sender, RoutedEventArgs e)
