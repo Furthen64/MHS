@@ -781,7 +781,7 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
             {
                 var nextStart = route.Anchors[i];
                 var nextEnd = route.Anchors[i + 1];
-                if (ConveyorRouteGeometry.TryGetTurnJoinCell(start, end, nextStart, nextEnd, out var joinCell))
+                if (ConveyorRouteRendering.TryGetTurnJoinCell(start, end, nextStart, nextEnd, out var joinCell))
                 {
                     DrawConveyorJoinCap(joinCell, Color.FromRgb(78, 158, 216), 0.42, state);
                 }
@@ -808,7 +808,7 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
                 {
                     var previousStart = route.Anchors[^2];
                     var previousEnd = route.Anchors[^1];
-                    if (ConveyorRouteGeometry.TryGetTurnJoinCell(previousStart, previousEnd, start, end, out var joinCell))
+                    if (ConveyorRouteRendering.TryGetTurnJoinCell(previousStart, previousEnd, start, end, out var joinCell))
                     {
                         DrawConveyorJoinCap(joinCell, previewColor, 0.52, state);
                     }
