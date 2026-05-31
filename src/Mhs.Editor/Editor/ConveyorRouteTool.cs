@@ -124,7 +124,7 @@ public sealed class ConveyorRouteTool : IEditorTool
         {
             var start = finishAnchors[i - 1];
             var end = finishAnchors[i];
-            if (!ValidateSegment(state, draft, start, end, out var segment, out var reason))
+            if (!ValidateSegment(state, draft, start, end, out var segment, out var reason, validateDraftCollisions: false))
             {
                 state.StatusMessage = $"Route blocked: {reason}";
                 return false;
@@ -215,7 +215,8 @@ public sealed class ConveyorRouteTool : IEditorTool
         VoxelCoord start,
         VoxelCoord end,
         out ConveyorRouteSegment segment,
-        out string reason)
+        out string reason,
+        bool validateDraftCollisions = true)
     {
         if (!ConveyorRouteGeometry.TryCreateSegment(start, end, out segment, out var invalid))
         {
@@ -238,7 +239,7 @@ public sealed class ConveyorRouteTool : IEditorTool
                 return false;
             }
 
-            if (draftOccupied.Contains(cell) && cell != start)
+            if (validateDraftCollisions && draftOccupied.Contains(cell) && cell != start)
             {
                 reason = "collision";
                 return false;
