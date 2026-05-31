@@ -663,8 +663,15 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
                 continue;
             }
 
-            DrawIsoBox(segment.Position, segment.Size, Color.FromRgb(78, 158, 216), 0.35, drawOutline: true, state);
-            DrawFacingMarker(segment.Position, segment.Size, segment.RotationZDegrees, renderInfo, 0.35, state);
+            var position = segment.Position;
+            var size = segment.Size;
+            if (i > 1)
+            {
+                ConveyorRouteGeometry.TrimSegmentStartCell(start, end, ref position, ref size);
+            }
+
+            DrawIsoBox(position, size, Color.FromRgb(78, 158, 216), 0.35, drawOutline: true, state);
+            DrawFacingMarker(position, size, segment.RotationZDegrees, renderInfo, 0.35, state);
         }
 
         if (route.Anchors.Count > 0 && route.PreviewEnd.HasValue)
@@ -673,9 +680,16 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
             var end = route.PreviewEnd.Value;
             if (ConveyorRouteGeometry.TryCreateSegment(start, end, out var segment, out _))
             {
+                var position = segment.Position;
+                var size = segment.Size;
+                if (route.Anchors.Count > 1)
+                {
+                    ConveyorRouteGeometry.TrimSegmentStartCell(start, end, ref position, ref size);
+                }
+
                 var previewColor = route.PreviewIsValid ? Color.FromRgb(70, 190, 90) : Color.FromRgb(230, 90, 90);
-                DrawIsoBox(segment.Position, segment.Size, previewColor, 0.45, drawOutline: true, state);
-                DrawFacingMarker(segment.Position, segment.Size, segment.RotationZDegrees, renderInfo, 0.45, state);
+                DrawIsoBox(position, size, previewColor, 0.45, drawOutline: true, state);
+                DrawFacingMarker(position, size, segment.RotationZDegrees, renderInfo, 0.45, state);
             }
         }
 

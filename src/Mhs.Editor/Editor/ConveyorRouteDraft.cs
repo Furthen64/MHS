@@ -103,4 +103,23 @@ public static class ConveyorRouteGeometry
             }
         }
     }
+
+    public static void TrimSegmentStartCell(VoxelCoord start, VoxelCoord end, ref VoxelCoord position, ref VoxelSize size)
+    {
+        if (start.X != end.X)
+        {
+            position = new VoxelCoord(
+                end.X > start.X ? start.X + 1 : end.X,
+                start.Y,
+                start.Z);
+            size = new VoxelSize(Math.Abs(end.X - start.X), 1, 1);
+            return;
+        }
+
+        position = new VoxelCoord(
+            start.X,
+            end.Y > start.Y ? start.Y + 1 : end.Y,
+            start.Z);
+        size = new VoxelSize(1, Math.Abs(end.Y - start.Y), 1);
+    }
 }
