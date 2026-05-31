@@ -1,6 +1,9 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.ComponentModel;
+using System.IO;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using Avalonia.Input;
@@ -105,6 +108,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public bool IsSoftwareViewportMode => !_useOpenGlViewport;
     public bool IsOpenGlViewportMode => _useOpenGlViewport;
     public ViewportInteractionPreset InteractionPreset => _interactionPreset;
+    public bool UseOpenGlViewport => _useOpenGlViewport;
     public string LayerDisplayText => $"Layer: {EditorState.ActiveLayer} of {WorldVerticalSettings.LayersPerFloor - 1}";
     public string AbsoluteZDisplayText => $"Absolute Z: {EditorState.ActiveAbsoluteZ}";
 
@@ -218,6 +222,113 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 routeTool.FinishRoute(EditorState);
                 RaiseComputed();
                 return true;
+            }
+
+            public void NewScene()
+            {
+                LoadSceneFileData(new SceneFileData());
+                EditorState.StatusMessage = "New scene";
+                RaiseComputed();
+            }
+
+            public SceneFileData CreateSceneFileData()
+            {
+                var objects = new List<SceneFileObjectData>(EditorState.Scene.Objects.Count);
+                foreach (var sceneObject in EditorState.Scene.Objects)
+                {
+                    var partDefinition = TryResolvePartDefinition(sceneObject, out var resolvedPartId);
+                    if (string.IsNullOrWhiteSpace(resolvedPartId))
+                    {
+                        throw new InvalidDataException($"Cannot save object with unknown part type '{sceneObject.PartType}'.");
+                    }
+
+                    VoxelSize? sizeOverride = null;
+                    if (partDefinition is null || partDefinition.Size != sceneObject.BaseSize)
+                    {
+                        sizeOverride = sceneObject.BaseSize;
+                    }
+
+                    objects.Add(new SceneFileObjectData
+                    {
+                        PartId = resolvedPartId,
+                        Position = sceneObject.Position,
+                        RotationZDegrees = sceneObject.RotationZDegrees,
+                        SizeOverride = sizeOverride
+                    });
+                }
+
+                return new SceneFileData
+                {
+                    ActiveFloor = EditorState.ActiveFloor,
+                    ActiveLayer = EditorState.ActiveLayer,
+                    RendererMode = _useOpenGlViewport ? "opengl" : "software",
+                    Objects = objects
+                };
+            }
+
+            public void LoadSceneFileData(SceneFileData data)
+            {
+                ArgumentNullException.ThrowIfNull(data);
+
+                var loadedObjects = new List<SceneObject>(data.Objects.Count);
+                foreach (var objectData in data.Objects)
+                {
+                    var partDefinition = ResolvePartDefinition(objectData.PartId);
+                    var baseSize = objectData.SizeOverride ?? partDefinition.Size;
+                    if (baseSize.WidthX <= 0 || baseSize.DepthY <= 0 || baseSize.HeightZ <= 0)
+                    {
+                        throw new InvalidDataException($"Scene object '{objectData.PartId}' has an invalid size.");
+                    }
+
+                    var sceneObject = new SceneObject
+                    {
+                        PartId = partDefinition.Id,
+                        PartType = partDefinition.DisplayName,
+                        Position = objectData.Position,
+                        BaseSize = baseSize,
+                        RotationZDegrees = RotationHelper.NormalizeDegrees(objectData.RotationZDegrees)
+                    };
+
+                    if (!EditorState.IsObjectWithinGrid(sceneObject))
+                    {
+                        throw new InvalidDataException($"Scene object '{objectData.PartId}' is out of bounds.");
+                    }
+
+                    loadedObjects.Add(sceneObject);
+                }
+
+                EditorState.ActiveTool.OnCancel(EditorState);
+                EditorState.Scene.Objects.Clear();
+                foreach (var sceneObject in loadedObjects)
+                {
+                    EditorState.Scene.Objects.Add(sceneObject);
+                }
+
+                EditorState.SelectedObject = null;
+                EditorState.HoveredObject = null;
+                EditorState.HoveredVoxel = null;
+                EditorState.GhostPreview = null;
+                EditorState.ActiveConveyorRoute = null;
+                EditorState.ClearMoveState();
+                EditorState.ClearRotationAxis();
+                EditorState.ActivePlacementRotationZDegrees = 0;
+                EditorState.ActiveFloor = data.ActiveFloor;
+                EditorState.ActiveLayer = data.ActiveLayer;
+
+                if (!string.IsNullOrWhiteSpace(data.RendererMode))
+                {
+                    _useOpenGlViewport = string.Equals(data.RendererMode, "opengl", StringComparison.OrdinalIgnoreCase);
+                }
+
+                SetTool(_selectTool);
+                EditorState.StatusMessage = "Ready";
+                RaiseComputed();
+            }
+
+            public void SetSceneStatus(string status)
+            {
+                EditorState.StatusMessage = status;
+                RaiseComputed();
             }
 
             switch (key)
@@ -354,6 +465,46 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         _useOpenGlViewport = useOpenGl;
         RaiseComputed();
+    }
+
+    private PartDefinition ResolvePartDefinition(string partId)
+    {
+        if (TryResolvePartDefinition(partId) is { } definition)
+        {
+            return definition;
+        }
+
+        throw new InvalidDataException($"Unknown part id '{partId}'.");
+    }
+
+    private PartDefinition? TryResolvePartDefinition(string partId)
+    {
+        if (string.IsNullOrWhiteSpace(partId))
+        {
+            return null;
+        }
+
+        return EditorState.PartDefinitions.FirstOrDefault(part =>
+            string.Equals(part.Id, partId, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(part.DisplayName, partId, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private PartDefinition? TryResolvePartDefinition(SceneObject sceneObject, out string partId)
+    {
+        if (TryResolvePartDefinition(sceneObject.PartId) is { } byId)
+        {
+            partId = byId.Id;
+            return byId;
+        }
+
+        if (TryResolvePartDefinition(sceneObject.PartType) is { } byType)
+        {
+            partId = byType.Id;
+            return byType;
+        }
+
+        partId = string.Empty;
+        return null;
     }
 
     private void RotateAction()
