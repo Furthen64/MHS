@@ -27,12 +27,12 @@
                 </MenuItem>
             </MenuItem>
             <MenuItem Header="_File">
-                <MenuItem Header="_New" />
-                <MenuItem Header="_Open..." />
-                <MenuItem Header="_Save" />
-                <MenuItem Header="Save _As..." />
+                <MenuItem Header="_New" Click="OnNewSceneClick" />
+                <MenuItem Header="_Open..." Click="OnOpenSceneClick" />
+                <MenuItem Header="_Save" Click="OnSaveSceneClick" />
+                <MenuItem Header="Save _As..." Click="OnSaveSceneAsClick" />
                 <Separator />
-                <MenuItem Header="E_xit" />
+                <MenuItem Header="E_xit" Click="OnExitClick" />
             </MenuItem>
         </Menu>
 

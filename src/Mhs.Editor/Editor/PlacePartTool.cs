@@ -47,6 +47,7 @@ public sealed class PlacePartTool : IEditorTool
 
         var sceneObject = new SceneObject
         {
+            PartId = _partDefinition.Id,
             PartType = _partDefinition.DisplayName,
             Position = position,
             BaseSize = _partDefinition.Size,

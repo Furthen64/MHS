@@ -153,6 +153,7 @@ public sealed class ConveyorRouteTool : IEditorTool
 
             created.Add(new SceneObject
             {
+                PartId = "conveyor",
                 PartType = "Conveyor",
                 Position = position,
                 BaseSize = size,
