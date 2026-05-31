@@ -130,11 +130,18 @@ public sealed class ConveyorRouteTool : IEditorTool
                 return false;
             }
 
+            var position = segment.Position;
+            var size = segment.Size;
+            if (i > 1)
+            {
+                TrimSegmentStartCell(start, end, ref position, ref size);
+            }
+
             created.Add(new SceneObject
             {
                 PartType = "Conveyor",
-                Position = segment.Position,
-                BaseSize = segment.Size,
+                Position = position,
+                BaseSize = size,
                 RotationZDegrees = segment.RotationZDegrees
             });
         }
@@ -278,6 +285,25 @@ public sealed class ConveyorRouteTool : IEditorTool
 
                 return false;
             }
+
+    private static void TrimSegmentStartCell(VoxelCoord start, VoxelCoord end, ref VoxelCoord position, ref VoxelSize size)
+    {
+        if (start.X != end.X)
+        {
+            position = new VoxelCoord(
+                end.X > start.X ? start.X + 1 : end.X,
+                start.Y,
+                start.Z);
+            size = new VoxelSize(Math.Abs(end.X - start.X), 1, 1);
+            return;
+        }
+
+        position = new VoxelCoord(
+            start.X,
+            end.Y > start.Y ? start.Y + 1 : end.Y,
+            start.Z);
+        size = new VoxelSize(1, Math.Abs(end.Y - start.Y), 1);
+    }
 
             private static int GetPreviewLength(VoxelCoord start, VoxelCoord end)
                 => Math.Abs(end.X - start.X) + Math.Abs(end.Y - start.Y) + 1;
