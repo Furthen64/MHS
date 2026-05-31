@@ -89,7 +89,7 @@ public sealed class ConveyorRouteTool : IEditorTool
 
         draft.Anchors.Add(segment.End);
         draft.PreviewEnd = null;
-        draft.PreviewIsValid = true;
+        draft.PreviewIsValid = false;
         draft.InvalidReason = null;
         draft.PreviewRotationZDegrees = null;
         state.StatusMessage = $"Route | Anchors: {draft.Anchors.Count} | Enter: finish | Esc: cancel";
@@ -137,11 +137,15 @@ public sealed class ConveyorRouteTool : IEditorTool
                 TrimSegmentStartCell(start, end, ref position, ref size);
             }
 
+            // Normalize to canonical (length, 1, 1) so EffectiveSize correctly reflects
+            // the physical footprint for all rotation angles. Without this, Y-axis segments
+            // (rotation=90/270) have swapped WidthX/DepthY in their EffectiveSize.
+            var segmentLength = segment.RotationZDegrees is 90 or 270 ? size.DepthY : size.WidthX;
             created.Add(new SceneObject
             {
                 PartType = "Conveyor",
                 Position = position,
-                BaseSize = size,
+                BaseSize = new VoxelSize(segmentLength, 1, 1),
                 RotationZDegrees = segment.RotationZDegrees
             });
         }
@@ -280,11 +284,11 @@ public sealed class ConveyorRouteTool : IEditorTool
                 cell.Z >= existing.MinZ && cell.Z <= existing.MaxZ)
             {
                 return true;
-                    }
-                }
-
-                return false;
             }
+        }
+
+        return false;
+    }
 
     private static void TrimSegmentStartCell(VoxelCoord start, VoxelCoord end, ref VoxelCoord position, ref VoxelSize size)
     {
@@ -305,6 +309,6 @@ public sealed class ConveyorRouteTool : IEditorTool
         size = new VoxelSize(1, Math.Abs(end.Y - start.Y), 1);
     }
 
-            private static int GetPreviewLength(VoxelCoord start, VoxelCoord end)
-                => Math.Abs(end.X - start.X) + Math.Abs(end.Y - start.Y) + 1;
+    private static int GetPreviewLength(VoxelCoord start, VoxelCoord end)
+        => Math.Abs(end.X - start.X) + Math.Abs(end.Y - start.Y) + 1;
 }
