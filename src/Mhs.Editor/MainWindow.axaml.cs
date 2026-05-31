@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Interactivity;
 using Mhs.Editor.ViewModels;
 
 namespace Mhs.Editor;
@@ -10,7 +11,7 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         DataContext = new MainWindowViewModel();
-        KeyDown += OnKeyDown;
+        AddHandler(KeyDownEvent, OnKeyDown, RoutingStrategies.Tunnel, handledEventsToo: true);
     }
 
     private void OnKeyDown(object? sender, KeyEventArgs e)
@@ -20,8 +21,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        vm.HandleKeyDown(e.Key);
-        if (e.Key is Key.R or Key.Delete or Key.Back or Key.M or Key.Escape or Key.Enter)
+        if (vm.HandleKeyDown(e.Key))
         {
             e.Handled = true;
         }
