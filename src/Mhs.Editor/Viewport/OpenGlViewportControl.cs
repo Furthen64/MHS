@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Linq;
@@ -139,6 +140,7 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
         DrawFloorOutlines(state.ActiveFloor);
         DrawGrid(state.ActiveAbsoluteZ);
 
+        var conveyorCellsByObject = ConveyorRouteCellVisualization.BuildSceneObjectCells(state.Scene.Objects);
         foreach (var renderable in SceneRenderOrder.GetVisibleBackToFront(state, Bounds))
         {
             var sceneObject = renderable.SceneObject;
@@ -170,7 +172,7 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
             var color = renderInfo.BaseColor.ToAvaloniaColor();
             if (string.Equals(sceneObject.PartType, "Conveyor", StringComparison.OrdinalIgnoreCase))
             {
-                DrawConveyorStrip(drawPosition, drawSize, drawRotation, color, renderInfo, opacity, false, state);
+                DrawConveyorCells(sceneObject, drawPosition, drawSize, drawRotation, color, renderInfo, opacity, state, conveyorCellsByObject);
             }
             else
             {
@@ -178,8 +180,6 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
                 DrawFacingMarker(drawPosition, drawSize, drawRotation, renderInfo, opacity, state);
             }
         }
-
-        DrawConveyorSceneJoins(state);
 
         if (state.IsMovingSelection && state.SelectedObject is { } moving && state.MovePreviewPosition is { } target)
         {
@@ -611,9 +611,9 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
 
             var markerColor = status.Status switch
             {
-                PortConnectionStatus.Connected => Color.FromRgb(74, 224, 120),
-                PortConnectionStatus.Invalid => Color.FromRgb(244, 94, 94),
-                _ => Color.FromRgb(255, 214, 96)
+                PortConnectionStatus.Connected => Color.FromArgb(185, 74, 224, 120),
+                PortConnectionStatus.Invalid => Color.FromArgb(190, 244, 94, 94),
+                _ => Color.FromArgb(170, 255, 214, 96)
             };
 
             var (dx, dy, dz) = port.Direction.ToVector();
@@ -624,11 +624,11 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
             DrawPortMarker(center, port.Kind, markerColor, status.Status);
 
             var directionTip = Project(
-                markerX + dx * 0.38,
-                markerY + dy * 0.38,
+                markerX + dx * 0.26,
+                markerY + dy * 0.26,
                 markerZ + dz * 0.22,
                 state);
-            _renderer.AddLine(center, directionTip, markerColor, 0.95);
+            _renderer.AddLine(center, directionTip, markerColor, 0.55);
         }
 
         foreach (var connection in snapshot.Connections)
@@ -688,12 +688,12 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
             return;
         }
 
-        const double radius = 6.2;
+        const double radius = 4.6;
         var a = new Point(center.X, center.Y - radius);
         var b = new Point(center.X + radius, center.Y);
         var c = new Point(center.X, center.Y + radius);
         var d = new Point(center.X - radius, center.Y);
-        _renderer.AddFilledQuad(a, b, c, d, color, 0.95);
+        _renderer.AddFilledQuad(a, b, c, d, color, 0.72);
 
         var accent = status == PortConnectionStatus.Invalid
             ? Color.FromArgb(255, 255, 230, 230)
@@ -707,7 +707,7 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
                     new Point(center.X - inner * 0.75, center.Y - inner * 0.65),
                     new Point(center.X - inner * 0.75, center.Y + inner * 0.65),
                     accent,
-                    0.95);
+                    0.74);
                 break;
             case PortKind.Input:
                 _renderer.AddFilledQuad(
@@ -716,7 +716,7 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
                     new Point(center.X + inner, center.Y + inner),
                     new Point(center.X - inner, center.Y + inner),
                     accent,
-                    0.95);
+                    0.74);
                 break;
             default:
                 _renderer.AddFilledQuad(
@@ -725,7 +725,7 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
                     new Point(center.X, center.Y + inner),
                     new Point(center.X - inner, center.Y),
                     accent,
-                    0.95);
+                    0.74);
                 break;
         }
     }
@@ -793,6 +793,108 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
             DrawOutline(position, size, outline, Math.Min(opacity + 0.3, 1), state);
         }
     }
+
+    private void DrawConveyorCells(
+        SceneObject sceneObject,
+        VoxelCoord fallbackPosition,
+        VoxelSize fallbackSize,
+        int fallbackRotationZDegrees,
+        Color color,
+        PartRenderInfo renderInfo,
+        double opacity,
+        EditorState state,
+        IReadOnlyDictionary<Guid, IReadOnlyList<ConveyorVisualCell>> cellsByObject)
+    {
+        if (!cellsByObject.TryGetValue(sceneObject.Id, out var cells) || cells.Count == 0)
+        {
+            DrawConveyorStrip(fallbackPosition, fallbackSize, fallbackRotationZDegrees, color, renderInfo, opacity, false, state);
+            return;
+        }
+
+        foreach (var cell in cells)
+        {
+            DrawConveyorCell(cell, color, opacity, state);
+        }
+    }
+
+    private void DrawConveyorCell(ConveyorVisualCell cell, Color color, double opacity, EditorState state)
+    {
+        if (_renderer is null)
+        {
+            return;
+        }
+
+        var visualHeight = 0.28;
+        var x0 = cell.Position.X;
+        var x1 = cell.Position.X + 1;
+        var y0 = cell.Position.Y;
+        var y1 = cell.Position.Y + 1;
+        var z0 = cell.Position.Z;
+        var z1 = cell.Position.Z + visualHeight;
+
+        var topA = Project(x0, y0, z1, state);
+        var topB = Project(x1, y0, z1, state);
+        var topC = Project(x1, y1, z1, state);
+        var topD = Project(x0, y1, z1, state);
+
+        var bottomB = Project(x1, y0, z0, state);
+        var bottomC = Project(x1, y1, z0, state);
+        var bottomD = Project(x0, y1, z0, state);
+
+        _renderer.AddFilledQuad(topA, topB, topC, topD, Darken(color, 0.92), opacity);
+        _renderer.AddFilledQuad(topB, bottomB, bottomC, topC, Darken(color, 0.70), opacity * 0.7);
+        _renderer.AddFilledQuad(topD, topC, bottomC, bottomD, Darken(color, 0.58), opacity * 0.7);
+
+        DrawOutline(cell.Position, new VoxelSize(1, 1, 1), Color.FromRgb(226, 226, 226), Math.Min(opacity + 0.16, 1), state);
+        DrawConveyorCellFlow(cell, opacity, state);
+    }
+
+    private void DrawConveyorCellFlow(ConveyorVisualCell cell, double opacity, EditorState state)
+    {
+        if (_renderer is null)
+        {
+            return;
+        }
+
+        var z = cell.Position.Z + 0.31;
+        var centerX = cell.Position.X + 0.5;
+        var centerY = cell.Position.Y + 0.5;
+        var flowColor = cell.Kind == ConveyorVisualCellKind.Corner
+            ? Color.FromRgb(255, 214, 96)
+            : Color.FromRgb(255, 228, 112);
+
+        if (cell.EntryDirection.HasValue)
+        {
+            var toEntrySide = cell.EntryDirection.Value.Opposite();
+            var (entryDx, entryDy) = DirectionToPlanarVector(toEntrySide);
+            var entryPoint = Project(centerX + entryDx * 0.32, centerY + entryDy * 0.32, z, state);
+            var center = Project(centerX, centerY, z, state);
+            _renderer.AddLine(entryPoint, center, flowColor, Math.Min(opacity + 0.24, 1.0));
+        }
+
+        var arrowDirection = cell.ExitDirection ?? cell.MainFlowDirection;
+        var (arrowDx, arrowDy) = DirectionToPlanarVector(arrowDirection);
+        var centerPoint = Project(centerX, centerY, z, state);
+        var tip = Project(centerX + arrowDx * 0.32, centerY + arrowDy * 0.32, z, state);
+        _renderer.AddLine(centerPoint, tip, flowColor, Math.Min(opacity + 0.24, 1.0));
+
+        var perpX = -arrowDy;
+        var perpY = arrowDx;
+        var baseX = centerX + arrowDx * 0.18;
+        var baseY = centerY + arrowDy * 0.18;
+        var arrowA = Project(baseX + perpX * 0.10, baseY + perpY * 0.10, z, state);
+        var arrowB = Project(baseX - perpX * 0.10, baseY - perpY * 0.10, z, state);
+        _renderer.AddFilledTriangle(tip, arrowA, arrowB, flowColor, Math.Min(opacity + 0.20, 1.0));
+    }
+
+    private static (double X, double Y) DirectionToPlanarVector(PortDirection direction) => direction switch
+    {
+        PortDirection.PositiveX => (1, 0),
+        PortDirection.NegativeX => (-1, 0),
+        PortDirection.PositiveY => (0, 1),
+        PortDirection.NegativeY => (0, -1),
+        _ => (0, 0)
+    };
 
     private void DrawConveyorStrip(VoxelCoord position, VoxelSize size, int rotationZDegrees, Color color,
         PartRenderInfo renderInfo, double opacity, bool drawOutline, EditorState state)
