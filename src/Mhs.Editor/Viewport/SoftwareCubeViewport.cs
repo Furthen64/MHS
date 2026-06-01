@@ -744,10 +744,15 @@ public sealed class SoftwareCubeViewport : Control
 
     private static bool CanStartPan(PointerPointProperties pointerProperties, EditorState? state)
         => pointerProperties.IsMiddleButtonPressed
-            || (pointerProperties.IsRightButtonPressed && state?.IsSelectionRotationMode != true);
+            || (pointerProperties.IsRightButtonPressed
+                && state?.IsSelectionRotationMode != true
+                && !CanFinishActiveRoute(state));
 
     private static bool IsPanReleased(PointerPointProperties pointerProperties)
         => !pointerProperties.IsMiddleButtonPressed && !pointerProperties.IsRightButtonPressed;
+
+    private static bool CanFinishActiveRoute(EditorState? state)
+        => state?.ActiveTool is ConveyorRouteTool routeTool && routeTool.HasFinishableRoute(state);
 
     private static Color Darken(Color color, double factor)
     {

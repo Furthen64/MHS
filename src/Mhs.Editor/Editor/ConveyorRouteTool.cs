@@ -6,6 +6,7 @@ namespace Mhs.Editor.Editor;
 public sealed class ConveyorRouteTool : IEditorTool
 {
     private bool _awaitingLeftButtonRelease;
+    private const string FinishHint = "Enter/RMB: finish | Esc: cancel";
 
     public string Name => "Conveyor Route";
 
@@ -14,13 +15,15 @@ public sealed class ConveyorRouteTool : IEditorTool
         var state = context.EditorState;
         state.HoveredVoxel = context.HoveredVoxel;
         state.HoveredObject = null;
-        state.GhostPreview = null;
 
         var draft = state.ActiveConveyorRoute;
         if (draft is null || draft.Anchors.Count == 0)
         {
+            UpdateStartGhost(state, context.HoveredVoxel);
             return;
         }
+
+        state.GhostPreview = null;
 
         if (!context.HoveredVoxel.HasValue)
         {
@@ -37,7 +40,7 @@ public sealed class ConveyorRouteTool : IEditorTool
         var end = ConveyorRouteGeometry.SnapToDominantAxis(start, snapped);
         ApplyPreviewValidation(state, draft, start, end);
         state.StatusMessage = draft.PreviewIsValid
-            ? $"Route | Anchors: {draft.Anchors.Count} | Preview length: {GetPreviewLength(start, end)} | Valid | Enter: finish | Esc: cancel"
+            ? $"Route | Anchors: {draft.Anchors.Count} | Preview length: {GetPreviewLength(start, end)} | Valid | {FinishHint}"
             : $"Route blocked: {draft.InvalidReason ?? "invalid"}";
     }
 
@@ -45,6 +48,11 @@ public sealed class ConveyorRouteTool : IEditorTool
     {
         if (context.IsRightButtonPressed)
         {
+            if (FinishRoute(context.EditorState))
+            {
+                context.EditorState.GhostPreview = null;
+            }
+
             return;
         }
 
@@ -80,7 +88,7 @@ public sealed class ConveyorRouteTool : IEditorTool
             };
             draft.Anchors.Add(hovered);
             state.ActiveConveyorRoute = draft;
-            state.StatusMessage = "Route | Anchors: 1 | Click next anchor | Enter: finish | Esc: cancel";
+            state.StatusMessage = $"Route | Anchors: 1 | Click next anchor | {FinishHint}";
             return;
         }
 
@@ -101,7 +109,7 @@ public sealed class ConveyorRouteTool : IEditorTool
         draft.PreviewIsValid = true;
         draft.InvalidReason = null;
         draft.PreviewRotationZDegrees = null;
-        state.StatusMessage = $"Route | Anchors: {draft.Anchors.Count} | Enter: finish | Esc: cancel";
+        state.StatusMessage = $"Route | Anchors: {draft.Anchors.Count} | {FinishHint}";
     }
 
     public void OnPointerReleased(ViewportPointerContext context)
@@ -117,6 +125,7 @@ public sealed class ConveyorRouteTool : IEditorTool
     {
         _awaitingLeftButtonRelease = false;
         editorState.ActiveConveyorRoute = null;
+        editorState.GhostPreview = null;
     }
 
     public bool HasFinishableRoute(EditorState state)
@@ -214,10 +223,43 @@ public sealed class ConveyorRouteTool : IEditorTool
             draft.PreviewIsValid = false;
             draft.InvalidReason = null;
             draft.PreviewRotationZDegrees = null;
-            state.StatusMessage = $"Route | Anchors: {draft.Anchors.Count} | Enter: finish | Esc: cancel";
+            state.StatusMessage = $"Route | Anchors: {draft.Anchors.Count} | {FinishHint}";
         }
 
         return true;
+    }
+
+    private static void UpdateStartGhost(EditorState state, VoxelCoord? hoveredVoxel)
+    {
+        if (!hoveredVoxel.HasValue || TryGetConveyorPart(state) is not { } conveyorPart)
+        {
+            state.GhostPreview = null;
+            return;
+        }
+
+        var position = hoveredVoxel.Value with { Z = state.ActiveAbsoluteZ };
+        var validation = state.ValidatePartPlacement(conveyorPart, position, 0);
+        state.GhostPreview = new GhostPreview
+        {
+            Part = conveyorPart,
+            Position = position,
+            RotationZDegrees = 0,
+            IsValid = validation.IsValid,
+            InvalidReason = validation.Reason
+        };
+    }
+
+    private static PartDefinition? TryGetConveyorPart(EditorState state)
+    {
+        foreach (var part in state.PartDefinitions)
+        {
+            if (string.Equals(part.Id, "conveyor", StringComparison.Ordinal))
+            {
+                return part;
+            }
+        }
+
+        return null;
     }
 
     private static void ApplyPreviewValidation(EditorState state, ConveyorRouteDraft draft, VoxelCoord start, VoxelCoord end)
