@@ -900,16 +900,16 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
             var pivot = Project(pivotX, pivotY, z, state);
             _renderer.AddLine(entryPoint, pivot, flowColor, glyphOpacity);
 
-            var tip = Project(centerX + exitDx * 0.37, centerY + exitDy * 0.37, z, state);
-            _renderer.AddLine(pivot, tip, flowColor, glyphOpacity);
+            var cornerTip = Project(centerX + exitDx * 0.37, centerY + exitDy * 0.37, z, state);
+            _renderer.AddLine(pivot, cornerTip, flowColor, glyphOpacity);
 
-            var perpX = -exitDy;
-            var perpY = exitDx;
-            var baseX = centerX + exitDx * 0.18;
-            var baseY = centerY + exitDy * 0.18;
-            var arrowA = Project(baseX + perpX * 0.14, baseY + perpY * 0.14, z, state);
-            var arrowB = Project(baseX - perpX * 0.14, baseY - perpY * 0.14, z, state);
-            _renderer.AddFilledTriangle(tip, arrowA, arrowB, flowColor, glyphOpacity);
+            var cornerPerpX = -exitDy;
+            var cornerPerpY = exitDx;
+            var cornerBaseX = centerX + exitDx * 0.18;
+            var cornerBaseY = centerY + exitDy * 0.18;
+            var cornerArrowA = Project(cornerBaseX + cornerPerpX * 0.14, cornerBaseY + cornerPerpY * 0.14, z, state);
+            var cornerArrowB = Project(cornerBaseX - cornerPerpX * 0.14, cornerBaseY - cornerPerpY * 0.14, z, state);
+            _renderer.AddFilledTriangle(cornerTip, cornerArrowA, cornerArrowB, flowColor, glyphOpacity);
             return;
         }
 
