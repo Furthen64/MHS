@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
+using System.Xml.Linq;
 
 namespace Mhs.Editor.Settings;
 
@@ -42,43 +44,26 @@ public static class GpuDiscoveryService
 
     private static IReadOnlyList<GpuOption> DiscoverFromDxdiag()
     {
-        var tempFile = Path.Combine(Path.GetTempPath(), $"mhs-dxdiag-{Guid.NewGuid():N}.txt");
+        var tempXmlFile = Path.Combine(Path.GetTempPath(), $"mhs-dxdiag-{Guid.NewGuid():N}.xml");
+        var tempTextFile = Path.Combine(Path.GetTempPath(), $"mhs-dxdiag-{Guid.NewGuid():N}.txt");
 
         try
         {
-            var startInfo = new ProcessStartInfo
+            if (TryRunDxdiag($"/whql:off /x \"{tempXmlFile}\"") && File.Exists(tempXmlFile))
             {
-                FileName = "dxdiag",
-                Arguments = $"/whql:off /t \"{tempFile}\"",
-                CreateNoWindow = true,
-                UseShellExecute = false
-            };
-
-            using var process = Process.Start(startInfo);
-            if (process is null)
-            {
-                return [];
-            }
-
-            if (!process.WaitForExit(15000))
-            {
-                try
+                var parsedXml = ParseXml(tempXmlFile);
+                if (parsedXml.Count > 0)
                 {
-                    process.Kill(entireProcessTree: true);
+                    return parsedXml;
                 }
-                catch
-                {
-                    // ignored
-                }
-                return [];
             }
 
-            if (!File.Exists(tempFile))
+            if (!TryRunDxdiag($"/whql:off /t \"{tempTextFile}\"") || !File.Exists(tempTextFile))
             {
                 return [];
             }
 
-            var lines = File.ReadAllLines(tempFile);
+            var lines = File.ReadAllLines(tempTextFile);
             return Parse(lines);
         }
         catch
@@ -89,9 +74,14 @@ public static class GpuDiscoveryService
         {
             try
             {
-                if (File.Exists(tempFile))
+                if (File.Exists(tempXmlFile))
                 {
-                    File.Delete(tempFile);
+                    File.Delete(tempXmlFile);
+                }
+
+                if (File.Exists(tempTextFile))
+                {
+                    File.Delete(tempTextFile);
                 }
             }
             catch
@@ -99,6 +89,107 @@ public static class GpuDiscoveryService
                 // ignored
             }
         }
+    }
+
+    private static bool TryRunDxdiag(string arguments)
+    {
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = "dxdiag",
+            Arguments = arguments,
+            CreateNoWindow = true,
+            UseShellExecute = false
+        };
+
+        using var process = Process.Start(startInfo);
+        if (process is null)
+        {
+            return false;
+        }
+
+        if (process.WaitForExit(15000))
+        {
+            return process.ExitCode == 0;
+        }
+
+        try
+        {
+            process.Kill(entireProcessTree: true);
+        }
+        catch
+        {
+            // ignored
+        }
+
+        return false;
+    }
+
+    private static IReadOnlyList<GpuOption> ParseXml(string filePath)
+    {
+        var document = XDocument.Load(filePath);
+        var gpus = document
+            .Descendants()
+            .Where(node => node.Name.LocalName.Equals("DisplayDevice", StringComparison.OrdinalIgnoreCase))
+            .Select(node =>
+            {
+                var name = GetFirstValue(node, "CardName", "Description", "DeviceName");
+                if (string.IsNullOrWhiteSpace(name))
+                {
+                    return null;
+                }
+
+                var deviceType = GetFirstValue(node, "DeviceType") ?? "Unknown";
+                if (deviceType.Contains("Display-Only", StringComparison.OrdinalIgnoreCase))
+                {
+                    return null;
+                }
+
+                var deviceKey = GetFirstValue(node, "DeviceKey", "PNPDeviceID", "PnpDeviceId") ?? string.Empty;
+                var vendorId = ExtractVendorId(deviceKey);
+
+                return new GpuOption
+                {
+                    Name = name,
+                    DeviceType = deviceType,
+                    VendorId = vendorId
+                };
+            })
+            .Where(gpu => gpu is not null)
+            .Select(gpu => gpu!)
+            .GroupBy(g => $"{g.Name}|{g.DeviceType}|{g.VendorId}", StringComparer.OrdinalIgnoreCase)
+            .Select(g => g.First())
+            .ToArray();
+
+        return gpus;
+    }
+
+    private static string? GetFirstValue(XElement node, params string[] names)
+    {
+        foreach (var name in names)
+        {
+            var value = node.Elements()
+                .FirstOrDefault(element => element.Name.LocalName.Equals(name, StringComparison.OrdinalIgnoreCase))
+                ?.Value
+                .Trim();
+
+            if (!string.IsNullOrWhiteSpace(value))
+            {
+                return value;
+            }
+        }
+
+        return null;
+    }
+
+    private static string ExtractVendorId(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return string.Empty;
+        }
+
+        var match = Regex.Match(value, @"VEN_([0-9A-F]{4})", RegexOptions.IgnoreCase);
+        return match.Success ? match.Groups[1].Value.ToUpperInvariant() : string.Empty;
     }
 
     private static IReadOnlyList<GpuOption> Parse(IReadOnlyList<string> lines)
