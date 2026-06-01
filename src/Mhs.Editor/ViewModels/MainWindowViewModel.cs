@@ -260,6 +260,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         switch (key)
         {
+            case Key.Space:
+                ResetToSelectAndClearSelection();
+                break;
             case Key.R:
                 RotateAction();
                 break;
@@ -568,6 +571,26 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         EditorState.StartSelectionRotation(selected);
         EditorState.StatusMessage = "Rotate";
+    }
+
+    private void ResetToSelectAndClearSelection()
+    {
+        if (EditorState.ActiveTool is not SelectTool)
+        {
+            SetTool(_selectTool);
+        }
+        else
+        {
+            EditorState.ActiveTool.OnCancel(EditorState);
+            EditorState.ClearMoveState();
+            EditorState.ClearSelectionRotationMode();
+        }
+
+        EditorState.SelectedObject = null;
+        EditorState.HoveredObject = null;
+        EditorState.GhostPreview = null;
+        EditorState.ActiveConveyorRoute = null;
+        EditorState.StatusMessage = "Ready";
     }
 
     private void DeleteSelection()
