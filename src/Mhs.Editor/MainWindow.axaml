@@ -53,7 +53,6 @@
                     <RadioButton Content="Select" GroupName="Tools" IsChecked="{Binding IsSelectActive}" Command="{Binding SelectToolCommand}" />
                     <RadioButton Content="Hopper" GroupName="Tools" IsChecked="{Binding IsHopperActive}" Command="{Binding HopperToolCommand}" />
                     <RadioButton Content="Bin" GroupName="Tools" IsChecked="{Binding IsBinActive}" Command="{Binding BinToolCommand}" />
-                    <RadioButton Content="Conveyor" GroupName="Tools" IsChecked="{Binding IsConveyorActive}" Command="{Binding ConveyorToolCommand}" />
                     <RadioButton Content="Conveyor Route" GroupName="Tools" IsChecked="{Binding IsConveyorRouteActive}" Command="{Binding ConveyorRouteToolCommand}" />
                     <RadioButton Content="Chute" GroupName="Tools" IsChecked="{Binding IsChuteActive}" Command="{Binding ChuteToolCommand}" />
                     <RadioButton Content="Tall Hopper" GroupName="Tools" IsChecked="{Binding IsTallHopperActive}" Command="{Binding TallHopperToolCommand}" />

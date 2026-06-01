@@ -48,9 +48,6 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 case "bin":
                     BinToolCommand = new RelayCommand(() => SetTool(new PlacePartTool(part)));
                     break;
-                case "conveyor":
-                    ConveyorToolCommand = new RelayCommand(() => SetTool(new PlacePartTool(part)));
-                    break;
                 case "chute":
                     ChuteToolCommand = new RelayCommand(() => SetTool(new PlacePartTool(part)));
                     break;
@@ -62,7 +59,6 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         HopperToolCommand ??= new RelayCommand(() => { });
         BinToolCommand ??= new RelayCommand(() => { });
-        ConveyorToolCommand ??= new RelayCommand(() => { });
         ChuteToolCommand ??= new RelayCommand(() => { });
         TallHopperToolCommand ??= new RelayCommand(() => { });
 
@@ -77,7 +73,6 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand ConveyorRouteToolCommand { get; }
     public ICommand HopperToolCommand { get; }
     public ICommand BinToolCommand { get; }
-    public ICommand ConveyorToolCommand { get; }
     public ICommand ChuteToolCommand { get; }
     public ICommand TallHopperToolCommand { get; }
     public ICommand Floor0Command { get; }
@@ -94,7 +89,6 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public bool IsSelectActive => EditorState.ActiveTool is SelectTool;
     public bool IsHopperActive => EditorState.ActiveTool.Name == "Hopper";
     public bool IsBinActive => EditorState.ActiveTool.Name == "Bin";
-    public bool IsConveyorActive => EditorState.ActiveTool.Name == "Conveyor";
     public bool IsConveyorRouteActive => EditorState.ActiveTool is ConveyorRouteTool;
     public bool IsChuteActive => EditorState.ActiveTool.Name == "Chute";
     public bool IsTallHopperActive => EditorState.ActiveTool.Name == "Tall Hopper";
@@ -684,7 +678,6 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(IsSelectActive));
         OnPropertyChanged(nameof(IsHopperActive));
         OnPropertyChanged(nameof(IsBinActive));
-        OnPropertyChanged(nameof(IsConveyorActive));
         OnPropertyChanged(nameof(IsConveyorRouteActive));
         OnPropertyChanged(nameof(IsChuteActive));
         OnPropertyChanged(nameof(IsTallHopperActive));
