@@ -1,17 +1,14 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
-using CommunityToolkit.Mvvm.ComponentModel;
 using Mhs.Editor.Settings;
 
 namespace Mhs.Editor.ViewModels;
 
-public partial class OnboardingWizardViewModel : ViewModelBase
+public sealed class OnboardingWizardViewModel
 {
     public ObservableCollection<GpuOption> AvailableGpus { get; }
-
-    [ObservableProperty]
-    private GpuOption? _selectedGpu;
+    public GpuOption? SelectedGpu { get; set; }
 
     public OnboardingWizardViewModel(IReadOnlyList<GpuOption> gpus, string preferredGpuName)
     {
