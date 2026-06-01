@@ -15,14 +15,14 @@ public sealed class AppPreferencesStore
 
     public AppPreferencesStore()
     {
-        var root = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        if (string.IsNullOrWhiteSpace(root))
+        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        if (string.IsNullOrWhiteSpace(home))
         {
-            root = AppContext.BaseDirectory;
+            home = AppContext.BaseDirectory;
         }
 
-        var settingsDir = Path.Combine(root, "Mhs.Editor");
-        _filePath = Path.Combine(settingsDir, "preferences.json");
+        var settingsDir = Path.Combine(home, ".config", "MHS");
+        _filePath = Path.Combine(settingsDir, "mhs.json");
     }
 
     public AppPreferences Load()
