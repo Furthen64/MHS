@@ -200,8 +200,10 @@ public sealed class ConveyorRouteTool : IEditorTool
             state.Scene.Objects.Add(sceneObject);
         }
 
-        state.SelectedObject = created.Count > 0 ? created[^1] : null;
         state.ActiveConveyorRoute = null;
+        state.SelectedObject = null;
+        state.HoveredObject = null;
+        state.ActiveTool = new SelectTool();
         state.StatusMessage = created.Count > 0 ? $"Route finished: {created.Count} segment(s)" : "Route needs at least one point";
         return created.Count > 0;
     }
