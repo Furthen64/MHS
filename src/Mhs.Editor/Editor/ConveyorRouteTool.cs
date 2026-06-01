@@ -108,6 +108,7 @@ public sealed class ConveyorRouteTool : IEditorTool
     {
         if (!context.IsLeftButtonPressed)
         {
+            TryFinishDragRoute(context.EditorState);
             _awaitingLeftButtonRelease = false;
         }
     }
@@ -216,6 +217,22 @@ public sealed class ConveyorRouteTool : IEditorTool
         draft.PreviewIsValid = false;
         draft.InvalidReason = reason;
         draft.PreviewRotationZDegrees = null;
+    }
+
+    private void TryFinishDragRoute(EditorState state)
+    {
+        var draft = state.ActiveConveyorRoute;
+        if (!_awaitingLeftButtonRelease
+            || draft is null
+            || draft.Anchors.Count != 1
+            || !draft.PreviewIsValid
+            || draft.PreviewEnd is not { } previewEnd
+            || draft.Anchors[0] == previewEnd)
+        {
+            return;
+        }
+
+        FinishRoute(state);
     }
 
     private static bool TryGetFinishAnchors(ConveyorRouteDraft draft, out List<VoxelCoord> finishAnchors)
