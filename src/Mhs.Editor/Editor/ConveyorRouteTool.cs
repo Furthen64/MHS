@@ -134,6 +134,23 @@ public sealed class ConveyorRouteTool : IEditorTool
             return false;
         }
 
+        return FinishRoute(state, draft, finishAnchors);
+    }
+
+    public bool FinishCommittedRoute(EditorState state)
+    {
+        var draft = state.ActiveConveyorRoute;
+        if (draft is null || draft.Anchors.Count < 2)
+        {
+            state.StatusMessage = "Route needs at least two points";
+            return false;
+        }
+
+        return FinishRoute(state, draft, draft.Anchors);
+    }
+
+    private static bool FinishRoute(EditorState state, ConveyorRouteDraft draft, IReadOnlyList<VoxelCoord> finishAnchors)
+    {
         var created = new List<SceneObject>();
         for (var i = 1; i < finishAnchors.Count; i++)
         {
