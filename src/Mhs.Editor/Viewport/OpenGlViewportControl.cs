@@ -145,7 +145,9 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
             var visibility = renderable.Visibility;
 
             var drawPosition = sceneObject.Position;
-            var drawRotation = sceneObject.RotationZDegrees;
+            var drawRotation = sceneObject.IsConveyor
+                ? sceneObject.GetConveyorFlowRotationDegrees()
+                : sceneObject.RotationZDegrees;
             var drawSize = sceneObject.EffectiveSize;
             if (state.IsSelectionRotationMode
                 && state.SelectedObject?.Id == sceneObject.Id
@@ -609,19 +611,22 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
 
             var markerColor = status.Status switch
             {
-                PortConnectionStatus.Connected => Color.FromRgb(84, 220, 124),
-                PortConnectionStatus.Invalid => Color.FromRgb(240, 100, 100),
-                _ => Color.FromRgb(235, 200, 112)
+                PortConnectionStatus.Connected => Color.FromRgb(74, 224, 120),
+                PortConnectionStatus.Invalid => Color.FromRgb(244, 94, 94),
+                _ => Color.FromRgb(255, 214, 96)
             };
 
-            var center = Project(port.WorldPosition.X, port.WorldPosition.Y, port.WorldPosition.Z, state);
-            DrawMarkerDot(center, markerColor);
-
             var (dx, dy, dz) = port.Direction.ToVector();
+            var markerZ = port.WorldPosition.Z + 0.26;
+            var markerX = port.WorldPosition.X + dx * 0.14;
+            var markerY = port.WorldPosition.Y + dy * 0.14;
+            var center = Project(markerX, markerY, markerZ, state);
+            DrawPortMarker(center, port.Kind, markerColor, status.Status);
+
             var directionTip = Project(
-                port.WorldPosition.X + dx * 0.28,
-                port.WorldPosition.Y + dy * 0.28,
-                port.WorldPosition.Z + dz * 0.28,
+                markerX + dx * 0.38,
+                markerY + dy * 0.38,
+                markerZ + dz * 0.22,
                 state);
             _renderer.AddLine(center, directionTip, markerColor, 0.95);
         }
@@ -634,9 +639,30 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
                 continue;
             }
 
-            var start = Project(connection.From.WorldPosition.X, connection.From.WorldPosition.Y, connection.From.WorldPosition.Z, state);
-            var end = Project(connection.To.WorldPosition.X, connection.To.WorldPosition.Y, connection.To.WorldPosition.Z, state);
+            var start = Project(connection.From.WorldPosition.X, connection.From.WorldPosition.Y, connection.From.WorldPosition.Z + 0.24, state);
+            var end = Project(connection.To.WorldPosition.X, connection.To.WorldPosition.Y, connection.To.WorldPosition.Z + 0.24, state);
             _renderer.AddLine(start, end, Color.FromArgb(185, 92, 238, 140), 0.8);
+        }
+
+        foreach (var invalid in snapshot.InvalidAdjacencies)
+        {
+            if (!showObjectIds.Contains(invalid.A.OwnerSceneObjectId)
+                || !showObjectIds.Contains(invalid.B.OwnerSceneObjectId))
+            {
+                continue;
+            }
+
+            var issueColor = invalid.Issue switch
+            {
+                PortAdjacencyIssue.FacingMismatch => Color.FromArgb(205, 255, 176, 68),
+                PortAdjacencyIssue.KindMismatch => Color.FromArgb(205, 189, 120, 255),
+                PortAdjacencyIssue.DifferentZ => Color.FromArgb(205, 104, 174, 255),
+                PortAdjacencyIssue.SameObject => Color.FromArgb(180, 160, 160, 160),
+                _ => Color.FromArgb(205, 255, 120, 120)
+            };
+            var start = Project(invalid.A.WorldPosition.X, invalid.A.WorldPosition.Y, invalid.A.WorldPosition.Z + 0.28, state);
+            var end = Project(invalid.B.WorldPosition.X, invalid.B.WorldPosition.Y, invalid.B.WorldPosition.Z + 0.28, state);
+            _renderer.AddLine(start, end, issueColor, 0.8);
         }
     }
 
@@ -653,6 +679,55 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
         var c = new Point(center.X, center.Y + radius);
         var d = new Point(center.X - radius, center.Y);
         _renderer.AddFilledQuad(a, b, c, d, color, 1.0);
+    }
+
+    private void DrawPortMarker(Point center, PortKind kind, Color color, PortConnectionStatus status)
+    {
+        if (_renderer is null)
+        {
+            return;
+        }
+
+        const double radius = 6.2;
+        var a = new Point(center.X, center.Y - radius);
+        var b = new Point(center.X + radius, center.Y);
+        var c = new Point(center.X, center.Y + radius);
+        var d = new Point(center.X - radius, center.Y);
+        _renderer.AddFilledQuad(a, b, c, d, color, 0.95);
+
+        var accent = status == PortConnectionStatus.Invalid
+            ? Color.FromArgb(255, 255, 230, 230)
+            : Color.FromArgb(255, 245, 245, 245);
+        var inner = radius * 0.55;
+        switch (kind)
+        {
+            case PortKind.Output:
+                _renderer.AddFilledTriangle(
+                    new Point(center.X + inner, center.Y),
+                    new Point(center.X - inner * 0.75, center.Y - inner * 0.65),
+                    new Point(center.X - inner * 0.75, center.Y + inner * 0.65),
+                    accent,
+                    0.95);
+                break;
+            case PortKind.Input:
+                _renderer.AddFilledQuad(
+                    new Point(center.X - inner, center.Y - inner),
+                    new Point(center.X + inner, center.Y - inner),
+                    new Point(center.X + inner, center.Y + inner),
+                    new Point(center.X - inner, center.Y + inner),
+                    accent,
+                    0.95);
+                break;
+            default:
+                _renderer.AddFilledQuad(
+                    new Point(center.X, center.Y - inner),
+                    new Point(center.X + inner, center.Y),
+                    new Point(center.X, center.Y + inner),
+                    new Point(center.X - inner, center.Y),
+                    accent,
+                    0.95);
+                break;
+        }
     }
 
     private void DrawOutline(VoxelCoord position, VoxelSize size, Color color, double opacity, EditorState state)

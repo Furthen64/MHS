@@ -57,6 +57,11 @@ public sealed class SelectTool : IEditorTool
 
             rotating.Position = state.SelectionRotationPreviewPosition.Value;
             rotating.RotationZDegrees = state.SelectionRotationPreviewDegrees;
+            if (rotating.IsRouteConveyorSegment)
+            {
+                rotating.RouteFlowReversed = !rotating.RouteFlowReversed;
+            }
+
             state.ClearSelectionRotationMode();
             state.StatusMessage = "Ready";
             return;
@@ -101,6 +106,13 @@ public sealed class SelectTool : IEditorTool
 
     private static void UpdateRotationPreview(EditorState state, SceneObject selected, ViewportPointerContext context)
     {
+        if (selected.IsRouteConveyorSegment)
+        {
+            var flippedRotation = RotationHelper.NormalizeDegrees(selected.GetConveyorFlowRotationDegrees() + 180);
+            state.SetSelectionRotationPreview(flippedRotation, selected.Position, true, null);
+            return;
+        }
+
         var cursor = context.RotationPlaneVoxel ?? context.HoveredVoxel;
         if (!cursor.HasValue || !state.HasRotationAxisFor(selected.Id))
         {

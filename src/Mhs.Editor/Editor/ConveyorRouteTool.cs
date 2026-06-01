@@ -131,7 +131,7 @@ public sealed class ConveyorRouteTool : IEditorTool
     public bool HasFinishableRoute(EditorState state)
     {
         var draft = state.ActiveConveyorRoute;
-        return draft is not null && draft.Anchors.Count >= 2;
+        return draft is not null && draft.Anchors.Count >= 1;
     }
 
     public bool FinishRoute(EditorState state)
@@ -139,7 +139,7 @@ public sealed class ConveyorRouteTool : IEditorTool
         var draft = state.ActiveConveyorRoute;
         if (draft is null || !TryGetFinishAnchors(draft, out var finishAnchors))
         {
-            state.StatusMessage = "Route needs at least two points";
+            state.StatusMessage = "Route needs at least one point";
             return false;
         }
 
@@ -149,9 +149,9 @@ public sealed class ConveyorRouteTool : IEditorTool
     public bool FinishCommittedRoute(EditorState state)
     {
         var draft = state.ActiveConveyorRoute;
-        if (draft is null || draft.Anchors.Count < 2)
+        if (draft is null || draft.Anchors.Count < 1)
         {
-            state.StatusMessage = "Route needs at least two points";
+            state.StatusMessage = "Route needs at least one point";
             return false;
         }
 
@@ -161,6 +161,17 @@ public sealed class ConveyorRouteTool : IEditorTool
     private static bool FinishRoute(EditorState state, ConveyorRouteDraft draft, IReadOnlyList<VoxelCoord> finishAnchors)
     {
         var created = new List<SceneObject>();
+        if (finishAnchors.Count == 1)
+        {
+            var anchor = finishAnchors[0];
+            created.Add(CreateRouteConveyor(
+                anchor,
+                new VoxelSize(1, 1, 1),
+                0,
+                anchor,
+                anchor));
+        }
+
         for (var i = 1; i < finishAnchors.Count; i++)
         {
             var start = finishAnchors[i - 1];
@@ -173,19 +184,15 @@ public sealed class ConveyorRouteTool : IEditorTool
 
             var position = segment.Position;
             var size = segment.Size;
+            var flowStart = start;
+            var flowEnd = end;
             if (i > 1)
             {
                 ConveyorRouteGeometry.TrimSegmentStartCell(start, end, ref position, ref size);
+                flowStart = StepToward(start, end);
             }
 
-            created.Add(new SceneObject
-            {
-                PartId = "conveyor",
-                PartType = "Conveyor",
-                Position = position,
-                BaseSize = size,
-                RotationZDegrees = segment.RotationZDegrees
-            });
+            created.Add(CreateRouteConveyor(position, size, segment.RotationZDegrees, flowStart, flowEnd));
         }
 
         foreach (var sceneObject in created)
@@ -195,7 +202,7 @@ public sealed class ConveyorRouteTool : IEditorTool
 
         state.SelectedObject = created.Count > 0 ? created[^1] : null;
         state.ActiveConveyorRoute = null;
-        state.StatusMessage = created.Count > 0 ? $"Route finished: {created.Count} segment(s)" : "Route needs at least two points";
+        state.StatusMessage = created.Count > 0 ? $"Route finished: {created.Count} segment(s)" : "Route needs at least one point";
         return created.Count > 0;
     }
 
@@ -304,7 +311,34 @@ public sealed class ConveyorRouteTool : IEditorTool
             finishAnchors.Add(previewEnd);
         }
 
-        return finishAnchors.Count >= 2;
+        return finishAnchors.Count >= 1;
+    }
+
+    private static SceneObject CreateRouteConveyor(VoxelCoord position, VoxelSize size, int rotationZDegrees, VoxelCoord flowStart, VoxelCoord flowEnd)
+        => new()
+        {
+            PartId = "conveyor",
+            PartType = "Conveyor",
+            Position = position,
+            BaseSize = size,
+            RotationZDegrees = rotationZDegrees,
+            RouteStartCell = flowStart,
+            RouteEndCell = flowEnd
+        };
+
+    private static VoxelCoord StepToward(VoxelCoord start, VoxelCoord end)
+    {
+        if (start.X != end.X)
+        {
+            return start with { X = start.X + Math.Sign(end.X - start.X) };
+        }
+
+        if (start.Y != end.Y)
+        {
+            return start with { Y = start.Y + Math.Sign(end.Y - start.Y) };
+        }
+
+        return start;
     }
 
     private static bool ValidateSegment(

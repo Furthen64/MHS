@@ -11,6 +11,9 @@ public sealed class SceneObject
     public VoxelSize BaseSize { get; init; }
 
     public int RotationZDegrees { get; set; }
+    public VoxelCoord? RouteStartCell { get; set; }
+    public VoxelCoord? RouteEndCell { get; set; }
+    public bool RouteFlowReversed { get; set; }
 
     public VoxelSize EffectiveSize => GetEffectiveSize(RotationZDegrees);
 
@@ -25,4 +28,41 @@ public sealed class SceneObject
     public int MaxY => Position.Y + EffectiveSize.DepthY - 1;
     public int MinZ => Position.Z;
     public int MaxZ => Position.Z + EffectiveSize.HeightZ - 1;
+
+    public bool IsConveyor
+        => string.Equals(PartId, "conveyor", StringComparison.OrdinalIgnoreCase)
+           || string.Equals(PartType, "Conveyor", StringComparison.OrdinalIgnoreCase);
+
+    public bool IsRouteConveyorSegment
+        => IsConveyor && RouteStartCell.HasValue && RouteEndCell.HasValue;
+
+    public (VoxelCoord Start, VoxelCoord End) GetConveyorFlowEndpoints()
+    {
+        var start = RouteStartCell ?? Position;
+        var end = RouteEndCell ?? Position;
+        return RouteFlowReversed
+            ? (end, start)
+            : (start, end);
+    }
+
+    public int GetConveyorFlowRotationDegrees()
+    {
+        if (!IsConveyor)
+        {
+            return RotationHelper.NormalizeDegrees(RotationZDegrees);
+        }
+
+        var (start, end) = GetConveyorFlowEndpoints();
+        if (start.X != end.X)
+        {
+            return end.X > start.X ? 0 : 180;
+        }
+
+        if (start.Y != end.Y)
+        {
+            return end.Y > start.Y ? 90 : 270;
+        }
+
+        return RotationHelper.NormalizeDegrees(RotationZDegrees);
+    }
 }
