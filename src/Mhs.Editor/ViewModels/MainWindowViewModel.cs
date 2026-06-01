@@ -117,7 +117,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 : "M=Move  R=Rotate  Del=Delete  Esc=Cancel";
             if (EditorState.ActiveTool is ConveyorRouteTool)
             {
-                hotkeys = "LMB drag=Draw  LMB=Anchor  Enter=Finish  Backspace=Undo  Esc=Cancel";
+                hotkeys = "LMB drag=Draw  LMB=Anchor  RMB/Enter=Finish  Backspace=Undo  Esc=Cancel";
             }
 
             if (EditorState.IsMovingSelection)
