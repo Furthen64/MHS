@@ -107,8 +107,8 @@ public static class ConveyorRouteCellVisualization
         var flowCells = ConveyorRouteGeometry.EnumerateCells(start, end).ToArray();
         for (var i = 0; i < flowCells.Length; i++)
         {
-            var entry = i == 0 ? null : mainDirection.Opposite();
-            var exit = i == flowCells.Length - 1 ? null : mainDirection;
+            var entry = i == 0 ? (PortDirection?)null : mainDirection.Opposite();
+            var exit = i == flowCells.Length - 1 ? (PortDirection?)null : mainDirection;
             cells.Add(new MutableCell(
                 flowCells[i],
                 GetKind(entry, exit),
@@ -123,7 +123,7 @@ public static class ConveyorRouteCellVisualization
     private static bool TryFindAdjacentCell(
         IReadOnlyList<MutableCell> cells,
         VoxelCoord joinCell,
-        out MutableCell? adjacentCell,
+        out MutableCell adjacentCell,
         out PortDirection directionFromJoin)
     {
         for (var i = 0; i < cells.Count; i++)
@@ -146,7 +146,7 @@ public static class ConveyorRouteCellVisualization
             return true;
         }
 
-        adjacentCell = null;
+        adjacentCell = null!;
         directionFromJoin = PortDirection.PositiveX;
         return false;
     }
