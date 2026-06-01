@@ -201,6 +201,30 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             ? PreviewText()
             : "Status: Placed";
 
+    public string InspectorPortText
+    {
+        get
+        {
+            if (EditorState.SelectedObject is null)
+            {
+                return "Ports: Select object";
+            }
+
+            var statuses = EditorState.GetPortConnectivitySnapshot()
+                .GetPortStatusesForOwner(EditorState.SelectedObject.Id);
+            if (statuses.Count == 0)
+            {
+                return "Ports: None";
+            }
+
+            var connected = statuses.Count(status => status.Status == PortConnectionStatus.Connected);
+            var invalid = statuses.Count(status => status.Status == PortConnectionStatus.Invalid);
+            var unconnected = statuses.Count - connected - invalid;
+            var details = string.Join(", ", statuses.Select(status => $"{status.Port.Name}:{StatusLabel(status.Status)}"));
+            return $"Ports: {connected} connected, {unconnected} open, {invalid} invalid | {details}";
+        }
+    }
+
     public string Floor2StackText => FloorStackText(2);
     public string Floor1StackText => FloorStackText(1);
     public string Floor0StackText => FloorStackText(0);
@@ -687,6 +711,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(InspectorContextText));
         OnPropertyChanged(nameof(InspectorRangeText));
         OnPropertyChanged(nameof(InspectorExtraText));
+        OnPropertyChanged(nameof(InspectorPortText));
         OnPropertyChanged(nameof(Floor2StackText));
         OnPropertyChanged(nameof(Floor1StackText));
         OnPropertyChanged(nameof(Floor0StackText));
@@ -707,6 +732,13 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
+
+    private static string StatusLabel(PortConnectionStatus status) => status switch
+    {
+        PortConnectionStatus.Connected => "Connected",
+        PortConnectionStatus.Invalid => "Invalid",
+        _ => "Open"
+    };
 
     private sealed class RelayCommand : ICommand
     {

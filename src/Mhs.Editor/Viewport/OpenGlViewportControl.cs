@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Specialized;
 using System.ComponentModel;
+using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -220,6 +221,7 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
             DrawOutline(outlinePosition, outlineSize, Color.FromRgb(120, 180, 255), 1.0, state);
         }
 
+        DrawPortDebug(state);
         DrawRotationAxisGuide(state);
 
         _renderer.RenderFrame();
@@ -577,6 +579,65 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
         var start = Project(state.RotationAxisPivotX, state.RotationAxisPivotY, state.RotationAxisMinZ, state);
         var end = Project(state.RotationAxisPivotX, state.RotationAxisPivotY, state.RotationAxisMaxZ, state);
         _renderer.AddLine(start, end, axisColor, 1.0);
+    }
+
+    private void DrawPortDebug(EditorState state)
+    {
+        if (_renderer is null)
+        {
+            return;
+        }
+
+        var snapshot = state.GetPortConnectivitySnapshot();
+        if (snapshot.Ports.Count == 0)
+        {
+            return;
+        }
+
+        var showObjectIds = state.Scene.Objects
+            .Where(obj => state.IntersectsActiveFloor(obj))
+            .Select(obj => obj.Id)
+            .ToHashSet();
+
+        foreach (var status in snapshot.PortStatuses)
+        {
+            var port = status.Port;
+            if (!showObjectIds.Contains(port.OwnerSceneObjectId))
+            {
+                continue;
+            }
+
+            var markerColor = status.Status switch
+            {
+                PortConnectionStatus.Connected => Color.FromRgb(84, 220, 124),
+                PortConnectionStatus.Invalid => Color.FromRgb(240, 100, 100),
+                _ => Color.FromRgb(235, 200, 112)
+            };
+
+            var center = Project(port.WorldPosition.X, port.WorldPosition.Y, port.WorldPosition.Z, state);
+            DrawMarkerDot(center, markerColor);
+
+            var (dx, dy, dz) = port.Direction.ToVector();
+            var directionTip = Project(
+                port.WorldPosition.X + dx * 0.28,
+                port.WorldPosition.Y + dy * 0.28,
+                port.WorldPosition.Z + dz * 0.28,
+                state);
+            _renderer.AddLine(center, directionTip, markerColor, 0.95);
+        }
+
+        foreach (var connection in snapshot.Connections)
+        {
+            if (!showObjectIds.Contains(connection.From.OwnerSceneObjectId)
+                || !showObjectIds.Contains(connection.To.OwnerSceneObjectId))
+            {
+                continue;
+            }
+
+            var start = Project(connection.From.WorldPosition.X, connection.From.WorldPosition.Y, connection.From.WorldPosition.Z, state);
+            var end = Project(connection.To.WorldPosition.X, connection.To.WorldPosition.Y, connection.To.WorldPosition.Z, state);
+            _renderer.AddLine(start, end, Color.FromArgb(185, 92, 238, 140), 0.8);
+        }
     }
 
     private void DrawMarkerDot(Point center, Color color)

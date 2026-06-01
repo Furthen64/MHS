@@ -369,6 +369,9 @@ public sealed class EditorState : INotifyPropertyChanged
 
     public bool IsObjectSelected(SceneObject sceneObject) => SelectedObject?.Id == sceneObject.Id;
 
+    public PortConnectivitySnapshot GetPortConnectivitySnapshot()
+        => Scene.GetPortConnectivitySnapshot();
+
     public bool IntersectsActiveLayer(SceneObject obj)
         => IntersectsLayer(obj, ActiveAbsoluteZ);
 

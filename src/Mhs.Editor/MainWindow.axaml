@@ -107,6 +107,7 @@
                     <TextBlock Text="{Binding InspectorContextText}" Foreground="#D8DEE9" />
                     <TextBlock Text="{Binding InspectorRangeText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
                     <TextBlock Text="{Binding InspectorExtraText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding InspectorPortText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
 
                     <Separator Margin="0,6,0,6" />
                     <TextBlock Text="Floor / Layer" FontWeight="SemiBold" Foreground="#ECEFF4" />
