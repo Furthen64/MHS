@@ -75,7 +75,7 @@ public sealed class SelectTool : IEditorTool
                 return;
             }
 
-            selected.Position = state.MovePreviewPosition.Value;
+            ApplyMove(selected, state.MovePreviewPosition.Value);
             state.ClearMoveState();
             state.StatusMessage = "Ready";
             return;
@@ -139,5 +139,38 @@ public sealed class SelectTool : IEditorTool
             state.RotationAxisPivotY);
         var validation = state.ValidatePlacement(targetPosition, targetSize, selected.Id);
         state.SetSelectionRotationPreview(targetRotation, targetPosition, validation.IsValid, validation.Reason);
+    }
+
+    private static void ApplyMove(SceneObject selected, VoxelCoord targetPosition)
+    {
+        var deltaX = targetPosition.X - selected.Position.X;
+        var deltaY = targetPosition.Y - selected.Position.Y;
+        var deltaZ = targetPosition.Z - selected.Position.Z;
+
+        selected.Position = targetPosition;
+        if (!selected.IsRouteConveyorSegment)
+        {
+            return;
+        }
+
+        if (selected.RouteStartCell is { } start)
+        {
+            selected.RouteStartCell = start with
+            {
+                X = start.X + deltaX,
+                Y = start.Y + deltaY,
+                Z = start.Z + deltaZ
+            };
+        }
+
+        if (selected.RouteEndCell is { } end)
+        {
+            selected.RouteEndCell = end with
+            {
+                X = end.X + deltaX,
+                Y = end.Y + deltaY,
+                Z = end.Z + deltaZ
+            };
+        }
     }
 }
