@@ -24,6 +24,8 @@
                     <MenuItem Header="I want _AutoCAD like settings"
                               IsChecked="{Binding IsAutoCadLikeSettingsActive}"
                               Command="{Binding AutoCadLikeSettingsCommand}" />
+                    <Separator />
+                    <MenuItem Header="OpenGL _GPU Setup..." Click="OnOpenGlGpuSetupClick" />
                 </MenuItem>
             </MenuItem>
             <MenuItem Header="_File">
@@ -126,6 +128,7 @@
                     <TextBlock Text="{Binding ActiveFloorSummaryText}" Foreground="#D8DEE9" Margin="0,6,0,0" />
                     <TextBlock Text="{Binding ActiveLayerSummaryText}" Foreground="#D8DEE9" />
                     <TextBlock Text="{Binding ActiveAbsoluteZSummaryText}" Foreground="#D8DEE9" />
+                    <TextBlock Text="{Binding PreferredOpenGlGpuSummaryText}" Foreground="#AFC6E9" TextWrapping="Wrap" />
                     <TextBlock Text="{Binding OpenGlBackendSummaryText}" Foreground="#AFC6E9" TextWrapping="Wrap" />
                 </StackPanel>
             </Border>

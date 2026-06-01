@@ -17,6 +17,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private readonly ConveyorRouteTool _conveyorRouteTool = new();
     private ViewportInteractionPreset _interactionPreset = ViewportInteractionPreset.BlenderLike;
     private bool _useOpenGlViewport = true;
+    private string _preferredOpenGlGpuName = "System default GPU";
 
     public MainWindowViewModel()
     {
@@ -109,6 +110,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public bool IsOpenGlViewportMode => _useOpenGlViewport;
     public ViewportInteractionPreset InteractionPreset => _interactionPreset;
     public bool UseOpenGlViewport => _useOpenGlViewport;
+    public string PreferredOpenGlGpuName => _preferredOpenGlGpuName;
     public string LayerDisplayText => $"Layer: {EditorState.ActiveLayer} of {WorldVerticalSettings.LayersPerFloor - 1}";
     public string AbsoluteZDisplayText => $"Absolute Z: {EditorState.ActiveAbsoluteZ}";
 
@@ -147,7 +149,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 : string.Empty;
             var viewportMode = _useOpenGlViewport ? "Viewport: OpenGL/Silk.NET" : "Viewport: Software";
             var openGlInfo = _useOpenGlViewport && !string.IsNullOrWhiteSpace(EditorState.OpenGlBackendInfo)
-                ? $" | GL {EditorState.OpenGlBackendInfo}"
+                ? $" | Preferred GPU: {PreferredOpenGlGpuName} | GL {EditorState.OpenGlBackendInfo}"
                 : string.Empty;
 
             return $"{EditorState.StatusMessage} | {viewportMode}{openGlInfo} | Tool: {EditorState.ActiveTool.Name}{rotation} | Floor {EditorState.ActiveFloor} · Layer {EditorState.ActiveLayer}/{WorldVerticalSettings.LayersPerFloor - 1} · Z {EditorState.ActiveAbsoluteZ} | X {(EditorState.HoveredVoxel?.X.ToString() ?? "-")} Y {(EditorState.HoveredVoxel?.Y.ToString() ?? "-")} | Objects: {EditorState.Scene.Objects.Count} | {hotkeys}";
@@ -206,6 +208,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public string ActiveLayerSummaryText => $"Layer {EditorState.ActiveLayer} of {WorldVerticalSettings.LayersPerFloor - 1}";
     public string ActiveAbsoluteZSummaryText => $"Absolute Z: {EditorState.ActiveAbsoluteZ}";
     public string OpenGlBackendSummaryText => $"OpenGL: {EditorState.OpenGlBackendInfo}";
+    public string PreferredOpenGlGpuSummaryText => $"Preferred GPU: {PreferredOpenGlGpuName}";
     public string Floor2StackBackground => EditorState.ActiveFloor == 2 ? "#324563" : "#1E242E";
     public string Floor1StackBackground => EditorState.ActiveFloor == 1 ? "#324563" : "#1E242E";
     public string Floor0StackBackground => EditorState.ActiveFloor == 0 ? "#324563" : "#1E242E";
@@ -370,6 +373,15 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public void SetSceneStatus(string status)
     {
         EditorState.StatusMessage = status;
+        RaiseComputed();
+    }
+
+    public void SetPreferredOpenGlGpu(string gpuName)
+    {
+        _preferredOpenGlGpuName = string.IsNullOrWhiteSpace(gpuName)
+            ? "System default GPU"
+            : gpuName.Trim();
+        EditorState.StatusMessage = $"Preferred OpenGL GPU set to {_preferredOpenGlGpuName}";
         RaiseComputed();
     }
 
@@ -682,6 +694,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(ActiveLayerSummaryText));
         OnPropertyChanged(nameof(ActiveAbsoluteZSummaryText));
         OnPropertyChanged(nameof(OpenGlBackendSummaryText));
+        OnPropertyChanged(nameof(PreferredOpenGlGpuSummaryText));
         OnPropertyChanged(nameof(Floor2StackBackground));
         OnPropertyChanged(nameof(Floor1StackBackground));
         OnPropertyChanged(nameof(Floor0StackBackground));
