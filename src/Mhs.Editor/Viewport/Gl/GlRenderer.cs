@@ -11,30 +11,109 @@ namespace Mhs.Editor.Viewport.Gl;
 
 public sealed class GlRenderer : IDisposable
 {
-    private const string VertexShaderSource = """
-        #version 330 core
-        layout(location = 0) in vec2 aPosition;
-        layout(location = 1) in vec4 aColor;
+    private static readonly (string Name, string VertexSource, string FragmentSource)[] ShaderSources =
+    [
+        (
+            "GLSL 330",
+            """
+            #version 330
+            in vec2 aPosition;
+            in vec4 aColor;
+            out vec4 vColor;
 
-        out vec4 vColor;
+            void main()
+            {
+                gl_Position = vec4(aPosition, 0.0, 1.0);
+                vColor = aColor;
+            }
+            """,
+            """
+            #version 330
+            in vec4 vColor;
+            out vec4 FragColor;
 
-        void main()
-        {
-            gl_Position = vec4(aPosition, 0.0, 1.0);
-            vColor = aColor;
-        }
-        """;
+            void main()
+            {
+                FragColor = vColor;
+            }
+            """
+        ),
+        (
+            "GLSL ES 300",
+            """
+            #version 300 es
+            in vec2 aPosition;
+            in vec4 aColor;
+            out vec4 vColor;
 
-    private const string FragmentShaderSource = """
-        #version 330 core
-        in vec4 vColor;
-        out vec4 FragColor;
+            void main()
+            {
+                gl_Position = vec4(aPosition, 0.0, 1.0);
+                vColor = aColor;
+            }
+            """,
+            """
+            #version 300 es
+            precision mediump float;
+            in vec4 vColor;
+            out vec4 FragColor;
 
-        void main()
-        {
-            FragColor = vColor;
-        }
-        """;
+            void main()
+            {
+                FragColor = vColor;
+            }
+            """
+        ),
+        (
+            "GLSL 120",
+            """
+            #version 120
+            attribute vec2 aPosition;
+            attribute vec4 aColor;
+            varying vec4 vColor;
+
+            void main()
+            {
+                gl_Position = vec4(aPosition, 0.0, 1.0);
+                vColor = aColor;
+            }
+            """,
+            """
+            #version 120
+            varying vec4 vColor;
+
+            void main()
+            {
+                gl_FragColor = vColor;
+            }
+            """
+        ),
+        (
+            "GLSL ES 100",
+            """
+            #version 100
+            attribute vec2 aPosition;
+            attribute vec4 aColor;
+            varying vec4 vColor;
+
+            void main()
+            {
+                gl_Position = vec4(aPosition, 0.0, 1.0);
+                vColor = aColor;
+            }
+            """,
+            """
+            #version 100
+            precision mediump float;
+            varying vec4 vColor;
+
+            void main()
+            {
+                gl_FragColor = vColor;
+            }
+            """
+        )
+    ];
 
     [StructLayout(LayoutKind.Sequential)]
     private struct GlVertex
@@ -209,12 +288,32 @@ public sealed class GlRenderer : IDisposable
 
     private uint CreateProgram()
     {
-        var vertexShader = CompileShader(ShaderType.VertexShader, VertexShaderSource);
-        var fragmentShader = CompileShader(ShaderType.FragmentShader, FragmentShaderSource);
+        List<string> failures = [];
+        foreach (var (name, vertexSource, fragmentSource) in ShaderSources)
+        {
+            try
+            {
+                return CreateProgram(name, vertexSource, fragmentSource);
+            }
+            catch (Exception ex)
+            {
+                failures.Add($"{name}: {ex.Message}");
+            }
+        }
+
+        throw new InvalidOperationException($"OpenGL shader initialization failed. {string.Join(" | ", failures)}");
+    }
+
+    private uint CreateProgram(string variantName, string vertexSource, string fragmentSource)
+    {
+        var vertexShader = CompileShader(ShaderType.VertexShader, vertexSource);
+        var fragmentShader = CompileShader(ShaderType.FragmentShader, fragmentSource);
 
         var program = _gl.CreateProgram();
         _gl.AttachShader(program, vertexShader);
         _gl.AttachShader(program, fragmentShader);
+        _gl.BindAttribLocation(program, 0, "aPosition");
+        _gl.BindAttribLocation(program, 1, "aColor");
         _gl.LinkProgram(program);
         _gl.GetProgram(program, ProgramPropertyARB.LinkStatus, out var success);
         if (success == 0)
@@ -223,7 +322,7 @@ public sealed class GlRenderer : IDisposable
             _gl.DeleteShader(vertexShader);
             _gl.DeleteShader(fragmentShader);
             _gl.DeleteProgram(program);
-            throw new InvalidOperationException($"OpenGL program link failed: {info}");
+            throw new InvalidOperationException($"OpenGL program link failed for {variantName}: {info}");
         }
 
         _gl.DeleteShader(vertexShader);
