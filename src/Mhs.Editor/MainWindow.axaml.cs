@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Avalonia.Controls;
@@ -7,6 +9,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using Mhs.Editor.Editor;
+using Mhs.Editor.Settings;
 using Mhs.Editor.ViewModels;
 
 namespace Mhs.Editor;
@@ -18,13 +21,27 @@ public partial class MainWindow : Window
         Patterns = ["*.json"]
     };
 
+    private readonly AppPreferencesStore _preferencesStore = new();
+    private readonly IReadOnlyList<GpuOption> _availableGpuOptions;
+    private AppPreferences _preferences;
     private IStorageFile? _currentSceneFile;
 
     public MainWindow()
     {
+        _preferences = _preferencesStore.Load();
+        _availableGpuOptions = GpuDiscoveryService.Discover();
+        _preferences.PreferredOpenGlGpuName = ResolvePreferredGpu(_preferences.PreferredOpenGlGpuName);
+        GpuDiscoveryService.ApplyProcessGpuPreference(_preferences.PreferredOpenGlGpuName);
+
         InitializeComponent();
         DataContext = new MainWindowViewModel();
+        if (DataContext is MainWindowViewModel vm)
+        {
+            vm.SetPreferredOpenGlGpu(_preferences.PreferredOpenGlGpuName);
+        }
+
         AddHandler(KeyDownEvent, OnKeyDown, RoutingStrategies.Tunnel, handledEventsToo: true);
+        Opened += OnOpened;
     }
 
     private void OnKeyDown(object? sender, KeyEventArgs e)
@@ -120,6 +137,11 @@ public partial class MainWindow : Window
 
     private void OnExitClick(object? sender, RoutedEventArgs e) => Close();
 
+    private async void OnOpenGlGpuSetupClick(object? sender, RoutedEventArgs e)
+    {
+        await ShowOnboardingWizardAsync(markOnboardingComplete: true);
+    }
+
     private async Task SaveSceneAsAsync(MainWindowViewModel vm)
     {
         try
@@ -163,4 +185,66 @@ public partial class MainWindow : Window
 
     private static string GetDisplayName(IStorageItem item)
         => string.IsNullOrWhiteSpace(item.Name) ? "scene" : item.Name;
+
+    private async void OnOpened(object? sender, EventArgs e)
+    {
+        Opened -= OnOpened;
+        if (_preferences.OnboardingCompleted)
+        {
+            return;
+        }
+
+        await ShowOnboardingWizardAsync(markOnboardingComplete: true);
+    }
+
+    private async Task ShowOnboardingWizardAsync(bool markOnboardingComplete)
+    {
+        var onboardingVm = new OnboardingWizardViewModel(_availableGpuOptions, _preferences.PreferredOpenGlGpuName);
+        var onboardingWindow = new OnboardingWizardWindow
+        {
+            DataContext = onboardingVm
+        };
+
+        var accepted = await onboardingWindow.ShowDialog<bool>(this);
+        if (!accepted)
+        {
+            if (DataContext is MainWindowViewModel vm)
+            {
+                vm.SetSceneStatus("OpenGL GPU setup skipped");
+            }
+            return;
+        }
+
+        if (onboardingVm.SelectedGpu is null)
+        {
+            return;
+        }
+
+        _preferences.PreferredOpenGlGpuName = ResolvePreferredGpu(onboardingVm.SelectedGpu.Name);
+        if (markOnboardingComplete)
+        {
+            _preferences.OnboardingCompleted = true;
+        }
+
+        _preferencesStore.Save(_preferences);
+        GpuDiscoveryService.ApplyProcessGpuPreference(_preferences.PreferredOpenGlGpuName);
+
+        if (DataContext is MainWindowViewModel mainVm)
+        {
+            mainVm.SetPreferredOpenGlGpu(_preferences.PreferredOpenGlGpuName);
+        }
+    }
+
+    private string ResolvePreferredGpu(string preferredGpuName)
+    {
+        if (_availableGpuOptions.Count == 0)
+        {
+            return "System default GPU";
+        }
+
+        var selected = _availableGpuOptions.FirstOrDefault(option =>
+            option.Name.Equals(preferredGpuName, StringComparison.OrdinalIgnoreCase));
+
+        return selected?.Name ?? _availableGpuOptions[0].Name;
+    }
 }
