@@ -48,7 +48,7 @@ public sealed class ConveyorRouteTool : IEditorTool
     {
         if (context.IsRightButtonPressed)
         {
-            if (FinishRoute(context.EditorState))
+            if (FinishCommittedRoute(context.EditorState))
             {
                 context.EditorState.GhostPreview = null;
             }
@@ -131,7 +131,7 @@ public sealed class ConveyorRouteTool : IEditorTool
     public bool HasFinishableRoute(EditorState state)
     {
         var draft = state.ActiveConveyorRoute;
-        return draft is not null && TryGetFinishAnchors(draft, out _);
+        return draft is not null && draft.Anchors.Count >= 2;
     }
 
     public bool FinishRoute(EditorState state)
