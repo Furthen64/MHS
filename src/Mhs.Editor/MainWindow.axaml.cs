@@ -22,16 +22,20 @@ public partial class MainWindow : Window
     };
 
     private readonly AppPreferencesStore _preferencesStore = new();
-    private readonly IReadOnlyList<GpuOption> _availableGpuOptions;
+    private IReadOnlyList<GpuOption>? _availableGpuOptions;
     private AppPreferences _preferences;
     private IStorageFile? _currentSceneFile;
 
     public MainWindow()
     {
         _preferences = _preferencesStore.Load();
-        _availableGpuOptions = GpuDiscoveryService.Discover();
-        _preferences.PreferredOpenGlGpuName = ResolvePreferredGpu(_preferences.PreferredOpenGlGpuName);
+        if (string.IsNullOrWhiteSpace(_preferences.PreferredOpenGlGpuName))
+        {
+            _preferences.PreferredOpenGlGpuName = "System default GPU";
+        }
+
         GpuDiscoveryService.ApplyProcessGpuPreference(_preferences.PreferredOpenGlGpuName);
+        StartupDiagnostics.Log($"Main window constructing. Preferred GPU: {_preferences.PreferredOpenGlGpuName}");
 
         InitializeComponent();
         DataContext = new MainWindowViewModel();
@@ -199,7 +203,8 @@ public partial class MainWindow : Window
 
     private async Task ShowOnboardingWizardAsync(bool markOnboardingComplete)
     {
-        var onboardingVm = new OnboardingWizardViewModel(_availableGpuOptions, _preferences.PreferredOpenGlGpuName);
+        var availableGpuOptions = EnsureGpuOptionsDiscovered();
+        var onboardingVm = new OnboardingWizardViewModel(availableGpuOptions, _preferences.PreferredOpenGlGpuName);
         var onboardingWindow = new OnboardingWizardWindow
         {
             DataContext = onboardingVm
@@ -221,6 +226,7 @@ public partial class MainWindow : Window
         }
 
         _preferences.PreferredOpenGlGpuName = ResolvePreferredGpu(onboardingVm.SelectedGpu.Name);
+        StartupDiagnostics.Log($"Onboarding selected GPU: {_preferences.PreferredOpenGlGpuName}");
         if (markOnboardingComplete)
         {
             _preferences.OnboardingCompleted = true;
@@ -237,14 +243,28 @@ public partial class MainWindow : Window
 
     private string ResolvePreferredGpu(string preferredGpuName)
     {
-        if (_availableGpuOptions.Count == 0)
+        var availableGpuOptions = EnsureGpuOptionsDiscovered();
+        if (availableGpuOptions.Count == 0)
         {
             return "System default GPU";
         }
 
-        var selected = _availableGpuOptions.FirstOrDefault(option =>
+        var selected = availableGpuOptions.FirstOrDefault(option =>
             option.Name.Equals(preferredGpuName, StringComparison.OrdinalIgnoreCase));
 
-        return selected?.Name ?? _availableGpuOptions[0].Name;
+        return selected?.Name ?? availableGpuOptions[0].Name;
+    }
+
+    private IReadOnlyList<GpuOption> EnsureGpuOptionsDiscovered()
+    {
+        if (_availableGpuOptions is not null)
+        {
+            return _availableGpuOptions;
+        }
+
+        StartupDiagnostics.Log("Discovering GPUs via dxdiag.");
+        _availableGpuOptions = GpuDiscoveryService.Discover();
+        StartupDiagnostics.Log($"GPU discovery complete. Found {_availableGpuOptions.Count} option(s).");
+        return _availableGpuOptions;
     }
 }

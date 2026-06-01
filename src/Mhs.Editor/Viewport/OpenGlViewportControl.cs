@@ -9,6 +9,7 @@ using Avalonia.Media;
 using Avalonia.OpenGL;
 using Avalonia.OpenGL.Controls;
 using Mhs.Editor.Editor;
+using Mhs.Editor.Settings;
 using Mhs.Editor.Viewport.Gl;
 
 namespace Mhs.Editor.Viewport;
@@ -90,6 +91,7 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
             _renderer = new GlRenderer(gl);
             var diagnostics = $"{_renderer.Vendor} | {_renderer.Renderer} | {_renderer.Version}";
             Console.WriteLine($"[OpenGL] Initialized: {diagnostics}");
+            StartupDiagnostics.Log($"OpenGL initialized: {diagnostics}");
             if (EditorState is { } state)
             {
                 state.OpenGlBackendInfo = diagnostics;
@@ -103,6 +105,7 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
         {
             _initError = ex.Message;
             Console.Error.WriteLine($"[OpenGL] Initialization failed: {ex}");
+            StartupDiagnostics.Log($"OpenGL initialization failed: {ex}");
             if (EditorState is { } state)
             {
                 state.OpenGlBackendInfo = $"Init failed: {_initError}";

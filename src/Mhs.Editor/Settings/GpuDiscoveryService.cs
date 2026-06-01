@@ -12,7 +12,9 @@ public static class GpuDiscoveryService
 {
     public static IReadOnlyList<GpuOption> Discover()
     {
+        var stopwatch = Stopwatch.StartNew();
         var discovered = DiscoverFromDxdiag();
+        StartupDiagnostics.Log($"Discover() completed in {stopwatch.ElapsedMilliseconds} ms with {discovered.Count} GPU(s).");
         if (discovered.Count > 0)
         {
             return discovered;
@@ -30,16 +32,22 @@ public static class GpuDiscoveryService
 
     public static void ApplyProcessGpuPreference(string preferredGpuName)
     {
-        if (string.IsNullOrWhiteSpace(preferredGpuName))
-        {
-            return;
-        }
+        var normalized = string.IsNullOrWhiteSpace(preferredGpuName)
+            ? "System default GPU"
+            : preferredGpuName;
+        StartupDiagnostics.Log($"Applying process GPU preference: {normalized}");
 
-        if (preferredGpuName.Contains("NVIDIA", StringComparison.OrdinalIgnoreCase))
+        if (normalized.Contains("NVIDIA", StringComparison.OrdinalIgnoreCase))
         {
             Environment.SetEnvironmentVariable("SHIM_MCCOMPAT", "0x800000001");
             Environment.SetEnvironmentVariable("SHIM_RENDERING_MODE", "0x2");
+            StartupDiagnostics.Log("Applied NVIDIA shim environment variables.");
+            return;
         }
+
+        Environment.SetEnvironmentVariable("SHIM_MCCOMPAT", null);
+        Environment.SetEnvironmentVariable("SHIM_RENDERING_MODE", null);
+        StartupDiagnostics.Log("Cleared shim environment variables for system/default preference.");
     }
 
     private static IReadOnlyList<GpuOption> DiscoverFromDxdiag()
