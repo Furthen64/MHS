@@ -56,7 +56,8 @@ public sealed record PortStatusInfo(
     ScenePort Port,
     PortConnectionStatus Status,
     int ValidConnectionCount,
-    int InvalidAdjacencyCount);
+    int InvalidAdjacencyCount,
+    string Diagnostic);
 
 public sealed class PortConnectivitySnapshot
 {
@@ -83,7 +84,7 @@ public sealed class PortConnectivitySnapshot
     public PortStatusInfo GetPortStatus(ScenePort port)
         => _statusByPortId.TryGetValue(port.PortId, out var status)
             ? status
-            : new PortStatusInfo(port, PortConnectionStatus.Unconnected, 0, 0);
+            : new PortStatusInfo(port, PortConnectionStatus.Unconnected, 0, 0, "unconnected");
 
     public IReadOnlyList<PortStatusInfo> GetPortStatusesForOwner(Guid ownerSceneObjectId)
         => PortStatuses.Where(status => status.Port.OwnerSceneObjectId == ownerSceneObjectId).ToList();
@@ -125,6 +126,7 @@ public static class PortConnectivityAnalyzer
         var invalidAdjacencies = new List<PortAdjacency>();
         var validByPortId = new Dictionary<string, int>(StringComparer.Ordinal);
         var invalidByPortId = new Dictionary<string, int>(StringComparer.Ordinal);
+        var issuesByPortId = new Dictionary<string, HashSet<PortAdjacencyIssue>>(StringComparer.Ordinal);
 
         for (var i = 0; i < ports.Count; i++)
         {
@@ -148,6 +150,8 @@ public static class PortConnectivityAnalyzer
                 invalidAdjacencies.Add(new PortAdjacency(a, b, issue));
                 Increment(invalidByPortId, a.PortId);
                 Increment(invalidByPortId, b.PortId);
+                AddIssue(issuesByPortId, a.PortId, issue);
+                AddIssue(issuesByPortId, b.PortId, issue);
             }
         }
 
@@ -163,7 +167,8 @@ public static class PortConnectivityAnalyzer
                     ? PortConnectionStatus.Invalid
                     : PortConnectionStatus.Unconnected;
 
-            portStatuses.Add(new PortStatusInfo(port, status, valid, invalid));
+            var diagnostic = BuildDiagnostic(status, valid, invalid, issuesByPortId.TryGetValue(port.PortId, out var issues) ? issues : null);
+            portStatuses.Add(new PortStatusInfo(port, status, valid, invalid, diagnostic));
         }
 
         return new PortConnectivitySnapshot(ports, connections, invalidAdjacencies, portStatuses);
@@ -227,16 +232,19 @@ public static class PortConnectivityAnalyzer
     {
         input = default!;
         output = default!;
-        var isConveyor = string.Equals(sceneObject.PartId, "conveyor", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(sceneObject.PartType, "Conveyor", StringComparison.OrdinalIgnoreCase);
-        if (!isConveyor)
+        if (!sceneObject.IsConveyor)
         {
             return false;
         }
 
+        if (sceneObject.IsRouteConveyorSegment && TryBuildRouteConveyorPorts(sceneObject, out input, out output))
+        {
+            return true;
+        }
+
         var size = sceneObject.EffectiveSize;
         var z = Math.Min(size.HeightZ, 1) * 0.5;
-        var rotation = RotationHelper.NormalizeDegrees(sceneObject.RotationZDegrees);
+        var rotation = sceneObject.GetConveyorFlowRotationDegrees();
 
         var (inputLocal, outputLocal, inputDirection, outputDirection) = rotation switch
         {
@@ -267,6 +275,68 @@ public static class PortConnectivityAnalyzer
         return true;
     }
 
+    private static bool TryBuildRouteConveyorPorts(SceneObject sceneObject, out ScenePort input, out ScenePort output)
+    {
+        input = default!;
+        output = default!;
+
+        var (flowStart, flowEnd) = sceneObject.GetConveyorFlowEndpoints();
+        var z = sceneObject.Position.Z + 0.5;
+        PortPosition inputWorld;
+        PortPosition outputWorld;
+        PortDirection inputDirection;
+        PortDirection outputDirection;
+
+        if (flowStart.X != flowEnd.X)
+        {
+            var positive = flowEnd.X > flowStart.X;
+            inputWorld = new PortPosition(positive ? flowStart.X : flowStart.X + 1, flowStart.Y + 0.5, z);
+            outputWorld = new PortPosition(positive ? flowEnd.X + 1 : flowEnd.X, flowEnd.Y + 0.5, z);
+            inputDirection = positive ? PortDirection.NegativeX : PortDirection.PositiveX;
+            outputDirection = positive ? PortDirection.PositiveX : PortDirection.NegativeX;
+        }
+        else if (flowStart.Y != flowEnd.Y)
+        {
+            var positive = flowEnd.Y > flowStart.Y;
+            inputWorld = new PortPosition(flowStart.X + 0.5, positive ? flowStart.Y : flowStart.Y + 1, z);
+            outputWorld = new PortPosition(flowEnd.X + 0.5, positive ? flowEnd.Y + 1 : flowEnd.Y, z);
+            inputDirection = positive ? PortDirection.NegativeY : PortDirection.PositiveY;
+            outputDirection = positive ? PortDirection.PositiveY : PortDirection.NegativeY;
+        }
+        else
+        {
+            var rotation = sceneObject.GetConveyorFlowRotationDegrees();
+            var cell = flowStart;
+            (inputWorld, outputWorld, inputDirection, outputDirection) = rotation switch
+            {
+                0 => (
+                    new PortPosition(cell.X, cell.Y + 0.5, z),
+                    new PortPosition(cell.X + 1, cell.Y + 0.5, z),
+                    PortDirection.NegativeX,
+                    PortDirection.PositiveX),
+                90 => (
+                    new PortPosition(cell.X + 0.5, cell.Y, z),
+                    new PortPosition(cell.X + 0.5, cell.Y + 1, z),
+                    PortDirection.NegativeY,
+                    PortDirection.PositiveY),
+                180 => (
+                    new PortPosition(cell.X + 1, cell.Y + 0.5, z),
+                    new PortPosition(cell.X, cell.Y + 0.5, z),
+                    PortDirection.PositiveX,
+                    PortDirection.NegativeX),
+                _ => (
+                    new PortPosition(cell.X + 0.5, cell.Y + 1, z),
+                    new PortPosition(cell.X + 0.5, cell.Y, z),
+                    PortDirection.PositiveY,
+                    PortDirection.NegativeY)
+            };
+        }
+
+        input = CreateWorldPort(sceneObject, "input", "Input", PortKind.Input, inputWorld, inputDirection);
+        output = CreateWorldPort(sceneObject, "output", "Output", PortKind.Output, outputWorld, outputDirection);
+        return true;
+    }
+
     private static ScenePort CreatePort(
         SceneObject owner,
         string localPortId,
@@ -290,6 +360,29 @@ public static class PortConnectivityAnalyzer
             direction);
     }
 
+    private static ScenePort CreateWorldPort(
+        SceneObject owner,
+        string localPortId,
+        string name,
+        PortKind kind,
+        PortPosition worldPosition,
+        PortDirection direction)
+    {
+        var local = new PortPosition(
+            worldPosition.X - owner.Position.X,
+            worldPosition.Y - owner.Position.Y,
+            worldPosition.Z - owner.Position.Z);
+
+        return new ScenePort(
+            $"{owner.Id:N}:{localPortId}",
+            name,
+            owner.Id,
+            kind,
+            local,
+            worldPosition,
+            direction);
+    }
+
     private static bool IsNearby(ScenePort a, ScenePort b)
     {
         var dx = a.WorldPosition.X - b.WorldPosition.X;
@@ -308,6 +401,46 @@ public static class PortConnectivityAnalyzer
 
     private static bool CanOutput(PortKind kind) => kind is PortKind.Output or PortKind.Bidirectional;
 
+    private static string BuildDiagnostic(PortConnectionStatus status, int valid, int invalid, IReadOnlyCollection<PortAdjacencyIssue>? issues)
+    {
+        if (status == PortConnectionStatus.Connected && invalid == 0 && valid == 1)
+        {
+            return "connected";
+        }
+
+        if (status == PortConnectionStatus.Unconnected)
+        {
+            return "unconnected";
+        }
+
+        var labels = new List<string>();
+        if (valid > 1)
+        {
+            labels.Add("multiple connections");
+        }
+
+        if (issues is not null)
+        {
+            labels.AddRange(issues.Select(IssueLabel));
+        }
+
+        if (status == PortConnectionStatus.Connected && labels.Count == 0)
+        {
+            return "connected";
+        }
+
+        return labels.Count == 0 ? "invalid adjacency" : string.Join(", ", labels.Distinct(StringComparer.Ordinal));
+    }
+
+    private static string IssueLabel(PortAdjacencyIssue issue) => issue switch
+    {
+        PortAdjacencyIssue.FacingMismatch => "wrong-facing",
+        PortAdjacencyIssue.KindMismatch => "incompatible port kind",
+        PortAdjacencyIssue.DifferentZ => "different Z",
+        PortAdjacencyIssue.SameObject => "same owner",
+        _ => "invalid adjacency"
+    };
+
     private static void Increment(IDictionary<string, int> counters, string key)
     {
         if (counters.TryGetValue(key, out var current))
@@ -317,5 +450,16 @@ public static class PortConnectivityAnalyzer
         }
 
         counters[key] = 1;
+    }
+
+    private static void AddIssue(IDictionary<string, HashSet<PortAdjacencyIssue>> issuesByPortId, string portId, PortAdjacencyIssue issue)
+    {
+        if (!issuesByPortId.TryGetValue(portId, out var set))
+        {
+            set = new HashSet<PortAdjacencyIssue>();
+            issuesByPortId[portId] = set;
+        }
+
+        set.Add(issue);
     }
 }

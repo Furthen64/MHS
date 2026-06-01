@@ -28,6 +28,15 @@ public sealed class SceneFileObjectData
 
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public VoxelSize? SizeOverride { get; init; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public VoxelCoord? RouteStartCell { get; init; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public VoxelCoord? RouteEndCell { get; init; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool RouteFlowReversed { get; init; }
 }
 
 public static class SceneFileJsonSerializer

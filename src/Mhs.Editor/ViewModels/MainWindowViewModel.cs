@@ -214,7 +214,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             var connected = statuses.Count(status => status.Status == PortConnectionStatus.Connected);
             var invalid = statuses.Count(status => status.Status == PortConnectionStatus.Invalid);
             var unconnected = statuses.Count - connected - invalid;
-            var details = string.Join(", ", statuses.Select(status => $"{status.Port.Name}:{StatusLabel(status.Status)}"));
+            var details = string.Join(", ", statuses.Select(status => $"{status.Port.Name}:{StatusLabel(status.Status)} ({status.Diagnostic})"));
             return $"Ports: {connected} connected, {unconnected} open, {invalid} invalid | {details}";
         }
     }
@@ -315,7 +315,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 PartId = resolvedPartId,
                 Position = sceneObject.Position,
                 RotationZDegrees = sceneObject.RotationZDegrees,
-                SizeOverride = sizeOverride
+                SizeOverride = sizeOverride,
+                RouteStartCell = sceneObject.RouteStartCell,
+                RouteEndCell = sceneObject.RouteEndCell,
+                RouteFlowReversed = sceneObject.RouteFlowReversed
             });
         }
 
@@ -349,7 +352,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 PartType = partDefinition.DisplayName,
                 Position = objectData.Position,
                 BaseSize = baseSize,
-                RotationZDegrees = RotationHelper.NormalizeDegrees(objectData.RotationZDegrees)
+                RotationZDegrees = RotationHelper.NormalizeDegrees(objectData.RotationZDegrees),
+                RouteStartCell = objectData.RouteStartCell,
+                RouteEndCell = objectData.RouteEndCell,
+                RouteFlowReversed = objectData.RouteFlowReversed
             };
 
             if (!EditorState.IsObjectWithinGrid(sceneObject))
