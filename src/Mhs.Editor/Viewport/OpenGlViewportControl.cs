@@ -1038,69 +1038,24 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
 
     private void DrawConveyorRoutePreview(ConveyorRouteDraft route, EditorState state)
     {
-        var renderInfo = PartRenderCatalog.Resolve("conveyor");
+        var (committedCells, previewCells) = ConveyorRouteCellVisualization.BuildRouteDraftCells(
+            route.Anchors, route.PreviewEnd);
 
-        for (var i = 1; i < route.Anchors.Count; i++)
+        var committedColor = Color.FromRgb(78, 158, 216);
+        foreach (var cell in committedCells)
         {
-            var start = route.Anchors[i - 1];
-            var end = route.Anchors[i];
-            if (!ConveyorRouteGeometry.TryCreateSegment(start, end, out var segment, out _))
-            {
-                continue;
-            }
-
-            var position = segment.Position;
-            var size = segment.Size;
-            if (i > 1)
-            {
-                ConveyorRouteGeometry.TrimSegmentStartCell(start, end, ref position, ref size);
-            }
-
-            DrawIsoBox(position, size, Color.FromRgb(78, 158, 216), 0.35, drawOutline: true, state);
-            DrawFacingMarker(position, size, segment.RotationZDegrees, renderInfo, 0.35, state);
-
-            if (i < route.Anchors.Count - 1)
-            {
-                var nextStart = route.Anchors[i];
-                var nextEnd = route.Anchors[i + 1];
-                if (ConveyorRouteRendering.TryGetTurnJoinCell(start, end, nextStart, nextEnd, out var joinCell))
-                {
-                    DrawConveyorJoinCap(joinCell, Color.FromRgb(78, 158, 216), 0.42, state);
-                }
-            }
+            DrawConveyorCell(cell, committedColor, 0.55, showFullCellBounds: false, state);
         }
 
-        if (route.Anchors.Count > 0 && route.PreviewEnd.HasValue)
+        var previewColor = route.PreviewIsValid ? Color.FromRgb(70, 190, 90) : Color.FromRgb(230, 90, 90);
+        foreach (var cell in previewCells)
         {
-            var start = route.Anchors[^1];
-            var end = route.PreviewEnd.Value;
-            if (ConveyorRouteGeometry.TryCreateSegment(start, end, out var segment, out _))
-            {
-                var position = segment.Position;
-                var size = segment.Size;
-                if (route.Anchors.Count > 1)
-                {
-                    ConveyorRouteGeometry.TrimSegmentStartCell(start, end, ref position, ref size);
-                }
-
-                var previewColor = route.PreviewIsValid ? Color.FromRgb(70, 190, 90) : Color.FromRgb(230, 90, 90);
-                DrawConveyorStrip(position, size, segment.RotationZDegrees, previewColor, renderInfo, 0.45, true, state);
-
-                if (route.Anchors.Count > 1)
-                {
-                    var previousStart = route.Anchors[^2];
-                    var previousEnd = route.Anchors[^1];
-                    if (ConveyorRouteRendering.TryGetTurnJoinCell(previousStart, previousEnd, start, end, out var joinCell))
-                    {
-                        DrawConveyorJoinCap(joinCell, previewColor, 0.52, state);
-                    }
-                }
-            }
+            DrawConveyorCell(cell, previewColor, 0.45, showFullCellBounds: false, state);
         }
 
         foreach (var anchor in route.Anchors)
         {
-            DrawIsoBox(anchor, new VoxelSize(1, 1, 1), Color.FromRgb(245, 220, 80), 0.75, drawOutline: true, state);
+            DrawOutline(anchor, new VoxelSize(1, 1, 1), Color.FromRgb(245, 220, 80), 0.75, state);
         }
     }
 
