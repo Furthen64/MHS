@@ -26,15 +26,21 @@ public enum PortConnectionStatus
 {
     Unconnected,
     Connected,
-    Invalid
+    InvalidNearby
 }
 
-public enum PortAdjacencyIssue
+public enum ConnectionInvalidReason
 {
-    KindMismatch,
-    SameObject,
+    IncompatiblePortKind,
+    SameOwner,
     DifferentZ,
-    FacingMismatch
+    WrongFacing,
+    AmbiguousCandidate
+}
+
+public enum ConnectionKind
+{
+    Direct
 }
 
 public readonly record struct PortPosition(double X, double Y, double Z);
@@ -48,46 +54,176 @@ public sealed record ScenePort(
     PortPosition WorldPosition,
     PortDirection Direction);
 
-public sealed record PortConnection(ScenePort From, ScenePort To);
+public sealed record Connection(
+    Guid FromObjectId,
+    string FromPortId,
+    Guid ToObjectId,
+    string ToPortId,
+    ConnectionKind ConnectionKind);
 
-public sealed record PortAdjacency(ScenePort A, ScenePort B, PortAdjacencyIssue Issue);
+public sealed record InvalidConnectionCandidate(
+    string PortAId,
+    string PortBId,
+    ConnectionInvalidReason Reason);
 
 public sealed record PortStatusInfo(
     ScenePort Port,
     PortConnectionStatus Status,
-    int ValidConnectionCount,
-    int InvalidAdjacencyCount,
+    int ConnectionCount,
+    int InvalidNearbyCount,
+    IReadOnlyList<ConnectionInvalidReason> InvalidReasons,
     string Diagnostic);
 
 public sealed class PortConnectivitySnapshot
 {
     private readonly ReadOnlyDictionary<string, PortStatusInfo> _statusByPortId;
+    private readonly ReadOnlyDictionary<string, ScenePort> _portByPortId;
+    private readonly ReadOnlyDictionary<string, IReadOnlyList<Connection>> _incomingByPortId;
+    private readonly ReadOnlyDictionary<string, IReadOnlyList<Connection>> _outgoingByPortId;
+    private readonly ReadOnlyDictionary<Guid, IReadOnlyList<Connection>> _incomingByObjectId;
+    private readonly ReadOnlyDictionary<Guid, IReadOnlyList<Connection>> _outgoingByObjectId;
+    private readonly ReadOnlyDictionary<string, IReadOnlyList<InvalidConnectionCandidate>> _invalidByPortId;
 
     public PortConnectivitySnapshot(
         IReadOnlyList<ScenePort> ports,
-        IReadOnlyList<PortConnection> connections,
-        IReadOnlyList<PortAdjacency> invalidAdjacencies,
+        IReadOnlyList<Connection> connections,
+        IReadOnlyList<InvalidConnectionCandidate> invalidNearbyCandidates,
         IReadOnlyList<PortStatusInfo> portStatuses)
     {
         Ports = ports;
         Connections = connections;
-        InvalidAdjacencies = invalidAdjacencies;
+        InvalidNearbyCandidates = invalidNearbyCandidates;
         PortStatuses = portStatuses;
         _statusByPortId = new ReadOnlyDictionary<string, PortStatusInfo>(portStatuses.ToDictionary(s => s.Port.PortId, StringComparer.Ordinal));
+        _portByPortId = new ReadOnlyDictionary<string, ScenePort>(ports.ToDictionary(port => port.PortId, StringComparer.Ordinal));
+        _incomingByPortId = ToReadOnlyGroupedDictionary(connections, connection => connection.ToPortId, StringComparer.Ordinal);
+        _outgoingByPortId = ToReadOnlyGroupedDictionary(connections, connection => connection.FromPortId, StringComparer.Ordinal);
+        _incomingByObjectId = ToReadOnlyGroupedDictionary(connections, connection => connection.ToObjectId);
+        _outgoingByObjectId = ToReadOnlyGroupedDictionary(connections, connection => connection.FromObjectId);
+        _invalidByPortId = BuildInvalidByPort(invalidNearbyCandidates);
     }
 
     public IReadOnlyList<ScenePort> Ports { get; }
-    public IReadOnlyList<PortConnection> Connections { get; }
-    public IReadOnlyList<PortAdjacency> InvalidAdjacencies { get; }
+    public IReadOnlyList<Connection> Connections { get; }
+    public IReadOnlyList<InvalidConnectionCandidate> InvalidNearbyCandidates { get; }
     public IReadOnlyList<PortStatusInfo> PortStatuses { get; }
 
     public PortStatusInfo GetPortStatus(ScenePort port)
         => _statusByPortId.TryGetValue(port.PortId, out var status)
             ? status
-            : new PortStatusInfo(port, PortConnectionStatus.Unconnected, 0, 0, "unconnected");
+            : new PortStatusInfo(port, PortConnectionStatus.Unconnected, 0, 0, Array.Empty<ConnectionInvalidReason>(), "unconnected");
 
     public IReadOnlyList<PortStatusInfo> GetPortStatusesForOwner(Guid ownerSceneObjectId)
         => PortStatuses.Where(status => status.Port.OwnerSceneObjectId == ownerSceneObjectId).ToList();
+
+    public IReadOnlyList<Connection> GetAllConnections()
+        => Connections;
+
+    public IReadOnlyList<Connection> GetIncomingConnectionsForObject(Guid objectId)
+        => _incomingByObjectId.TryGetValue(objectId, out var connections)
+            ? connections
+            : Array.Empty<Connection>();
+
+    public IReadOnlyList<Connection> GetOutgoingConnectionsForObject(Guid objectId)
+        => _outgoingByObjectId.TryGetValue(objectId, out var connections)
+            ? connections
+            : Array.Empty<Connection>();
+
+    public IReadOnlyList<Connection> GetIncomingConnectionsForPort(string portId)
+        => _incomingByPortId.TryGetValue(portId, out var connections)
+            ? connections
+            : Array.Empty<Connection>();
+
+    public IReadOnlyList<Connection> GetOutgoingConnectionsForPort(string portId)
+        => _outgoingByPortId.TryGetValue(portId, out var connections)
+            ? connections
+            : Array.Empty<Connection>();
+
+    public IReadOnlyList<InvalidConnectionCandidate> GetInvalidNearbyCandidatesForPort(string portId)
+        => _invalidByPortId.TryGetValue(portId, out var candidates)
+            ? candidates
+            : Array.Empty<InvalidConnectionCandidate>();
+
+    public bool TryGetPort(string portId, out ScenePort port)
+        => _portByPortId.TryGetValue(portId, out port!);
+
+    public ScenePort? GetConnectedPeerPort(string portId)
+    {
+        if (_outgoingByPortId.TryGetValue(portId, out var outgoing) && outgoing.Count > 0)
+        {
+            return _portByPortId.TryGetValue(outgoing[0].ToPortId, out var target) ? target : null;
+        }
+
+        if (_incomingByPortId.TryGetValue(portId, out var incoming) && incoming.Count > 0)
+        {
+            return _portByPortId.TryGetValue(incoming[0].FromPortId, out var source) ? source : null;
+        }
+
+        return null;
+    }
+
+    public IReadOnlyList<Guid> GetReachableObjects(Guid startObjectId)
+    {
+        var visited = new HashSet<Guid>();
+        var queue = new Queue<Guid>();
+        visited.Add(startObjectId);
+        queue.Enqueue(startObjectId);
+
+        while (queue.Count > 0)
+        {
+            var current = queue.Dequeue();
+            foreach (var connection in GetOutgoingConnectionsForObject(current))
+            {
+                if (visited.Add(connection.ToObjectId))
+                {
+                    queue.Enqueue(connection.ToObjectId);
+                }
+            }
+        }
+
+        visited.Remove(startObjectId);
+        return visited.ToList();
+    }
+
+    private static ReadOnlyDictionary<TKey, IReadOnlyList<Connection>> ToReadOnlyGroupedDictionary<TKey>(
+        IEnumerable<Connection> connections,
+        Func<Connection, TKey> keySelector,
+        IEqualityComparer<TKey>? comparer = null)
+        where TKey : notnull
+    {
+        var grouped = connections
+            .GroupBy(keySelector, comparer)
+            .ToDictionary(group => group.Key, group => (IReadOnlyList<Connection>)group.ToList(), comparer);
+        return new ReadOnlyDictionary<TKey, IReadOnlyList<Connection>>(grouped);
+    }
+
+    private static ReadOnlyDictionary<string, IReadOnlyList<InvalidConnectionCandidate>> BuildInvalidByPort(
+        IEnumerable<InvalidConnectionCandidate> candidates)
+    {
+        var grouped = new Dictionary<string, List<InvalidConnectionCandidate>>(StringComparer.Ordinal);
+        foreach (var candidate in candidates)
+        {
+            Add(grouped, candidate.PortAId, candidate);
+            Add(grouped, candidate.PortBId, candidate);
+        }
+
+        return new ReadOnlyDictionary<string, IReadOnlyList<InvalidConnectionCandidate>>(
+            grouped.ToDictionary(
+                pair => pair.Key,
+                pair => (IReadOnlyList<InvalidConnectionCandidate>)pair.Value,
+                StringComparer.Ordinal));
+    }
+
+    private static void Add(IDictionary<string, List<InvalidConnectionCandidate>> grouped, string portId, InvalidConnectionCandidate candidate)
+    {
+        if (!grouped.TryGetValue(portId, out var list))
+        {
+            list = [];
+            grouped[portId] = list;
+        }
+
+        list.Add(candidate);
+    }
 }
 
 public static class PortDirectionExtensions
@@ -122,11 +258,9 @@ public static class PortConnectivityAnalyzer
     public static PortConnectivitySnapshot Analyze(IEnumerable<SceneObject> sceneObjects)
     {
         var ports = BuildPorts(sceneObjects);
-        var connections = new List<PortConnection>();
-        var invalidAdjacencies = new List<PortAdjacency>();
-        var validByPortId = new Dictionary<string, int>(StringComparer.Ordinal);
-        var invalidByPortId = new Dictionary<string, int>(StringComparer.Ordinal);
-        var issuesByPortId = new Dictionary<string, HashSet<PortAdjacencyIssue>>(StringComparer.Ordinal);
+        var candidateConnections = new List<Connection>();
+        var invalidNearbyCandidates = new List<InvalidConnectionCandidate>();
+        var invalidReasonsByPortId = new Dictionary<string, HashSet<ConnectionInvalidReason>>(StringComparer.Ordinal);
 
         for (var i = 0; i < ports.Count; i++)
         {
@@ -139,39 +273,79 @@ public static class PortConnectivityAnalyzer
                     continue;
                 }
 
-                if (TryCreateConnection(a, b, out var connection, out var issue))
+                if (TryCreateConnection(a, b, out var connection, out var reason))
                 {
-                    connections.Add(connection);
-                    Increment(validByPortId, connection.From.PortId);
-                    Increment(validByPortId, connection.To.PortId);
+                    candidateConnections.Add(connection);
                     continue;
                 }
 
-                invalidAdjacencies.Add(new PortAdjacency(a, b, issue));
-                Increment(invalidByPortId, a.PortId);
-                Increment(invalidByPortId, b.PortId);
-                AddIssue(issuesByPortId, a.PortId, issue);
-                AddIssue(issuesByPortId, b.PortId, issue);
+                var invalid = new InvalidConnectionCandidate(a.PortId, b.PortId, reason);
+                invalidNearbyCandidates.Add(invalid);
+                AddReason(invalidReasonsByPortId, a.PortId, reason);
+                AddReason(invalidReasonsByPortId, b.PortId, reason);
             }
+        }
+
+        var ambiguousPortIds = candidateConnections
+            .SelectMany(connection => new[] { connection.FromPortId, connection.ToPortId })
+            .GroupBy(portId => portId, StringComparer.Ordinal)
+            .Where(group => group.Count() > 1)
+            .Select(group => group.Key)
+            .ToHashSet(StringComparer.Ordinal);
+
+        if (ambiguousPortIds.Count > 0)
+        {
+            var ambiguousInvalid = candidateConnections
+                .Where(connection => ambiguousPortIds.Contains(connection.FromPortId) || ambiguousPortIds.Contains(connection.ToPortId))
+                .Select(connection => new InvalidConnectionCandidate(connection.FromPortId, connection.ToPortId, ConnectionInvalidReason.AmbiguousCandidate))
+                .ToList();
+
+            invalidNearbyCandidates.AddRange(ambiguousInvalid);
+            foreach (var invalid in ambiguousInvalid)
+            {
+                AddReason(invalidReasonsByPortId, invalid.PortAId, invalid.Reason);
+                AddReason(invalidReasonsByPortId, invalid.PortBId, invalid.Reason);
+            }
+        }
+
+        var connections = candidateConnections
+            .Where(connection => !ambiguousPortIds.Contains(connection.FromPortId) && !ambiguousPortIds.Contains(connection.ToPortId))
+            .ToList();
+
+        var connectionCountByPortId = new Dictionary<string, int>(StringComparer.Ordinal);
+        foreach (var connection in connections)
+        {
+            Increment(connectionCountByPortId, connection.FromPortId);
+            Increment(connectionCountByPortId, connection.ToPortId);
+        }
+
+        var invalidCountByPortId = new Dictionary<string, int>(StringComparer.Ordinal);
+        foreach (var invalid in invalidNearbyCandidates)
+        {
+            Increment(invalidCountByPortId, invalid.PortAId);
+            Increment(invalidCountByPortId, invalid.PortBId);
         }
 
         var portStatuses = new List<PortStatusInfo>(ports.Count);
         foreach (var port in ports)
         {
-            validByPortId.TryGetValue(port.PortId, out var valid);
-            invalidByPortId.TryGetValue(port.PortId, out var invalid);
+            connectionCountByPortId.TryGetValue(port.PortId, out var connectionCount);
+            invalidCountByPortId.TryGetValue(port.PortId, out var invalidCount);
+            var reasons = invalidReasonsByPortId.TryGetValue(port.PortId, out var reasonSet)
+                ? reasonSet.OrderBy(reason => reason).ToList()
+                : [];
 
-            var status = valid == 1
-                ? PortConnectionStatus.Connected
-                : valid > 1 || invalid > 0
-                    ? PortConnectionStatus.Invalid
+            var status = invalidCount > 0
+                ? PortConnectionStatus.InvalidNearby
+                : connectionCount > 0
+                    ? PortConnectionStatus.Connected
                     : PortConnectionStatus.Unconnected;
 
-            var diagnostic = BuildDiagnostic(status, valid, invalid, issuesByPortId.TryGetValue(port.PortId, out var issues) ? issues : null);
-            portStatuses.Add(new PortStatusInfo(port, status, valid, invalid, diagnostic));
+            var diagnostic = BuildDiagnostic(status, connectionCount, invalidCount, reasons);
+            portStatuses.Add(new PortStatusInfo(port, status, connectionCount, invalidCount, reasons, diagnostic));
         }
 
-        return new PortConnectivitySnapshot(ports, connections, invalidAdjacencies, portStatuses);
+        return new PortConnectivitySnapshot(ports, connections, invalidNearbyCandidates, portStatuses);
     }
 
     private static List<ScenePort> BuildPorts(IEnumerable<SceneObject> sceneObjects)
@@ -189,42 +363,42 @@ public static class PortConnectivityAnalyzer
         return ports;
     }
 
-    private static bool TryCreateConnection(ScenePort a, ScenePort b, out PortConnection connection, out PortAdjacencyIssue issue)
+    private static bool TryCreateConnection(ScenePort a, ScenePort b, out Connection connection, out ConnectionInvalidReason reason)
     {
         connection = default!;
-        issue = PortAdjacencyIssue.KindMismatch;
+        reason = ConnectionInvalidReason.IncompatiblePortKind;
 
         if (a.OwnerSceneObjectId == b.OwnerSceneObjectId)
         {
-            issue = PortAdjacencyIssue.SameObject;
+            reason = ConnectionInvalidReason.SameOwner;
             return false;
         }
 
         if (Math.Abs(a.WorldPosition.Z - b.WorldPosition.Z) > SameZTolerance)
         {
-            issue = PortAdjacencyIssue.DifferentZ;
+            reason = ConnectionInvalidReason.DifferentZ;
             return false;
         }
 
         if (a.Direction.Opposite() != b.Direction)
         {
-            issue = PortAdjacencyIssue.FacingMismatch;
+            reason = ConnectionInvalidReason.WrongFacing;
             return false;
         }
 
         if (CanOutput(a.Kind) && CanInput(b.Kind))
         {
-            connection = new PortConnection(a, b);
+            connection = new Connection(a.OwnerSceneObjectId, a.PortId, b.OwnerSceneObjectId, b.PortId, ConnectionKind.Direct);
             return true;
         }
 
         if (CanOutput(b.Kind) && CanInput(a.Kind))
         {
-            connection = new PortConnection(b, a);
+            connection = new Connection(b.OwnerSceneObjectId, b.PortId, a.OwnerSceneObjectId, a.PortId, ConnectionKind.Direct);
             return true;
         }
 
-        issue = PortAdjacencyIssue.KindMismatch;
+        reason = ConnectionInvalidReason.IncompatiblePortKind;
         return false;
     }
 
@@ -401,9 +575,13 @@ public static class PortConnectivityAnalyzer
 
     private static bool CanOutput(PortKind kind) => kind is PortKind.Output or PortKind.Bidirectional;
 
-    private static string BuildDiagnostic(PortConnectionStatus status, int valid, int invalid, IReadOnlyCollection<PortAdjacencyIssue>? issues)
+    private static string BuildDiagnostic(
+        PortConnectionStatus status,
+        int connectionCount,
+        int invalidCount,
+        IReadOnlyCollection<ConnectionInvalidReason> reasons)
     {
-        if (status == PortConnectionStatus.Connected && invalid == 0 && valid == 1)
+        if (status == PortConnectionStatus.Connected && invalidCount == 0 && connectionCount > 0)
         {
             return "connected";
         }
@@ -414,15 +592,12 @@ public static class PortConnectivityAnalyzer
         }
 
         var labels = new List<string>();
-        if (valid > 1)
+        if (connectionCount > 1)
         {
             labels.Add("multiple connections");
         }
 
-        if (issues is not null)
-        {
-            labels.AddRange(issues.Select(IssueLabel));
-        }
+        labels.AddRange(reasons.Select(ReasonLabel));
 
         if (status == PortConnectionStatus.Connected && labels.Count == 0)
         {
@@ -432,12 +607,13 @@ public static class PortConnectivityAnalyzer
         return labels.Count == 0 ? "invalid adjacency" : string.Join(", ", labels.Distinct(StringComparer.Ordinal));
     }
 
-    private static string IssueLabel(PortAdjacencyIssue issue) => issue switch
+    private static string ReasonLabel(ConnectionInvalidReason reason) => reason switch
     {
-        PortAdjacencyIssue.FacingMismatch => "wrong-facing",
-        PortAdjacencyIssue.KindMismatch => "incompatible port kind",
-        PortAdjacencyIssue.DifferentZ => "different Z",
-        PortAdjacencyIssue.SameObject => "same owner",
+        ConnectionInvalidReason.WrongFacing => "wrong-facing",
+        ConnectionInvalidReason.IncompatiblePortKind => "incompatible port kind",
+        ConnectionInvalidReason.DifferentZ => "different Z",
+        ConnectionInvalidReason.SameOwner => "same owner",
+        ConnectionInvalidReason.AmbiguousCandidate => "ambiguous candidate",
         _ => "invalid adjacency"
     };
 
@@ -452,14 +628,17 @@ public static class PortConnectivityAnalyzer
         counters[key] = 1;
     }
 
-    private static void AddIssue(IDictionary<string, HashSet<PortAdjacencyIssue>> issuesByPortId, string portId, PortAdjacencyIssue issue)
+    private static void AddReason(
+        IDictionary<string, HashSet<ConnectionInvalidReason>> reasonsByPortId,
+        string portId,
+        ConnectionInvalidReason reason)
     {
-        if (!issuesByPortId.TryGetValue(portId, out var set))
+        if (!reasonsByPortId.TryGetValue(portId, out var set))
         {
-            set = new HashSet<PortAdjacencyIssue>();
-            issuesByPortId[portId] = set;
+            set = new HashSet<ConnectionInvalidReason>();
+            reasonsByPortId[portId] = set;
         }
 
-        set.Add(issue);
+        set.Add(reason);
     }
 }

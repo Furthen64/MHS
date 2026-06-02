@@ -612,7 +612,7 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
             var markerColor = status.Status switch
             {
                 PortConnectionStatus.Connected => Color.FromArgb(185, 74, 224, 120),
-                PortConnectionStatus.Invalid => Color.FromArgb(190, 244, 94, 94),
+                PortConnectionStatus.InvalidNearby => Color.FromArgb(190, 244, 94, 94),
                 _ => Color.FromArgb(170, 255, 214, 96)
             };
 
@@ -633,35 +633,40 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
 
         foreach (var connection in snapshot.Connections)
         {
-            if (!showObjectIds.Contains(connection.From.OwnerSceneObjectId)
-                || !showObjectIds.Contains(connection.To.OwnerSceneObjectId))
+            if (!showObjectIds.Contains(connection.FromObjectId)
+                || !showObjectIds.Contains(connection.ToObjectId)
+                || !snapshot.TryGetPort(connection.FromPortId, out var fromPort)
+                || !snapshot.TryGetPort(connection.ToPortId, out var toPort))
             {
                 continue;
             }
 
-            var start = Project(connection.From.WorldPosition.X, connection.From.WorldPosition.Y, connection.From.WorldPosition.Z + 0.24, state);
-            var end = Project(connection.To.WorldPosition.X, connection.To.WorldPosition.Y, connection.To.WorldPosition.Z + 0.24, state);
+            var start = Project(fromPort.WorldPosition.X, fromPort.WorldPosition.Y, fromPort.WorldPosition.Z + 0.24, state);
+            var end = Project(toPort.WorldPosition.X, toPort.WorldPosition.Y, toPort.WorldPosition.Z + 0.24, state);
             _renderer.AddLine(start, end, Color.FromArgb(185, 92, 238, 140), 0.8);
         }
 
-        foreach (var invalid in snapshot.InvalidAdjacencies)
+        foreach (var invalid in snapshot.InvalidNearbyCandidates)
         {
-            if (!showObjectIds.Contains(invalid.A.OwnerSceneObjectId)
-                || !showObjectIds.Contains(invalid.B.OwnerSceneObjectId))
+            if (!snapshot.TryGetPort(invalid.PortAId, out var a)
+                || !snapshot.TryGetPort(invalid.PortBId, out var b)
+                || !showObjectIds.Contains(a.OwnerSceneObjectId)
+                || !showObjectIds.Contains(b.OwnerSceneObjectId))
             {
                 continue;
             }
 
-            var issueColor = invalid.Issue switch
+            var issueColor = invalid.Reason switch
             {
-                PortAdjacencyIssue.FacingMismatch => Color.FromArgb(205, 255, 176, 68),
-                PortAdjacencyIssue.KindMismatch => Color.FromArgb(205, 189, 120, 255),
-                PortAdjacencyIssue.DifferentZ => Color.FromArgb(205, 104, 174, 255),
-                PortAdjacencyIssue.SameObject => Color.FromArgb(180, 160, 160, 160),
+                ConnectionInvalidReason.WrongFacing => Color.FromArgb(205, 255, 176, 68),
+                ConnectionInvalidReason.IncompatiblePortKind => Color.FromArgb(205, 189, 120, 255),
+                ConnectionInvalidReason.DifferentZ => Color.FromArgb(205, 104, 174, 255),
+                ConnectionInvalidReason.SameOwner => Color.FromArgb(180, 160, 160, 160),
+                ConnectionInvalidReason.AmbiguousCandidate => Color.FromArgb(205, 255, 110, 110),
                 _ => Color.FromArgb(205, 255, 120, 120)
             };
-            var start = Project(invalid.A.WorldPosition.X, invalid.A.WorldPosition.Y, invalid.A.WorldPosition.Z + 0.28, state);
-            var end = Project(invalid.B.WorldPosition.X, invalid.B.WorldPosition.Y, invalid.B.WorldPosition.Z + 0.28, state);
+            var start = Project(a.WorldPosition.X, a.WorldPosition.Y, a.WorldPosition.Z + 0.28, state);
+            var end = Project(b.WorldPosition.X, b.WorldPosition.Y, b.WorldPosition.Z + 0.28, state);
             _renderer.AddLine(start, end, issueColor, 0.8);
         }
     }
@@ -695,7 +700,7 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
         var d = new Point(center.X - radius, center.Y);
         _renderer.AddFilledQuad(a, b, c, d, color, 0.72);
 
-        var accent = status == PortConnectionStatus.Invalid
+        var accent = status == PortConnectionStatus.InvalidNearby
             ? Color.FromArgb(255, 255, 230, 230)
             : Color.FromArgb(255, 245, 245, 245);
         var inner = radius * 0.55;
