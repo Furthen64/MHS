@@ -204,17 +204,27 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 return "Ports: Select object";
             }
 
-            var statuses = EditorState.GetPortConnectivitySnapshot()
-                .GetPortStatusesForOwner(EditorState.SelectedObject.Id);
+            var snapshot = EditorState.GetPortConnectivitySnapshot();
+            var statuses = snapshot.GetPortStatusesForOwner(EditorState.SelectedObject.Id);
             if (statuses.Count == 0)
             {
                 return "Ports: None";
             }
 
             var connected = statuses.Count(status => status.Status == PortConnectionStatus.Connected);
-            var invalid = statuses.Count(status => status.Status == PortConnectionStatus.Invalid);
+            var invalid = statuses.Count(status => status.Status == PortConnectionStatus.InvalidNearby);
             var unconnected = statuses.Count - connected - invalid;
-            var details = string.Join(", ", statuses.Select(status => $"{status.Port.Name}:{StatusLabel(status.Status)} ({status.Diagnostic})"));
+            var details = string.Join(", ", statuses.Select(status =>
+            {
+                var label = $"{status.Port.Name}:{StatusLabel(status.Status)}";
+                var peer = snapshot.GetConnectedPeerPort(status.Port.PortId);
+                if (peer is not null)
+                {
+                    label = $"{label} -> {ShortId(peer.OwnerSceneObjectId)}:{peer.Name}";
+                }
+
+                return $"{label} ({status.Diagnostic})";
+            }));
             return $"Ports: {connected} connected, {unconnected} open, {invalid} invalid | {details}";
         }
     }
@@ -758,9 +768,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private static string StatusLabel(PortConnectionStatus status) => status switch
     {
         PortConnectionStatus.Connected => "Connected",
-        PortConnectionStatus.Invalid => "Invalid",
+        PortConnectionStatus.InvalidNearby => "Invalid",
         _ => "Open"
     };
+
+    private static string ShortId(Guid id) => id.ToString("N")[..8];
 
     private sealed class RelayCommand : ICommand
     {
