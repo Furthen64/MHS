@@ -21,6 +21,127 @@ public readonly record struct ConveyorVisualCell(
 
 public static class ConveyorRouteCellVisualization
 {
+    /// <summary>
+    /// Builds per-cell visual data for an in-progress route draft.
+    /// </summary>
+    /// <param name="anchors">The committed anchor points of the draft (may be empty).</param>
+    /// <param name="previewEnd">The live cursor endpoint for the segment being drawn, if any.</param>
+    /// <returns>
+    /// Committed cells (anchor pair segments, with corner-join directions applied) and
+    /// preview cells (last-anchor → cursor segment, with corner direction applied where applicable).
+    /// </returns>
+    public static (IReadOnlyList<ConveyorVisualCell> Committed, IReadOnlyList<ConveyorVisualCell> Preview) BuildRouteDraftCells(
+        IReadOnlyList<VoxelCoord> anchors,
+        VoxelCoord? previewEnd)
+    {
+        // Build one MutableCell list per committed segment
+        var segmentLists = new List<List<MutableCell>>();
+        for (var i = 1; i < anchors.Count; i++)
+        {
+            var cells = BuildSegmentCells(anchors[i - 1], anchors[i], skipFirst: i > 1);
+            if (cells.Count > 0)
+            {
+                segmentLists.Add(cells);
+            }
+        }
+
+        // Build optional preview segment cells
+        List<MutableCell>? previewList = null;
+        if (anchors.Count > 0 && previewEnd.HasValue && previewEnd.Value != anchors[^1])
+        {
+            var start = anchors[^1];
+            var end = previewEnd.Value;
+            var cells = BuildSegmentCells(start, end, skipFirst: anchors.Count > 1);
+            if (cells.Count > 0)
+            {
+                previewList = cells;
+            }
+        }
+
+        // Apply corner joins between all adjacent segment lists
+        var allLists = new List<List<MutableCell>>(segmentLists);
+        if (previewList is not null)
+        {
+            allLists.Add(previewList);
+        }
+
+        for (var i = 1; i < allLists.Count; i++)
+        {
+            ApplySegmentCornerJoin(allLists[i - 1], allLists[i]);
+        }
+
+        var committed = segmentLists.Count > 0
+            ? segmentLists
+                .SelectMany(x => x)
+                .Select(c => new ConveyorVisualCell(c.Position, c.Kind, c.EntryDirection, c.ExitDirection, c.MainFlowDirection))
+                .ToArray()
+            : Array.Empty<ConveyorVisualCell>();
+
+        var preview = previewList is not null
+            ? previewList
+                .Select(c => new ConveyorVisualCell(c.Position, c.Kind, c.EntryDirection, c.ExitDirection, c.MainFlowDirection))
+                .ToArray()
+            : Array.Empty<ConveyorVisualCell>();
+
+        return (committed, preview);
+    }
+
+    private static List<MutableCell> BuildSegmentCells(VoxelCoord start, VoxelCoord end, bool skipFirst)
+    {
+        var cells = new List<MutableCell>();
+        var mainDirection = GetFlowDirection(start, end, 0);
+        var flowCells = ConveyorRouteGeometry.EnumerateCells(start, end).ToArray();
+
+        var startIndex = skipFirst ? 1 : 0;
+        for (var i = startIndex; i < flowCells.Length; i++)
+        {
+            var relI = i - startIndex;
+            var entry = relI == 0 ? (PortDirection?)null : mainDirection.Opposite();
+            var exit = i == flowCells.Length - 1 ? (PortDirection?)null : mainDirection;
+            cells.Add(new MutableCell(
+                flowCells[i],
+                GetKind(entry, exit),
+                entry,
+                exit,
+                mainDirection));
+        }
+
+        return cells;
+    }
+
+    private static void ApplySegmentCornerJoin(List<MutableCell> prev, List<MutableCell> next)
+    {
+        if (prev.Count == 0 || next.Count == 0)
+        {
+            return;
+        }
+
+        var prevLast = prev[^1];
+        var nextFirst = next[0];
+
+        var deltaX = nextFirst.Position.X - prevLast.Position.X;
+        var deltaY = nextFirst.Position.Y - prevLast.Position.Y;
+
+        if (Math.Abs(deltaX) + Math.Abs(deltaY) != 1)
+        {
+            return;
+        }
+
+        var directionToNext = DirectionFromDelta(deltaX, deltaY);
+
+        if (prevLast.ExitDirection is null)
+        {
+            prevLast.ExitDirection = directionToNext;
+            prevLast.Kind = GetKind(prevLast.EntryDirection, prevLast.ExitDirection);
+        }
+
+        if (nextFirst.EntryDirection is null)
+        {
+            nextFirst.EntryDirection = directionToNext.Opposite();
+            nextFirst.Kind = GetKind(nextFirst.EntryDirection, nextFirst.ExitDirection);
+        }
+    }
+
     public static IReadOnlyDictionary<Guid, IReadOnlyList<ConveyorVisualCell>> BuildSceneObjectCells(IReadOnlyList<SceneObject> sceneObjects)
     {
         var cellsByObject = new Dictionary<Guid, List<MutableCell>>();

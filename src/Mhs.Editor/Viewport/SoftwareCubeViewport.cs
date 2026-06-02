@@ -514,71 +514,131 @@ public sealed class SoftwareCubeViewport : Control
 
     private void DrawConveyorRoutePreview(DrawingContext context, ConveyorRouteDraft route, EditorState state)
     {
-        var renderInfo = PartRenderCatalog.Resolve("conveyor");
+        var (committedCells, previewCells) = ConveyorRouteCellVisualization.BuildRouteDraftCells(
+            route.Anchors, route.PreviewEnd);
 
-        for (var i = 1; i < route.Anchors.Count; i++)
+        var committedColor = Color.FromRgb(78, 158, 216);
+        foreach (var cell in committedCells)
         {
-            var start = route.Anchors[i - 1];
-            var end = route.Anchors[i];
-            if (!ConveyorRouteGeometry.TryCreateSegment(start, end, out var segment, out _))
-            {
-                continue;
-            }
-
-            var position = segment.Position;
-            var size = segment.Size;
-            if (i > 1)
-            {
-                ConveyorRouteGeometry.TrimSegmentStartCell(start, end, ref position, ref size);
-            }
-
-            DrawIsoBox(context, position, size, Color.FromRgb(78, 158, 216), 0.35, drawOutline: true, state);
-            DrawFacingMarker(context, position, size, segment.RotationZDegrees, renderInfo, 0.35, state);
-
-            if (i < route.Anchors.Count - 1)
-            {
-                var nextStart = route.Anchors[i];
-                var nextEnd = route.Anchors[i + 1];
-                if (ConveyorRouteRendering.TryGetTurnJoinCell(start, end, nextStart, nextEnd, out var joinCell))
-                {
-                    DrawConveyorJoinCap(context, joinCell, Color.FromRgb(78, 158, 216), 0.42, state);
-                }
-            }
+            DrawConveyorCellSw(context, cell, committedColor, 0.55, state);
         }
 
-        if (route.Anchors.Count > 0 && route.PreviewEnd.HasValue)
+        var previewColor = route.PreviewIsValid ? Color.FromRgb(70, 190, 90) : Color.FromRgb(230, 90, 90);
+        foreach (var cell in previewCells)
         {
-            var start = route.Anchors[^1];
-            var end = route.PreviewEnd.Value;
-            if (ConveyorRouteGeometry.TryCreateSegment(start, end, out var segment, out _))
-            {
-                var position = segment.Position;
-                var size = segment.Size;
-                if (route.Anchors.Count > 1)
-                {
-                    ConveyorRouteGeometry.TrimSegmentStartCell(start, end, ref position, ref size);
-                }
-
-                var previewColor = route.PreviewIsValid ? Color.FromRgb(70, 190, 90) : Color.FromRgb(230, 90, 90);
-                DrawConveyorStrip(context, position, size, segment.RotationZDegrees, previewColor, renderInfo, 0.45, true, state);
-
-                if (route.Anchors.Count > 1)
-                {
-                    var previousStart = route.Anchors[^2];
-                    var previousEnd = route.Anchors[^1];
-                    if (ConveyorRouteRendering.TryGetTurnJoinCell(previousStart, previousEnd, start, end, out var joinCell))
-                    {
-                        DrawConveyorJoinCap(context, joinCell, previewColor, 0.52, state);
-                    }
-                }
-            }
+            DrawConveyorCellSw(context, cell, previewColor, 0.45, state);
         }
 
         foreach (var anchor in route.Anchors)
         {
-            DrawIsoBox(context, anchor, new VoxelSize(1, 1, 1), Color.FromRgb(245, 220, 80), 0.75, drawOutline: true, state);
+            var outline = new Pen(new SolidColorBrush(WithOpacity(Color.FromRgb(245, 220, 80), 0.75)), 1.5);
+            var x0 = anchor.X;
+            var x1 = anchor.X + 1;
+            var y0 = anchor.Y;
+            var y1 = anchor.Y + 1;
+            var z = anchor.Z;
+            var topA = Project(x0, y0, z, state);
+            var topB = Project(x1, y0, z, state);
+            var topC = Project(x1, y1, z, state);
+            var topD = Project(x0, y1, z, state);
+            context.DrawLine(outline, topA, topB);
+            context.DrawLine(outline, topB, topC);
+            context.DrawLine(outline, topC, topD);
+            context.DrawLine(outline, topD, topA);
         }
     }
+
+    private void DrawConveyorCellSw(DrawingContext context, ConveyorVisualCell cell, Color color, double opacity, EditorState state)
+    {
+        var visualHeight = 0.28;
+        var x0 = cell.Position.X;
+        var x1 = cell.Position.X + 1;
+        var y0 = cell.Position.Y;
+        var y1 = cell.Position.Y + 1;
+        var z0 = cell.Position.Z;
+        var z1 = cell.Position.Z + visualHeight;
+
+        var topA = Project(x0, y0, z1, state);
+        var topB = Project(x1, y0, z1, state);
+        var topC = Project(x1, y1, z1, state);
+        var topD = Project(x0, y1, z1, state);
+        var bottomB = Project(x1, y0, z0, state);
+        var bottomC = Project(x1, y1, z0, state);
+        var bottomD = Project(x0, y1, z0, state);
+
+        context.DrawGeometry(new SolidColorBrush(WithOpacity(Darken(color, 0.92), opacity)), null, Polygon(topA, topB, topC, topD));
+        context.DrawGeometry(new SolidColorBrush(WithOpacity(Darken(color, 0.70), opacity * 0.7)), null, Polygon(topB, bottomB, bottomC, topC));
+        context.DrawGeometry(new SolidColorBrush(WithOpacity(Darken(color, 0.58), opacity * 0.7)), null, Polygon(topD, topC, bottomC, bottomD));
+
+        var boundaryPen = new Pen(new SolidColorBrush(WithOpacity(Color.FromRgb(226, 226, 226), Math.Min(opacity + 0.12, 1.0))), 1);
+        context.DrawLine(boundaryPen, topA, topB);
+        context.DrawLine(boundaryPen, topB, topC);
+        context.DrawLine(boundaryPen, topC, topD);
+        context.DrawLine(boundaryPen, topD, topA);
+
+        DrawConveyorCellFlowSw(context, cell, opacity, state);
+    }
+
+    private void DrawConveyorCellFlowSw(DrawingContext context, ConveyorVisualCell cell, double opacity, EditorState state)
+    {
+        var z = cell.Position.Z + 0.31;
+        var centerX = cell.Position.X + 0.5;
+        var centerY = cell.Position.Y + 0.5;
+        var flowColor = cell.Kind == ConveyorVisualCellKind.Corner
+            ? Color.FromRgb(255, 214, 96)
+            : Color.FromRgb(255, 228, 112);
+        var glyphOpacity = Math.Min(opacity + 0.26, 1.0);
+        var flowPen = new Pen(new SolidColorBrush(WithOpacity(flowColor, glyphOpacity)), 1.5);
+        var arrowBrush = new SolidColorBrush(WithOpacity(flowColor, glyphOpacity));
+
+        if (cell.Kind == ConveyorVisualCellKind.Corner && cell.EntryDirection.HasValue)
+        {
+            var (entryDx, entryDy) = DirectionToPlanarVector(cell.EntryDirection.Value);
+            var entryPoint = Project(centerX + entryDx * 0.34, centerY + entryDy * 0.34, z, state);
+
+            var exitDirection = cell.ExitDirection ?? cell.MainFlowDirection;
+            var (exitDx, exitDy) = DirectionToPlanarVector(exitDirection);
+            var pivotX = centerX + (entryDx + exitDx) * 0.07;
+            var pivotY = centerY + (entryDy + exitDy) * 0.07;
+            var pivot = Project(pivotX, pivotY, z, state);
+            context.DrawLine(flowPen, entryPoint, pivot);
+
+            var cornerTip = Project(centerX + exitDx * 0.37, centerY + exitDy * 0.37, z, state);
+            context.DrawLine(flowPen, pivot, cornerTip);
+
+            var perpX = -exitDy;
+            var perpY = exitDx;
+            var baseX = centerX + exitDx * 0.18;
+            var baseY = centerY + exitDy * 0.18;
+            var arrowA = Project(baseX + perpX * 0.14, baseY + perpY * 0.14, z, state);
+            var arrowB = Project(baseX - perpX * 0.14, baseY - perpY * 0.14, z, state);
+            context.DrawGeometry(arrowBrush, null, Polygon(cornerTip, arrowA, arrowB));
+            return;
+        }
+
+        var arrowDirection = cell.ExitDirection ?? cell.MainFlowDirection;
+        var (arrowDx, arrowDy) = DirectionToPlanarVector(arrowDirection);
+        var tail = Project(centerX - arrowDx * 0.16, centerY - arrowDy * 0.16, z, state);
+        var tip = Project(centerX + arrowDx * 0.38, centerY + arrowDy * 0.38, z, state);
+        context.DrawLine(flowPen, tail, tip);
+
+        var perpXa = -arrowDy;
+        var perpYa = arrowDx;
+        var baseCenterX = centerX + arrowDx * 0.18;
+        var baseCenterY = centerY + arrowDy * 0.18;
+        var arrowA2 = Project(baseCenterX + perpXa * 0.14, baseCenterY + perpYa * 0.14, z, state);
+        var arrowB2 = Project(baseCenterX - perpXa * 0.14, baseCenterY - perpYa * 0.14, z, state);
+        context.DrawGeometry(arrowBrush, null, Polygon(tip, arrowA2, arrowB2));
+    }
+
+    private static (double X, double Y) DirectionToPlanarVector(PortDirection direction) => direction switch
+    {
+        PortDirection.PositiveX => (1, 0),
+        PortDirection.NegativeX => (-1, 0),
+        PortDirection.PositiveY => (0, 1),
+        PortDirection.NegativeY => (0, -1),
+        _ => (0, 0)
+    };
 
     private void DrawOutline(DrawingContext context, VoxelCoord position, VoxelSize size, Color color, double thickness, EditorState state)
     {
