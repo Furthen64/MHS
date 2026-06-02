@@ -889,7 +889,7 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
 
         if (cell.Kind == ConveyorVisualCellKind.Corner && cell.EntryDirection.HasValue)
         {
-            var toEntrySide = cell.EntryDirection.Value.Opposite();
+            var toEntrySide = cell.EntryDirection.Value;
             var (entryDx, entryDy) = DirectionToPlanarVector(toEntrySide);
             var entryPoint = Project(centerX + entryDx * 0.34, centerY + entryDy * 0.34, z, state);
 
