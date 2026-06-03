@@ -212,8 +212,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             }
 
             var connected = statuses.Count(status => status.Status == PortConnectionStatus.Connected);
+            var adapterRequired = statuses.Count(status => status.Status == PortConnectionStatus.AdapterRequired);
             var invalid = statuses.Count(status => status.Status == PortConnectionStatus.InvalidNearby);
-            var unconnected = statuses.Count - connected - invalid;
+            var unconnected = statuses.Count - connected - adapterRequired - invalid;
             var details = string.Join(", ", statuses.Select(status =>
             {
                 var label = $"{status.Port.Name}:{StatusLabel(status.Status)}";
@@ -223,9 +224,16 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                     label = $"{label} -> {ShortId(peer.OwnerSceneObjectId)}:{peer.Name}";
                 }
 
+                if (status.Status == PortConnectionStatus.AdapterRequired && status.AdapterRequiredCandidates.Count > 0)
+                {
+                    var adapterDetails = string.Join("; ", status.AdapterRequiredCandidates.Select(c =>
+                        $"[{c.Reason}: {string.Join("/", c.PossibleAdapters)}]"));
+                    label = $"{label} {adapterDetails}";
+                }
+
                 return $"{label} ({status.Diagnostic})";
             }));
-            return $"Ports: {connected} connected, {unconnected} open, {invalid} invalid | {details}";
+            return $"Ports: {connected} connected, {unconnected} open, {invalid} invalid, {adapterRequired} adapter-required | {details}";
         }
     }
 
@@ -769,6 +777,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         PortConnectionStatus.Connected => "Connected",
         PortConnectionStatus.InvalidNearby => "Invalid",
+        PortConnectionStatus.AdapterRequired => "AdapterReq",
         _ => "Open"
     };
 

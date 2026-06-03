@@ -26,7 +26,8 @@ public enum PortConnectionStatus
 {
     Unconnected,
     Connected,
-    InvalidNearby
+    InvalidNearby,
+    AdapterRequired
 }
 
 public enum ConnectionInvalidReason
@@ -41,6 +42,14 @@ public enum ConnectionInvalidReason
 public enum ConnectionKind
 {
     Direct
+}
+
+public enum ConnectionCandidateStatus
+{
+    Direct,
+    AdapterRequired,
+    Invalid,
+    Ambiguous
 }
 
 public readonly record struct PortPosition(double X, double Y, double Z);
@@ -66,13 +75,24 @@ public sealed record InvalidConnectionCandidate(
     string PortBId,
     ConnectionInvalidReason Reason);
 
+public sealed record ConnectionCandidate(
+    Guid FromObjectId,
+    string FromPortId,
+    Guid ToObjectId,
+    string ToPortId,
+    ConnectionCandidateStatus Status,
+    string Reason,
+    IReadOnlyList<string> PossibleAdapters);
+
 public sealed record PortStatusInfo(
     ScenePort Port,
     PortConnectionStatus Status,
     int ConnectionCount,
     int InvalidNearbyCount,
     IReadOnlyList<ConnectionInvalidReason> InvalidReasons,
-    string Diagnostic);
+    string Diagnostic,
+    int AdapterRequiredCount,
+    IReadOnlyList<ConnectionCandidate> AdapterRequiredCandidates);
 
 public sealed class PortConnectivitySnapshot
 {
@@ -83,16 +103,19 @@ public sealed class PortConnectivitySnapshot
     private readonly ReadOnlyDictionary<Guid, IReadOnlyList<Connection>> _incomingByObjectId;
     private readonly ReadOnlyDictionary<Guid, IReadOnlyList<Connection>> _outgoingByObjectId;
     private readonly ReadOnlyDictionary<string, IReadOnlyList<InvalidConnectionCandidate>> _invalidByPortId;
+    private readonly ReadOnlyDictionary<string, IReadOnlyList<ConnectionCandidate>> _adapterRequiredByPortId;
 
     public PortConnectivitySnapshot(
         IReadOnlyList<ScenePort> ports,
         IReadOnlyList<Connection> connections,
         IReadOnlyList<InvalidConnectionCandidate> invalidNearbyCandidates,
+        IReadOnlyList<ConnectionCandidate> adapterRequiredCandidates,
         IReadOnlyList<PortStatusInfo> portStatuses)
     {
         Ports = ports;
         Connections = connections;
         InvalidNearbyCandidates = invalidNearbyCandidates;
+        AdapterRequiredCandidates = adapterRequiredCandidates;
         PortStatuses = portStatuses;
         _statusByPortId = new ReadOnlyDictionary<string, PortStatusInfo>(portStatuses.ToDictionary(s => s.Port.PortId, StringComparer.Ordinal));
         _portByPortId = new ReadOnlyDictionary<string, ScenePort>(ports.ToDictionary(port => port.PortId, StringComparer.Ordinal));
@@ -101,17 +124,19 @@ public sealed class PortConnectivitySnapshot
         _incomingByObjectId = ToReadOnlyGroupedDictionary(connections, connection => connection.ToObjectId);
         _outgoingByObjectId = ToReadOnlyGroupedDictionary(connections, connection => connection.FromObjectId);
         _invalidByPortId = BuildInvalidByPort(invalidNearbyCandidates);
+        _adapterRequiredByPortId = BuildAdapterRequiredByPort(adapterRequiredCandidates);
     }
 
     public IReadOnlyList<ScenePort> Ports { get; }
     public IReadOnlyList<Connection> Connections { get; }
     public IReadOnlyList<InvalidConnectionCandidate> InvalidNearbyCandidates { get; }
+    public IReadOnlyList<ConnectionCandidate> AdapterRequiredCandidates { get; }
     public IReadOnlyList<PortStatusInfo> PortStatuses { get; }
 
     public PortStatusInfo GetPortStatus(ScenePort port)
         => _statusByPortId.TryGetValue(port.PortId, out var status)
             ? status
-            : new PortStatusInfo(port, PortConnectionStatus.Unconnected, 0, 0, Array.Empty<ConnectionInvalidReason>(), "unconnected");
+            : new PortStatusInfo(port, PortConnectionStatus.Unconnected, 0, 0, Array.Empty<ConnectionInvalidReason>(), "unconnected", 0, Array.Empty<ConnectionCandidate>());
 
     public IReadOnlyList<PortStatusInfo> GetPortStatusesForOwner(Guid ownerSceneObjectId)
         => PortStatuses.Where(status => status.Port.OwnerSceneObjectId == ownerSceneObjectId).ToList();
@@ -143,6 +168,11 @@ public sealed class PortConnectivitySnapshot
         => _invalidByPortId.TryGetValue(portId, out var candidates)
             ? candidates
             : Array.Empty<InvalidConnectionCandidate>();
+
+    public IReadOnlyList<ConnectionCandidate> GetAdapterRequiredCandidatesForPort(string portId)
+        => _adapterRequiredByPortId.TryGetValue(portId, out var candidates)
+            ? candidates
+            : Array.Empty<ConnectionCandidate>();
 
     public bool TryGetPort(string portId, out ScenePort port)
         => _portByPortId.TryGetValue(portId, out port!);
@@ -224,6 +254,34 @@ public sealed class PortConnectivitySnapshot
 
         list.Add(candidate);
     }
+
+    private static ReadOnlyDictionary<string, IReadOnlyList<ConnectionCandidate>> BuildAdapterRequiredByPort(
+        IEnumerable<ConnectionCandidate> candidates)
+    {
+        var grouped = new Dictionary<string, List<ConnectionCandidate>>(StringComparer.Ordinal);
+        foreach (var candidate in candidates)
+        {
+            AddAdapterCandidate(grouped, candidate.FromPortId, candidate);
+            AddAdapterCandidate(grouped, candidate.ToPortId, candidate);
+        }
+
+        return new ReadOnlyDictionary<string, IReadOnlyList<ConnectionCandidate>>(
+            grouped.ToDictionary(
+                pair => pair.Key,
+                pair => (IReadOnlyList<ConnectionCandidate>)pair.Value,
+                StringComparer.Ordinal));
+    }
+
+    private static void AddAdapterCandidate(IDictionary<string, List<ConnectionCandidate>> grouped, string portId, ConnectionCandidate candidate)
+    {
+        if (!grouped.TryGetValue(portId, out var list))
+        {
+            list = [];
+            grouped[portId] = list;
+        }
+
+        list.Add(candidate);
+    }
 }
 
 public static class PortDirectionExtensions
@@ -259,6 +317,7 @@ public static class PortConnectivityAnalyzer
     {
         var ports = BuildPorts(sceneObjects);
         var candidateConnections = new List<Connection>();
+        var adapterRequiredCandidates = new List<ConnectionCandidate>();
         var invalidNearbyCandidates = new List<InvalidConnectionCandidate>();
         var invalidReasonsByPortId = new Dictionary<string, HashSet<ConnectionInvalidReason>>(StringComparer.Ordinal);
 
@@ -276,6 +335,12 @@ public static class PortConnectivityAnalyzer
                 if (TryCreateConnection(a, b, out var connection, out var reason))
                 {
                     candidateConnections.Add(connection);
+                    continue;
+                }
+
+                if (reason == ConnectionInvalidReason.DifferentZ && TryCreateAdapterRequired(a, b, out var adapterCandidate))
+                {
+                    adapterRequiredCandidates.Add(adapterCandidate);
                     continue;
                 }
 
@@ -326,26 +391,42 @@ public static class PortConnectivityAnalyzer
             Increment(invalidCountByPortId, invalid.PortBId);
         }
 
+        var adapterCountByPortId = new Dictionary<string, int>(StringComparer.Ordinal);
+        var adapterCandidatesByPortId = new Dictionary<string, List<ConnectionCandidate>>(StringComparer.Ordinal);
+        foreach (var candidate in adapterRequiredCandidates)
+        {
+            Increment(adapterCountByPortId, candidate.FromPortId);
+            Increment(adapterCountByPortId, candidate.ToPortId);
+            AddCandidateToList(adapterCandidatesByPortId, candidate.FromPortId, candidate);
+            AddCandidateToList(adapterCandidatesByPortId, candidate.ToPortId, candidate);
+        }
+
         var portStatuses = new List<PortStatusInfo>(ports.Count);
         foreach (var port in ports)
         {
             connectionCountByPortId.TryGetValue(port.PortId, out var connectionCount);
             invalidCountByPortId.TryGetValue(port.PortId, out var invalidCount);
+            adapterCountByPortId.TryGetValue(port.PortId, out var adapterCount);
             var reasons = invalidReasonsByPortId.TryGetValue(port.PortId, out var reasonSet)
                 ? reasonSet.OrderBy(reason => reason).ToList()
                 : [];
+            var adapterCandidates = adapterCandidatesByPortId.TryGetValue(port.PortId, out var acList)
+                ? (IReadOnlyList<ConnectionCandidate>)acList
+                : Array.Empty<ConnectionCandidate>();
 
-            var status = invalidCount > 0
-                ? PortConnectionStatus.InvalidNearby
-                : connectionCount > 0
-                    ? PortConnectionStatus.Connected
-                    : PortConnectionStatus.Unconnected;
+            var status = connectionCount > 0
+                ? PortConnectionStatus.Connected
+                : adapterCount > 0
+                    ? PortConnectionStatus.AdapterRequired
+                    : invalidCount > 0
+                        ? PortConnectionStatus.InvalidNearby
+                        : PortConnectionStatus.Unconnected;
 
-            var diagnostic = BuildDiagnostic(status, connectionCount, invalidCount, reasons);
-            portStatuses.Add(new PortStatusInfo(port, status, connectionCount, invalidCount, reasons, diagnostic));
+            var diagnostic = BuildDiagnostic(status, connectionCount, invalidCount, reasons, adapterCandidates);
+            portStatuses.Add(new PortStatusInfo(port, status, connectionCount, invalidCount, reasons, diagnostic, adapterCount, adapterCandidates));
         }
 
-        return new PortConnectivitySnapshot(ports, connections, invalidNearbyCandidates, portStatuses);
+        return new PortConnectivitySnapshot(ports, connections, invalidNearbyCandidates, adapterRequiredCandidates, portStatuses);
     }
 
     private static List<ScenePort> BuildPorts(IEnumerable<SceneObject> sceneObjects)
@@ -374,32 +455,86 @@ public static class PortConnectivityAnalyzer
             return false;
         }
 
+        var aIsOutput = CanOutput(a.Kind) && CanInput(b.Kind);
+        var bIsOutput = CanOutput(b.Kind) && CanInput(a.Kind);
+        if (!aIsOutput && !bIsOutput)
+        {
+            reason = ConnectionInvalidReason.IncompatiblePortKind;
+            return false;
+        }
+
+        var output = aIsOutput ? a : b;
+        var input = aIsOutput ? b : a;
+
+        if (output.Direction.Opposite() != input.Direction)
+        {
+            reason = ConnectionInvalidReason.WrongFacing;
+            return false;
+        }
+
         if (Math.Abs(a.WorldPosition.Z - b.WorldPosition.Z) > SameZTolerance)
         {
             reason = ConnectionInvalidReason.DifferentZ;
             return false;
         }
 
-        if (a.Direction.Opposite() != b.Direction)
+        connection = new Connection(output.OwnerSceneObjectId, output.PortId, input.OwnerSceneObjectId, input.PortId, ConnectionKind.Direct);
+        return true;
+    }
+
+    private static bool TryCreateAdapterRequired(ScenePort a, ScenePort b, out ConnectionCandidate candidate)
+    {
+        candidate = default!;
+
+        var aIsOutput = CanOutput(a.Kind) && CanInput(b.Kind);
+        var bIsOutput = CanOutput(b.Kind) && CanInput(a.Kind);
+        if (!aIsOutput && !bIsOutput)
         {
-            reason = ConnectionInvalidReason.WrongFacing;
             return false;
         }
 
-        if (CanOutput(a.Kind) && CanInput(b.Kind))
+        var output = aIsOutput ? a : b;
+        var input = aIsOutput ? b : a;
+
+        if (output.Direction.Opposite() != input.Direction)
         {
-            connection = new Connection(a.OwnerSceneObjectId, a.PortId, b.OwnerSceneObjectId, b.PortId, ConnectionKind.Direct);
-            return true;
+            return false;
         }
 
-        if (CanOutput(b.Kind) && CanInput(a.Kind))
+        var dz = input.WorldPosition.Z - output.WorldPosition.Z;
+        var absDz = Math.Abs(dz);
+        var adapters = SuggestAdapters(dz, absDz);
+        var reason = $"height delta {dz:+0.#;-0.#;0} (|Δz|={absDz:0.#})";
+
+        candidate = new ConnectionCandidate(
+            output.OwnerSceneObjectId,
+            output.PortId,
+            input.OwnerSceneObjectId,
+            input.PortId,
+            ConnectionCandidateStatus.AdapterRequired,
+            reason,
+            adapters);
+        return true;
+    }
+
+    private static IReadOnlyList<string> SuggestAdapters(double dz, double absDz)
+    {
+        var adapters = new List<string>();
+        if (absDz > 1.5)
         {
-            connection = new Connection(b.OwnerSceneObjectId, b.PortId, a.OwnerSceneObjectId, a.PortId, ConnectionKind.Direct);
-            return true;
+            adapters.Add("VerticalLift");
+        }
+        else
+        {
+            adapters.Add("InclinedConveyor");
+            if (dz < 0)
+            {
+                adapters.Add("Chute");
+            }
         }
 
-        reason = ConnectionInvalidReason.IncompatiblePortKind;
-        return false;
+        adapters.Add("ManualAdapter");
+        return adapters;
     }
 
     private static bool TryCreateConveyorPorts(SceneObject sceneObject, out ScenePort input, out ScenePort output)
@@ -579,7 +714,8 @@ public static class PortConnectivityAnalyzer
         PortConnectionStatus status,
         int connectionCount,
         int invalidCount,
-        IReadOnlyCollection<ConnectionInvalidReason> reasons)
+        IReadOnlyCollection<ConnectionInvalidReason> reasons,
+        IReadOnlyList<ConnectionCandidate> adapterCandidates)
     {
         if (status == PortConnectionStatus.Connected && invalidCount == 0 && connectionCount > 0)
         {
@@ -589,6 +725,13 @@ public static class PortConnectivityAnalyzer
         if (status == PortConnectionStatus.Unconnected)
         {
             return "unconnected";
+        }
+
+        if (status == PortConnectionStatus.AdapterRequired)
+        {
+            var parts = adapterCandidates.Select(c =>
+                $"adapter required ({c.Reason}): {string.Join("/", c.PossibleAdapters)}");
+            return string.Join("; ", parts);
         }
 
         var labels = new List<string>();
@@ -640,5 +783,19 @@ public static class PortConnectivityAnalyzer
         }
 
         set.Add(reason);
+    }
+
+    private static void AddCandidateToList(
+        IDictionary<string, List<ConnectionCandidate>> candidatesByPortId,
+        string portId,
+        ConnectionCandidate candidate)
+    {
+        if (!candidatesByPortId.TryGetValue(portId, out var list))
+        {
+            list = [];
+            candidatesByPortId[portId] = list;
+        }
+
+        list.Add(candidate);
     }
 }
