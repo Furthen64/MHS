@@ -250,7 +250,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             if (key == Key.Enter)
             {
-                routeTool.FinishCommittedRoute(EditorState);
+                routeTool.FinishRoute(EditorState);
                 RaiseComputed();
                 return true;
             }

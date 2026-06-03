@@ -34,11 +34,13 @@ public static class ConveyorRouteCellVisualization
         IReadOnlyList<VoxelCoord> anchors,
         VoxelCoord? previewEnd)
     {
+        var normalizedAnchors = NormalizeAnchors(anchors);
+
         // Build one MutableCell list per committed segment
         var segmentLists = new List<List<MutableCell>>();
-        for (var i = 1; i < anchors.Count; i++)
+        for (var i = 1; i < normalizedAnchors.Count; i++)
         {
-            var cells = BuildSegmentCells(anchors[i - 1], anchors[i], skipFirst: i > 1);
+            var cells = BuildSegmentCells(normalizedAnchors[i - 1], normalizedAnchors[i], skipFirst: i > 1);
             if (cells.Count > 0)
             {
                 segmentLists.Add(cells);
@@ -47,11 +49,11 @@ public static class ConveyorRouteCellVisualization
 
         // Build optional preview segment cells
         List<MutableCell>? previewList = null;
-        if (anchors.Count > 0 && previewEnd.HasValue && previewEnd.Value != anchors[^1])
+        if (normalizedAnchors.Count > 0 && previewEnd.HasValue && previewEnd.Value != normalizedAnchors[^1])
         {
-            var start = anchors[^1];
+            var start = normalizedAnchors[^1];
             var end = previewEnd.Value;
-            var cells = BuildSegmentCells(start, end, skipFirst: anchors.Count > 1);
+            var cells = BuildSegmentCells(start, end, skipFirst: normalizedAnchors.Count > 1);
             if (cells.Count > 0)
             {
                 previewList = cells;
@@ -144,57 +146,103 @@ public static class ConveyorRouteCellVisualization
 
     public static IReadOnlyDictionary<Guid, IReadOnlyList<ConveyorVisualCell>> BuildSceneObjectCells(IReadOnlyList<SceneObject> sceneObjects)
     {
-        var cellsByObject = new Dictionary<Guid, List<MutableCell>>();
+        var resultMutable = new Dictionary<Guid, List<MutableCell>>();
+        var routeSegments = new List<SceneObject>();
+
+        // Separate route segments from standalone conveyors
         foreach (var sceneObject in sceneObjects)
         {
-            if (!sceneObject.IsConveyor || !TryBuildObjectCells(sceneObject, out var cells))
+            if (!sceneObject.IsConveyor)
             {
                 continue;
             }
 
-            cellsByObject[sceneObject.Id] = cells;
+            if (sceneObject.IsRouteConveyorSegment)
+            {
+                routeSegments.Add(sceneObject);
+            }
+            else if (TryBuildObjectCells(sceneObject, out var cells))
+            {
+                resultMutable[sceneObject.Id] = cells;
+            }
         }
 
-        for (var i = 1; i < sceneObjects.Count; i++)
+        // Group route segments into connected chains and build cells using the same
+        // flat tessellation as the draft preview (BuildSegmentCells + ApplySegmentCornerJoin).
+        var visitedIds = new HashSet<Guid>();
+        foreach (var segment in routeSegments)
         {
-            var previous = sceneObjects[i - 1];
-            var next = sceneObjects[i];
-            if (!cellsByObject.TryGetValue(previous.Id, out var previousCells)
-                || !cellsByObject.TryGetValue(next.Id, out var nextCells)
-                || !ConveyorRouteRendering.TryGetSceneTurnJoinCell(previous, next, out var joinCell))
+            if (visitedIds.Contains(segment.Id))
             {
                 continue;
             }
 
-            var previousCell = previousCells.FirstOrDefault(cell => cell.Position == joinCell);
-            if (previousCell is null || !TryFindAdjacentCell(nextCells, joinCell, out var nextCell, out var directionToNext))
+            // Only start a chain from a chain head (no predecessor points to this segment)
+            var segStart = segment.GetConveyorFlowEndpoints().Start;
+            var isChainHead = true;
+            foreach (var other in routeSegments)
+            {
+                if (other.Id == segment.Id)
+                {
+                    continue;
+                }
+
+                if (IsAdjacent(other.GetConveyorFlowEndpoints().End, segStart))
+                {
+                    isChainHead = false;
+                    break;
+                }
+            }
+
+            if (!isChainHead)
             {
                 continue;
             }
 
-            if (previousCell.ExitDirection is null)
+            // Follow the chain forward
+            var chain = new List<SceneObject>();
+            var current = segment;
+            while (true)
             {
-                previousCell.ExitDirection = directionToNext;
-            }
-            else if (previousCell.EntryDirection is null)
-            {
-                previousCell.EntryDirection = directionToNext.Opposite();
+                chain.Add(current);
+                visitedIds.Add(current.Id);
+                var currentEnd = current.GetConveyorFlowEndpoints().End;
+                SceneObject? next = null;
+                foreach (var other in routeSegments)
+                {
+                    if (visitedIds.Contains(other.Id))
+                    {
+                        continue;
+                    }
+
+                    if (IsAdjacent(currentEnd, other.GetConveyorFlowEndpoints().Start))
+                    {
+                        next = other;
+                        break;
+                    }
+                }
+
+                if (next is null)
+                {
+                    break;
+                }
+
+                current = next;
             }
 
-            if (nextCell.EntryDirection is null)
-            {
-                nextCell.EntryDirection = directionToNext.Opposite();
-            }
-            else if (nextCell.ExitDirection is null)
-            {
-                nextCell.ExitDirection = directionToNext;
-            }
-
-            previousCell.Kind = GetKind(previousCell.EntryDirection, previousCell.ExitDirection);
-            nextCell.Kind = GetKind(nextCell.EntryDirection, nextCell.ExitDirection);
+            BuildChainCells(chain, resultMutable);
         }
 
-        return cellsByObject.ToDictionary(
+        // Handle segments not reachable from any chain head (isolated single-cell or cycles)
+        foreach (var segment in routeSegments)
+        {
+            if (!visitedIds.Contains(segment.Id) && TryBuildObjectCells(segment, out var cells))
+            {
+                resultMutable[segment.Id] = cells;
+            }
+        }
+
+        return resultMutable.ToDictionary(
             pair => pair.Key,
             pair => (IReadOnlyList<ConveyorVisualCell>)pair.Value
                 .Select(cell => new ConveyorVisualCell(
@@ -204,6 +252,78 @@ public static class ConveyorRouteCellVisualization
                     cell.ExitDirection,
                     cell.MainFlowDirection))
                 .ToArray());
+    }
+
+    /// <summary>
+    /// Reconstructs the anchor list for a connected chain of route segments and builds
+    /// per-cell visual data using the same flat tessellation as <see cref="BuildRouteDraftCells"/>.
+    /// </summary>
+    private static void BuildChainCells(List<SceneObject> chain, Dictionary<Guid, List<MutableCell>> result)
+    {
+        // Anchor list: start of chain, then end of each segment
+        var rawAnchors = new List<VoxelCoord>(chain.Count + 1)
+        {
+            chain[0].GetConveyorFlowEndpoints().Start
+        };
+        foreach (var seg in chain)
+        {
+            rawAnchors.Add(seg.GetConveyorFlowEndpoints().End);
+        }
+
+        var anchors = NormalizeAnchors(rawAnchors);
+
+        if (anchors.Count < 2)
+        {
+            // Degenerate chain: fall back to per-object cell building
+            foreach (var seg in chain)
+            {
+                if (TryBuildObjectCells(seg, out var cells))
+                {
+                    result[seg.Id] = cells;
+                }
+            }
+
+            return;
+        }
+
+        // Build flat segment lists — identical logic to BuildRouteDraftCells
+        var segmentLists = new List<List<MutableCell>>(anchors.Count - 1);
+        for (var i = 1; i < anchors.Count; i++)
+        {
+            segmentLists.Add(BuildSegmentCells(anchors[i - 1], anchors[i], skipFirst: i > 1));
+        }
+
+        // Apply corner joins between adjacent segment lists
+        for (var i = 1; i < segmentLists.Count; i++)
+        {
+            ApplySegmentCornerJoin(segmentLists[i - 1], segmentLists[i]);
+        }
+
+        // Map each segment list back to its owning SceneObject
+        for (var k = 0; k < chain.Count && k < segmentLists.Count; k++)
+        {
+            if (segmentLists[k].Count > 0)
+            {
+                result[chain[k].Id] = segmentLists[k];
+            }
+        }
+    }
+
+    private static bool IsAdjacent(VoxelCoord a, VoxelCoord b)
+        => a.Z == b.Z && Math.Abs(a.X - b.X) + Math.Abs(a.Y - b.Y) == 1;
+
+    private static List<VoxelCoord> NormalizeAnchors(IReadOnlyList<VoxelCoord> anchors)
+    {
+        var result = new List<VoxelCoord>(anchors.Count);
+        foreach (var anchor in anchors)
+        {
+            if (result.Count == 0 || result[^1] != anchor)
+            {
+                result.Add(anchor);
+            }
+        }
+
+        return result;
     }
 
     private static bool TryBuildObjectCells(SceneObject sceneObject, out List<MutableCell> cells)
@@ -239,37 +359,6 @@ public static class ConveyorRouteCellVisualization
         }
 
         return cells.Count > 0;
-    }
-
-    private static bool TryFindAdjacentCell(
-        IReadOnlyList<MutableCell> cells,
-        VoxelCoord joinCell,
-        out MutableCell adjacentCell,
-        out PortDirection directionFromJoin)
-    {
-        for (var i = 0; i < cells.Count; i++)
-        {
-            var cell = cells[i];
-            if (cell.Position.Z != joinCell.Z)
-            {
-                continue;
-            }
-
-            var deltaX = cell.Position.X - joinCell.X;
-            var deltaY = cell.Position.Y - joinCell.Y;
-            if (Math.Abs(deltaX) + Math.Abs(deltaY) != 1)
-            {
-                continue;
-            }
-
-            adjacentCell = cell;
-            directionFromJoin = DirectionFromDelta(deltaX, deltaY);
-            return true;
-        }
-
-        adjacentCell = null!;
-        directionFromJoin = PortDirection.PositiveX;
-        return false;
     }
 
     private static PortDirection GetFlowDirection(VoxelCoord start, VoxelCoord end, int fallbackRotation)
