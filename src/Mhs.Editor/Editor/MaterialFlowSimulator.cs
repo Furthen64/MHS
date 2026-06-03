@@ -129,6 +129,25 @@ public sealed class MaterialFlowSimulator
 
     public IReadOnlyList<MaterialToken> GetTokens() => new ReadOnlyCollection<MaterialToken>(_tokens);
 
+    public int ConsumeTokens(Func<MaterialToken, bool> predicate)
+    {
+        ArgumentNullException.ThrowIfNull(predicate);
+
+        var consumed = 0;
+        for (var index = _tokens.Count - 1; index >= 0; index--)
+        {
+            if (!predicate(_tokens[index]))
+            {
+                continue;
+            }
+
+            _tokens.RemoveAt(index);
+            consumed++;
+        }
+
+        return consumed;
+    }
+
     private static bool CanInput(PortKind kind) => kind is PortKind.Input or PortKind.Bidirectional;
 
     private static bool CanOutput(PortKind kind) => kind is PortKind.Output or PortKind.Bidirectional;

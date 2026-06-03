@@ -438,10 +438,68 @@ public static class PortConnectivityAnalyzer
             {
                 ports.Add(input);
                 ports.Add(output);
+                continue;
+            }
+
+            if (TryCreateMaterialSourcePort(sceneObject, out var sourceOutput))
+            {
+                ports.Add(sourceOutput);
+                continue;
+            }
+
+            if (TryCreateMaterialReceiverPort(sceneObject, out var receiverInput))
+            {
+                ports.Add(receiverInput);
             }
         }
 
         return ports;
+    }
+
+    private static bool TryCreateMaterialSourcePort(SceneObject sceneObject, out ScenePort output)
+    {
+        output = default!;
+        if (!string.Equals(sceneObject.PartId, "mtrlsrc", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var size = sceneObject.EffectiveSize;
+        var z = Math.Min(size.HeightZ, 1) * 0.5;
+        var rotation = RotationHelper.NormalizeDegrees(sceneObject.RotationZDegrees);
+        var (local, direction) = rotation switch
+        {
+            0 => (new PortPosition(size.WidthX, size.DepthY / 2.0, z), PortDirection.PositiveX),
+            90 => (new PortPosition(size.WidthX / 2.0, size.DepthY, z), PortDirection.PositiveY),
+            180 => (new PortPosition(0, size.DepthY / 2.0, z), PortDirection.NegativeX),
+            _ => (new PortPosition(size.WidthX / 2.0, 0, z), PortDirection.NegativeY)
+        };
+
+        output = CreatePort(sceneObject, "output", "Output", PortKind.Output, local, direction);
+        return true;
+    }
+
+    private static bool TryCreateMaterialReceiverPort(SceneObject sceneObject, out ScenePort input)
+    {
+        input = default!;
+        if (!string.Equals(sceneObject.PartId, "mtrlrecv", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var size = sceneObject.EffectiveSize;
+        var z = Math.Min(size.HeightZ, 1) * 0.5;
+        var rotation = RotationHelper.NormalizeDegrees(sceneObject.RotationZDegrees);
+        var (local, direction) = rotation switch
+        {
+            0 => (new PortPosition(0, size.DepthY / 2.0, z), PortDirection.NegativeX),
+            90 => (new PortPosition(size.WidthX / 2.0, 0, z), PortDirection.NegativeY),
+            180 => (new PortPosition(size.WidthX, size.DepthY / 2.0, z), PortDirection.PositiveX),
+            _ => (new PortPosition(size.WidthX / 2.0, size.DepthY, z), PortDirection.PositiveY)
+        };
+
+        input = CreatePort(sceneObject, "input", "Input", PortKind.Input, local, direction);
+        return true;
     }
 
     private static bool TryCreateConnection(ScenePort a, ScenePort b, out Connection connection, out ConnectionInvalidReason reason)

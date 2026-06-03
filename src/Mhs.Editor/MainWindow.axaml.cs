@@ -8,6 +8,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
+using Avalonia.Threading;
 using Mhs.Editor.Editor;
 using Mhs.Editor.Settings;
 using Mhs.Editor.ViewModels;
@@ -22,6 +23,7 @@ public partial class MainWindow : Window
     };
 
     private readonly AppPreferencesStore _preferencesStore = new();
+    private readonly DispatcherTimer _materialFlowTimer;
     private IReadOnlyList<GpuOption>? _availableGpuOptions;
     private AppPreferences _preferences;
     private IStorageFile? _currentSceneFile;
@@ -43,6 +45,13 @@ public partial class MainWindow : Window
         {
             vm.SetPreferredOpenGlGpu(_preferences.PreferredOpenGlGpuName);
         }
+
+        _materialFlowTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(250)
+        };
+        _materialFlowTimer.Tick += OnMaterialFlowTick;
+        _materialFlowTimer.Start();
 
         AddHandler(KeyDownEvent, OnKeyDown, RoutingStrategies.Tunnel, handledEventsToo: true);
         Opened += OnOpened;
@@ -140,6 +149,14 @@ public partial class MainWindow : Window
     }
 
     private void OnExitClick(object? sender, RoutedEventArgs e) => Close();
+
+    private void OnMaterialFlowTick(object? sender, EventArgs e)
+    {
+        if (DataContext is MainWindowViewModel vm)
+        {
+            vm.TickMaterialFlow();
+        }
+    }
 
     private async void OnOpenGlGpuSetupClick(object? sender, RoutedEventArgs e)
     {
