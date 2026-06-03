@@ -107,6 +107,12 @@
                     <TextBlock Text="{Binding InspectorRangeText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
                     <TextBlock Text="{Binding InspectorExtraText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
                     <TextBlock Text="{Binding InspectorPortText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <Button Content="Inject DebugOre" Command="{Binding InjectDebugOreCommand}" />
+                        <Button Content="Step Flow" Command="{Binding StepMaterialFlowCommand}" />
+                        <Button Content="Clear Flow" Command="{Binding ClearMaterialFlowCommand}" />
+                    </StackPanel>
+                    <TextBlock Text="{Binding InspectorMaterialFlowText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
 
                     <Separator Margin="0,6,0,6" />
                     <TextBlock Text="Floor / Layer" FontWeight="SemiBold" Foreground="#ECEFF4" />

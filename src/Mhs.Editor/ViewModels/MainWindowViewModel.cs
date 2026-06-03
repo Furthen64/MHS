@@ -37,6 +37,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         AutoCadLikeSettingsCommand = new RelayCommand(() => SetInteractionPreset(ViewportInteractionPreset.AutoCadLike));
         UseSoftwareViewportCommand = new RelayCommand(() => SetViewportMode(useOpenGl: false));
         UseOpenGlViewportCommand = new RelayCommand(() => SetViewportMode(useOpenGl: true));
+        InjectDebugOreCommand = new RelayCommand(InjectDebugOre);
+        StepMaterialFlowCommand = new RelayCommand(StepMaterialFlow);
+        ClearMaterialFlowCommand = new RelayCommand(ClearMaterialFlow);
 
         foreach (var part in EditorState.PartDefinitions)
         {
@@ -85,6 +88,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand AutoCadLikeSettingsCommand { get; }
     public ICommand UseSoftwareViewportCommand { get; }
     public ICommand UseOpenGlViewportCommand { get; }
+    public ICommand InjectDebugOreCommand { get; }
+    public ICommand StepMaterialFlowCommand { get; }
+    public ICommand ClearMaterialFlowCommand { get; }
 
     public bool IsSelectActive => EditorState.ActiveTool is SelectTool;
     public bool IsHopperActive => EditorState.ActiveTool.Name == "Hopper";
@@ -234,6 +240,33 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 return $"{label} ({status.Diagnostic})";
             }));
             return $"Ports: {connected} connected, {unconnected} open, {invalid} invalid, {adapterRequired} adapter-required | {details}";
+        }
+    }
+
+    public string InspectorMaterialFlowText
+    {
+        get
+        {
+            var tokens = EditorState.Scene.MaterialFlow.GetTokens();
+            if (tokens.Count == 0)
+            {
+                return "Material Flow: no tokens";
+            }
+
+            var snapshot = EditorState.GetPortConnectivitySnapshot();
+            var details = string.Join(" | ", tokens.Select(token =>
+            {
+                var stateLabel = token.State == MaterialTokenState.Active ? "active" : token.State.ToString().ToLowerInvariant();
+                if (snapshot.TryGetPort(token.Location.PortId, out var port))
+                {
+                    var portLabel = $"{ShortId(port.OwnerSceneObjectId)}:{port.Name}";
+                    return $"{token.MaterialKind} {ShortId(token.TokenId)} @ {portLabel} [{stateLabel}{FormatStatusSuffix(token.StatusText)}]";
+                }
+
+                var fallback = $"{ShortId(token.Location.ObjectId)}:{token.Location.PortId}";
+                return $"{token.MaterialKind} {ShortId(token.TokenId)} @ {fallback} [{stateLabel}{FormatStatusSuffix(token.StatusText)}]";
+            }));
+            return $"Material Flow: {tokens.Count} token(s) | {details}";
         }
     }
 
@@ -388,6 +421,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
 
         EditorState.ActiveTool.OnCancel(EditorState);
+        EditorState.Scene.MaterialFlow.ClearTokens();
         EditorState.Scene.Objects.Clear();
         foreach (var sceneObject in loadedObjects)
         {
@@ -458,6 +492,50 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             : EditorState.GhostPreview is null
                 ? "Preview: None"
                 : $"Preview: {EditorState.GhostPreview.Part.DisplayName} @ {EditorState.GhostPreview.Position} ({EditorState.GhostPreview.EffectiveSize})";
+
+    private void InjectDebugOre()
+    {
+        if (EditorState.SelectedObject is null)
+        {
+            EditorState.StatusMessage = "Inject failed: select an object";
+            RaiseComputed();
+            return;
+        }
+
+        var snapshot = EditorState.GetPortConnectivitySnapshot();
+        var selectedId = EditorState.SelectedObject.Id;
+        var candidatePort = snapshot.Ports
+            .Where(port => port.OwnerSceneObjectId == selectedId)
+            .OrderByDescending(port => port.Kind == PortKind.Output)
+            .ThenBy(port => port.PortId, StringComparer.Ordinal)
+            .FirstOrDefault();
+
+        if (candidatePort is null)
+        {
+            EditorState.StatusMessage = "Inject failed: selected object has no ports";
+            RaiseComputed();
+            return;
+        }
+
+        var token = EditorState.Scene.MaterialFlow.InjectToken(selectedId, candidatePort.PortId, MaterialKind.DebugOre);
+        EditorState.StatusMessage = $"Injected DebugOre {ShortId(token.TokenId)} at {candidatePort.Name}";
+        RaiseComputed();
+    }
+
+    private void StepMaterialFlow()
+    {
+        var snapshot = EditorState.GetPortConnectivitySnapshot();
+        var moved = EditorState.Scene.MaterialFlow.Step(snapshot);
+        EditorState.StatusMessage = $"Material flow stepped: {moved} token(s) moved";
+        RaiseComputed();
+    }
+
+    private void ClearMaterialFlow()
+    {
+        EditorState.Scene.MaterialFlow.ClearTokens();
+        EditorState.StatusMessage = "Material flow cleared";
+        RaiseComputed();
+    }
 
     private string MovePreviewText()
     {
@@ -752,6 +830,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(InspectorRangeText));
         OnPropertyChanged(nameof(InspectorExtraText));
         OnPropertyChanged(nameof(InspectorPortText));
+        OnPropertyChanged(nameof(InspectorMaterialFlowText));
         OnPropertyChanged(nameof(Floor2StackText));
         OnPropertyChanged(nameof(Floor1StackText));
         OnPropertyChanged(nameof(Floor0StackText));
@@ -782,6 +861,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     };
 
     private static string ShortId(Guid id) => id.ToString("N")[..8];
+
+    private static string FormatStatusSuffix(string? statusText)
+        => string.IsNullOrWhiteSpace(statusText) ? string.Empty : $", {statusText}";
 
     private sealed class RelayCommand : ICommand
     {
