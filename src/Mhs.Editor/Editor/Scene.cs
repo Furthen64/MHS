@@ -6,6 +6,7 @@ namespace Mhs.Editor.Editor;
 public sealed class Scene
 {
     public ObservableCollection<SceneObject> Objects { get; } = [];
+    public MaterialFlowSimulator MaterialFlow { get; } = new();
 
     public PortConnectivitySnapshot GetPortConnectivitySnapshot()
         => PortConnectivityAnalyzer.Analyze(Objects);
