@@ -160,10 +160,20 @@ public sealed class ConveyorRouteTool : IEditorTool
 
     private static bool FinishRoute(EditorState state, ConveyorRouteDraft draft, IReadOnlyList<VoxelCoord> finishAnchors)
     {
-        var created = new List<SceneObject>();
-        if (finishAnchors.Count == 1)
+        // Normalize: remove consecutive duplicate anchors to prevent zero-length segments
+        var anchors = new List<VoxelCoord>(finishAnchors.Count);
+        foreach (var anchor in finishAnchors)
         {
-            var anchor = finishAnchors[0];
+            if (anchors.Count == 0 || anchors[^1] != anchor)
+            {
+                anchors.Add(anchor);
+            }
+        }
+
+        var created = new List<SceneObject>();
+        if (anchors.Count == 1)
+        {
+            var anchor = anchors[0];
             created.Add(CreateRouteConveyor(
                 anchor,
                 new VoxelSize(1, 1, 1),
@@ -172,10 +182,10 @@ public sealed class ConveyorRouteTool : IEditorTool
                 anchor));
         }
 
-        for (var i = 1; i < finishAnchors.Count; i++)
+        for (var i = 1; i < anchors.Count; i++)
         {
-            var start = finishAnchors[i - 1];
-            var end = finishAnchors[i];
+            var start = anchors[i - 1];
+            var end = anchors[i];
             if (!ValidateSegment(state, draft, start, end, out var segment, out var reason, validateDraftCollisions: false))
             {
                 state.StatusMessage = $"Route blocked: {reason}";
@@ -305,12 +315,22 @@ public sealed class ConveyorRouteTool : IEditorTool
 
     private static bool TryGetFinishAnchors(ConveyorRouteDraft draft, out List<VoxelCoord> finishAnchors)
     {
-        finishAnchors = new List<VoxelCoord>(draft.Anchors);
+        var raw = new List<VoxelCoord>(draft.Anchors);
         if (draft.PreviewIsValid
             && draft.PreviewEnd is { } previewEnd
-            && (finishAnchors.Count == 0 || finishAnchors[^1] != previewEnd))
+            && (raw.Count == 0 || raw[^1] != previewEnd))
         {
-            finishAnchors.Add(previewEnd);
+            raw.Add(previewEnd);
+        }
+
+        // Normalize: remove consecutive duplicate anchors to prevent zero-length segments
+        finishAnchors = new List<VoxelCoord>(raw.Count);
+        foreach (var anchor in raw)
+        {
+            if (finishAnchors.Count == 0 || finishAnchors[^1] != anchor)
+            {
+                finishAnchors.Add(anchor);
+            }
         }
 
         return finishAnchors.Count >= 1;
