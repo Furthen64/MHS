@@ -210,33 +210,6 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 return "Ports: Select object";
             }
 
-            public string InspectorMaterialFlowText
-            {
-                get
-                {
-                    var tokens = EditorState.Scene.MaterialFlow.GetTokens();
-                    if (tokens.Count == 0)
-                    {
-                        return "Material Flow: no tokens";
-                    }
-
-                    var snapshot = EditorState.GetPortConnectivitySnapshot();
-                    var details = string.Join(" | ", tokens.Select(token =>
-                    {
-                        var stateLabel = token.State == MaterialTokenState.Active ? "active" : token.State.ToString().ToLowerInvariant();
-                        if (snapshot.TryGetPort(token.Location.PortId, out var port))
-                        {
-                            var portLabel = $"{ShortId(port.OwnerSceneObjectId)}:{port.Name}";
-                            return $"{token.MaterialKind} {ShortId(token.TokenId)} @ {portLabel} [{stateLabel}{FormatStatusSuffix(token.StatusText)}]";
-                        }
-
-                        var fallback = $"{ShortId(token.Location.ObjectId)}:{token.Location.PortId}";
-                        return $"{token.MaterialKind} {ShortId(token.TokenId)} @ {fallback} [{stateLabel}{FormatStatusSuffix(token.StatusText)}]";
-                    }));
-                    return $"Material Flow: {tokens.Count} token(s) | {details}";
-                }
-            }
-
             var snapshot = EditorState.GetPortConnectivitySnapshot();
             var statuses = snapshot.GetPortStatusesForOwner(EditorState.SelectedObject.Id);
             if (statuses.Count == 0)
@@ -267,6 +240,33 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 return $"{label} ({status.Diagnostic})";
             }));
             return $"Ports: {connected} connected, {unconnected} open, {invalid} invalid, {adapterRequired} adapter-required | {details}";
+        }
+    }
+
+    public string InspectorMaterialFlowText
+    {
+        get
+        {
+            var tokens = EditorState.Scene.MaterialFlow.GetTokens();
+            if (tokens.Count == 0)
+            {
+                return "Material Flow: no tokens";
+            }
+
+            var snapshot = EditorState.GetPortConnectivitySnapshot();
+            var details = string.Join(" | ", tokens.Select(token =>
+            {
+                var stateLabel = token.State == MaterialTokenState.Active ? "active" : token.State.ToString().ToLowerInvariant();
+                if (snapshot.TryGetPort(token.Location.PortId, out var port))
+                {
+                    var portLabel = $"{ShortId(port.OwnerSceneObjectId)}:{port.Name}";
+                    return $"{token.MaterialKind} {ShortId(token.TokenId)} @ {portLabel} [{stateLabel}{FormatStatusSuffix(token.StatusText)}]";
+                }
+
+                var fallback = $"{ShortId(token.Location.ObjectId)}:{token.Location.PortId}";
+                return $"{token.MaterialKind} {ShortId(token.TokenId)} @ {fallback} [{stateLabel}{FormatStatusSuffix(token.StatusText)}]";
+            }));
+            return $"Material Flow: {tokens.Count} token(s) | {details}";
         }
     }
 
