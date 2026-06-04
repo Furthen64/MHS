@@ -224,6 +224,7 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
         }
 
         DrawPortDebug(state);
+        DrawMaterialTokens(state);
         DrawRotationAxisGuide(state);
 
         _renderer.RenderFrame();
@@ -581,6 +582,46 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
         var start = Project(state.RotationAxisPivotX, state.RotationAxisPivotY, state.RotationAxisMinZ, state);
         var end = Project(state.RotationAxisPivotX, state.RotationAxisPivotY, state.RotationAxisMaxZ, state);
         _renderer.AddLine(start, end, axisColor, 1.0);
+    }
+
+    private void DrawMaterialTokens(EditorState state)
+    {
+        if (_renderer is null)
+        {
+            return;
+        }
+
+        var tokens = state.Scene.MaterialFlow.GetTokens();
+        if (tokens.Count == 0)
+        {
+            return;
+        }
+
+        var snapshot = state.GetPortConnectivitySnapshot();
+        foreach (var token in tokens)
+        {
+            if (!snapshot.TryGetPort(token.Location.PortId, out var port))
+            {
+                continue;
+            }
+
+            var color = token.State == MaterialTokenState.Active
+                ? Color.FromArgb(230, 230, 140, 40)
+                : Color.FromArgb(200, 210, 60, 60);
+
+            var cx = port.WorldPosition.X;
+            var cy = port.WorldPosition.Y;
+            var cz = port.WorldPosition.Z + 0.1;
+            var center = Project(cx, cy, cz, state);
+
+            const double r = 7.0;
+            _renderer.AddFilledQuad(
+                new Point(center.X, center.Y - r),
+                new Point(center.X + r, center.Y),
+                new Point(center.X, center.Y + r),
+                new Point(center.X - r, center.Y),
+                color, 0.9);
+        }
     }
 
     private void DrawPortDebug(EditorState state)

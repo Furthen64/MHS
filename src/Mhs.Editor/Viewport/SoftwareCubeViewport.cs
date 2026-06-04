@@ -173,7 +173,44 @@ public sealed class SoftwareCubeViewport : Control
             DrawOutline(context, outlinePosition, outlineSize, Color.FromRgb(120, 180, 255), 2, state);
         }
 
+        DrawMaterialTokens(context, state);
         DrawRotationAxisGuide(context, state);
+    }
+
+    private void DrawMaterialTokens(DrawingContext context, EditorState state)
+    {
+        var tokens = state.Scene.MaterialFlow.GetTokens();
+        if (tokens.Count == 0)
+        {
+            return;
+        }
+
+        var snapshot = state.GetPortConnectivitySnapshot();
+        foreach (var token in tokens)
+        {
+            if (!snapshot.TryGetPort(token.Location.PortId, out var port))
+            {
+                continue;
+            }
+
+            var color = token.State == MaterialTokenState.Active
+                ? Color.FromArgb(230, 230, 140, 40)
+                : Color.FromArgb(200, 210, 60, 60);
+
+            var cx = port.WorldPosition.X;
+            var cy = port.WorldPosition.Y;
+            var cz = port.WorldPosition.Z + 0.1;
+
+            var center = Project(cx, cy, cz, state);
+            const double r = 7.0;
+            var brush = new SolidColorBrush(color);
+            var pen = new Pen(new SolidColorBrush(Color.FromArgb(180, 255, 255, 255)), 1.0);
+            context.DrawGeometry(brush, pen, Polygon(
+                new Point(center.X, center.Y - r),
+                new Point(center.X + r, center.Y),
+                new Point(center.X, center.Y + r),
+                new Point(center.X - r, center.Y)));
+        }
     }
 
     private void AttachState(EditorState state)
