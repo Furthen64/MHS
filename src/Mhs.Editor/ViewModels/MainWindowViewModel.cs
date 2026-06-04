@@ -13,8 +13,10 @@ namespace Mhs.Editor.ViewModels;
 
 public sealed class MainWindowViewModel : INotifyPropertyChanged
 {
+    private const int SourceInjectionCooldownTicks = 6;
     private readonly IEditorTool _selectTool = new SelectTool();
     private readonly ConveyorRouteTool _conveyorRouteTool = new();
+    private readonly Dictionary<Guid, int> _sourceInjectionCooldownByObjectId = [];
     private ViewportInteractionPreset _interactionPreset = ViewportInteractionPreset.BlenderLike;
     private bool _useOpenGlViewport = true;
     private string _preferredOpenGlGpuName = "System default GPU";
@@ -57,6 +59,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 case "tall_hopper":
                     TallHopperToolCommand = new RelayCommand(() => SetTool(new PlacePartTool(part)));
                     break;
+                case "mtrlsrc":
+                    MtrlSrcToolCommand = new RelayCommand(() => SetTool(new PlacePartTool(part)));
+                    break;
+                case "mtrlrecv":
+                    MtrlRecvToolCommand = new RelayCommand(() => SetTool(new PlacePartTool(part)));
+                    break;
             }
         }
 
@@ -64,6 +72,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         BinToolCommand ??= new RelayCommand(() => { });
         ChuteToolCommand ??= new RelayCommand(() => { });
         TallHopperToolCommand ??= new RelayCommand(() => { });
+        MtrlSrcToolCommand ??= new RelayCommand(() => { });
+        MtrlRecvToolCommand ??= new RelayCommand(() => { });
 
         SetTool(_selectTool);
     }
@@ -78,6 +88,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand BinToolCommand { get; }
     public ICommand ChuteToolCommand { get; }
     public ICommand TallHopperToolCommand { get; }
+    public ICommand MtrlSrcToolCommand { get; }
+    public ICommand MtrlRecvToolCommand { get; }
     public ICommand Floor0Command { get; }
     public ICommand Floor1Command { get; }
     public ICommand Floor2Command { get; }
@@ -98,6 +110,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public bool IsConveyorRouteActive => EditorState.ActiveTool is ConveyorRouteTool;
     public bool IsChuteActive => EditorState.ActiveTool.Name == "Chute";
     public bool IsTallHopperActive => EditorState.ActiveTool.Name == "Tall Hopper";
+    public bool IsMtrlSrcActive => EditorState.ActiveTool.Name == "MtrlSrc";
+    public bool IsMtrlRecvActive => EditorState.ActiveTool.Name == "MtrlRecv";
     public bool IsFloor0Active => EditorState.ActiveFloor == 0;
     public bool IsFloor1Active => EditorState.ActiveFloor == 1;
     public bool IsFloor2Active => EditorState.ActiveFloor == 2;
@@ -526,8 +540,28 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         var snapshot = EditorState.GetPortConnectivitySnapshot();
         var moved = EditorState.Scene.MaterialFlow.Step(snapshot);
-        EditorState.StatusMessage = $"Material flow stepped: {moved} token(s) moved";
+        var consumed = ConsumeAtMaterialReceivers(snapshot);
+        EditorState.StatusMessage = consumed > 0
+            ? $"Material flow stepped: {moved} token(s) moved, {consumed} consumed"
+            : $"Material flow stepped: {moved} token(s) moved";
         RaiseComputed();
+    }
+
+    public void TickMaterialFlow()
+    {
+        if (EditorState.Scene.Objects.Count == 0)
+        {
+            return;
+        }
+
+        var snapshot = EditorState.GetPortConnectivitySnapshot();
+        var injected = InjectFromMaterialSources(snapshot);
+        var moved = EditorState.Scene.MaterialFlow.Step(snapshot);
+        var consumed = ConsumeAtMaterialReceivers(snapshot);
+        if (injected > 0 || moved > 0 || consumed > 0)
+        {
+            RaiseComputed();
+        }
     }
 
     private void ClearMaterialFlow()
@@ -795,6 +829,18 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private void OnSceneObjectsChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
+        var liveSourceIds = EditorState.Scene.Objects
+            .Where(IsMaterialSource)
+            .Select(sceneObject => sceneObject.Id)
+            .ToHashSet();
+        var staleCooldownIds = _sourceInjectionCooldownByObjectId.Keys
+            .Where(objectId => !liveSourceIds.Contains(objectId))
+            .ToList();
+        foreach (var staleId in staleCooldownIds)
+        {
+            _sourceInjectionCooldownByObjectId.Remove(staleId);
+        }
+
         RaiseComputed();
     }
 
@@ -806,6 +852,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(IsConveyorRouteActive));
         OnPropertyChanged(nameof(IsChuteActive));
         OnPropertyChanged(nameof(IsTallHopperActive));
+        OnPropertyChanged(nameof(IsMtrlSrcActive));
+        OnPropertyChanged(nameof(IsMtrlRecvActive));
         OnPropertyChanged(nameof(IsFloor0Active));
         OnPropertyChanged(nameof(IsFloor1Active));
         OnPropertyChanged(nameof(IsFloor2Active));
@@ -864,6 +912,62 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private static string FormatStatusSuffix(string? statusText)
         => string.IsNullOrWhiteSpace(statusText) ? string.Empty : $", {statusText}";
+
+    private int InjectFromMaterialSources(PortConnectivitySnapshot snapshot)
+    {
+        var injectedCount = 0;
+        foreach (var source in EditorState.Scene.Objects.Where(IsMaterialSource))
+        {
+            var remainingTicks = _sourceInjectionCooldownByObjectId.GetValueOrDefault(source.Id, 0);
+            if (remainingTicks > 0)
+            {
+                _sourceInjectionCooldownByObjectId[source.Id] = remainingTicks - 1;
+                continue;
+            }
+
+            var outputPort = snapshot.Ports.FirstOrDefault(port =>
+                port.OwnerSceneObjectId == source.Id
+                && port.Kind is PortKind.Output or PortKind.Bidirectional);
+            if (outputPort is null || snapshot.GetOutgoingConnectionsForPort(outputPort.PortId).Count == 0)
+            {
+                continue;
+            }
+
+            EditorState.Scene.MaterialFlow.InjectToken(source.Id, outputPort.PortId, MaterialKind.DebugOre);
+            _sourceInjectionCooldownByObjectId[source.Id] = SourceInjectionCooldownTicks;
+            injectedCount++;
+        }
+
+        return injectedCount;
+    }
+
+    private int ConsumeAtMaterialReceivers(PortConnectivitySnapshot snapshot)
+    {
+        var receiverIds = EditorState.Scene.Objects
+            .Where(IsMaterialReceiver)
+            .Select(sceneObject => sceneObject.Id)
+            .ToHashSet();
+        if (receiverIds.Count == 0)
+        {
+            return 0;
+        }
+
+        return EditorState.Scene.MaterialFlow.ConsumeTokens(token =>
+        {
+            if (!snapshot.TryGetPort(token.Location.PortId, out var port))
+            {
+                return false;
+            }
+
+            return receiverIds.Contains(port.OwnerSceneObjectId) && port.Kind is PortKind.Input or PortKind.Bidirectional;
+        });
+    }
+
+    private static bool IsMaterialSource(SceneObject sceneObject)
+        => string.Equals(sceneObject.PartId, "mtrlsrc", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsMaterialReceiver(SceneObject sceneObject)
+        => string.Equals(sceneObject.PartId, "mtrlrecv", StringComparison.OrdinalIgnoreCase);
 
     private sealed class RelayCommand : ICommand
     {

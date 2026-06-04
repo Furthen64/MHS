@@ -75,6 +75,22 @@ public static class PartRenderCatalog
             BaseColor = new Rgba(0.59f, 0.59f, 0.59f, 1f),
             ShowFacingMarker = true,
             FacingMarkerColor = new Rgba(0.70f, 0.86f, 1f, 1f)
+        },
+        ["mtrlsrc"] = new PartRenderInfo
+        {
+            PartId = "mtrlsrc",
+            DisplayName = "MtrlSrc",
+            BaseColor = new Rgba(0.78f, 0.42f, 0.24f, 1f),
+            ShowFacingMarker = true,
+            FacingMarkerColor = new Rgba(1f, 0.90f, 0.24f, 1f)
+        },
+        ["mtrlrecv"] = new PartRenderInfo
+        {
+            PartId = "mtrlrecv",
+            DisplayName = "MtrlRecv",
+            BaseColor = new Rgba(0.31f, 0.70f, 0.57f, 1f),
+            ShowFacingMarker = true,
+            FacingMarkerColor = new Rgba(0.87f, 0.98f, 1f, 1f)
         }
     };
 
@@ -87,6 +103,8 @@ public static class PartRenderCatalog
         Lookup["Bin"] = Lookup["bin"];
         Lookup["Conveyor"] = Lookup["conveyor"];
         Lookup["Chute"] = Lookup["chute"];
+        Lookup["MtrlSrc"] = Lookup["mtrlsrc"];
+        Lookup["MtrlRecv"] = Lookup["mtrlrecv"];
     }
 
     public static PartRenderInfo Resolve(string partIdOrDisplayName)

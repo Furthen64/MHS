@@ -46,7 +46,9 @@ public sealed class EditorState : INotifyPropertyChanged
             new PartDefinition { Id = "bin", DisplayName = "Bin", Size = new VoxelSize(2, 2, 1), Color = Color.FromRgb(90, 150, 240) },
             new PartDefinition { Id = "conveyor", DisplayName = "Conveyor", Size = new VoxelSize(1, 1, 1), Color = Color.FromRgb(70, 80, 90) },
             new PartDefinition { Id = "chute", DisplayName = "Chute", Size = new VoxelSize(2, 1, 1), Color = Color.FromRgb(150, 150, 150) },
-            new PartDefinition { Id = "tall_hopper", DisplayName = "Tall Hopper", Size = new VoxelSize(2, 2, 4), Color = Color.FromRgb(214, 132, 66) }
+            new PartDefinition { Id = "tall_hopper", DisplayName = "Tall Hopper", Size = new VoxelSize(2, 2, 4), Color = Color.FromRgb(214, 132, 66) },
+            new PartDefinition { Id = "mtrlsrc", DisplayName = "MtrlSrc", Size = new VoxelSize(1, 1, 1), Color = Color.FromRgb(199, 107, 61) },
+            new PartDefinition { Id = "mtrlrecv", DisplayName = "MtrlRecv", Size = new VoxelSize(1, 1, 1), Color = Color.FromRgb(80, 178, 146) }
         ];
 
         _activeTool = new SelectTool();

@@ -56,6 +56,8 @@
                     <RadioButton Content="Conveyor Route" GroupName="Tools" IsChecked="{Binding IsConveyorRouteActive}" Command="{Binding ConveyorRouteToolCommand}" />
                     <RadioButton Content="Chute" GroupName="Tools" IsChecked="{Binding IsChuteActive}" Command="{Binding ChuteToolCommand}" />
                     <RadioButton Content="Tall Hopper" GroupName="Tools" IsChecked="{Binding IsTallHopperActive}" Command="{Binding TallHopperToolCommand}" />
+                    <RadioButton Content="MtrlSrc" GroupName="Tools" IsChecked="{Binding IsMtrlSrcActive}" Command="{Binding MtrlSrcToolCommand}" />
+                    <RadioButton Content="MtrlRecv" GroupName="Tools" IsChecked="{Binding IsMtrlRecvActive}" Command="{Binding MtrlRecvToolCommand}" />
                 </StackPanel>
             </Border>
 
