@@ -65,19 +65,71 @@
         </Border>
 
         <Grid ColumnDefinitions="220,*,300" Background="#1B1D23">
-            <Border Grid.Column="0" Margin="8" Padding="10" Background="#232833" CornerRadius="4">
-                <StackPanel Spacing="8">
-                    <TextBlock Text="Parts Palette" FontWeight="Bold" Foreground="#ECEFF4" FontSize="14" />
-                    <RadioButton Content="Select" GroupName="Tools" IsChecked="{Binding IsSelectActive}" Command="{Binding SelectToolCommand}" />
-                    <RadioButton Content="Hopper" GroupName="Tools" IsChecked="{Binding IsHopperActive}" Command="{Binding HopperToolCommand}" />
-                    <RadioButton Content="Bin" GroupName="Tools" IsChecked="{Binding IsBinActive}" Command="{Binding BinToolCommand}" />
-                    <RadioButton Content="Conveyor Route" GroupName="Tools" IsChecked="{Binding IsConveyorRouteActive}" Command="{Binding ConveyorRouteToolCommand}" />
-                    <RadioButton Content="Chute" GroupName="Tools" IsChecked="{Binding IsChuteActive}" Command="{Binding ChuteToolCommand}" />
-                    <RadioButton Content="Tall Hopper" GroupName="Tools" IsChecked="{Binding IsTallHopperActive}" Command="{Binding TallHopperToolCommand}" />
-                    <RadioButton Content="MtrlSrc" GroupName="Tools" IsChecked="{Binding IsMtrlSrcActive}" Command="{Binding MtrlSrcToolCommand}" />
-                    <RadioButton Content="MtrlRecv" GroupName="Tools" IsChecked="{Binding IsMtrlRecvActive}" Command="{Binding MtrlRecvToolCommand}" />
-                </StackPanel>
-            </Border>
+            <DockPanel Grid.Column="0" Margin="8" LastChildFill="True">
+                <Border DockPanel.Dock="Top" Padding="10" Background="#232833" CornerRadius="4" Margin="0,0,0,6">
+                    <StackPanel Spacing="8">
+                        <TextBlock Text="Parts Palette" FontWeight="Bold" Foreground="#ECEFF4" FontSize="14" />
+                        <RadioButton Content="Select" GroupName="Tools" IsChecked="{Binding IsSelectActive}" Command="{Binding SelectToolCommand}" />
+                        <RadioButton Content="Hopper" GroupName="Tools" IsChecked="{Binding IsHopperActive}" Command="{Binding HopperToolCommand}" />
+                        <RadioButton Content="Bin" GroupName="Tools" IsChecked="{Binding IsBinActive}" Command="{Binding BinToolCommand}" />
+                        <RadioButton Content="Conveyor Route" GroupName="Tools" IsChecked="{Binding IsConveyorRouteActive}" Command="{Binding ConveyorRouteToolCommand}" />
+                        <RadioButton Content="Chute" GroupName="Tools" IsChecked="{Binding IsChuteActive}" Command="{Binding ChuteToolCommand}" />
+                        <RadioButton Content="Tall Hopper" GroupName="Tools" IsChecked="{Binding IsTallHopperActive}" Command="{Binding TallHopperToolCommand}" />
+                        <RadioButton Content="MtrlSrc" GroupName="Tools" IsChecked="{Binding IsMtrlSrcActive}" Command="{Binding MtrlSrcToolCommand}" />
+                        <RadioButton Content="MtrlRecv" GroupName="Tools" IsChecked="{Binding IsMtrlRecvActive}" Command="{Binding MtrlRecvToolCommand}" />
+                    </StackPanel>
+                </Border>
+
+                <Border Padding="8" Background="#1A1F29" CornerRadius="4">
+                    <DockPanel>
+                        <TextBlock DockPanel.Dock="Top"
+                                   Text="Scene Objects"
+                                   FontWeight="Bold"
+                                   Foreground="#ECEFF4"
+                                   FontSize="13"
+                                   Margin="0,0,0,6" />
+                        <ScrollViewer>
+                            <ListBox x:Name="SceneTreeListBox"
+                                     ItemsSource="{Binding SceneTreeNodes}"
+                                     SelectedItem="{Binding SelectedSceneTreeNode, Mode=TwoWay}"
+                                     Background="Transparent"
+                                     BorderThickness="0"
+                                     Padding="0"
+                                     SelectionChanged="OnSceneTreeSelectionChanged">
+                                <ListBox.Styles>
+                                    <Style Selector="ListBoxItem">
+                                        <Setter Property="Padding" Value="2,1" />
+                                        <Setter Property="MinHeight" Value="0" />
+                                    </Style>
+                                </ListBox.Styles>
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:SceneTreeNodeViewModel">
+                                        <Panel>
+                                            <TextBlock Text="{Binding Label}"
+                                                       IsVisible="{Binding IsGroupHeader}"
+                                                       Foreground="#5E7A94"
+                                                       FontSize="10"
+                                                       FontWeight="SemiBold"
+                                                       Margin="0,5,0,1" />
+                                            <StackPanel IsVisible="{Binding !IsGroupHeader}" Spacing="1" Margin="4,1,0,1">
+                                                <TextBlock Text="{Binding Label}"
+                                                           Foreground="#C8D8E8"
+                                                           FontSize="11"
+                                                           TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Text="{Binding StatusText}"
+                                                           IsVisible="{Binding HasStatus}"
+                                                           Foreground="#6FADB5"
+                                                           FontSize="10"
+                                                           TextTrimming="CharacterEllipsis" />
+                                            </StackPanel>
+                                        </Panel>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </ScrollViewer>
+                    </DockPanel>
+                </Border>
+            </DockPanel>
 
             <Border Grid.Column="1"
                     Grid.ColumnSpan="{Binding SceneViewportColumnSpan}"
