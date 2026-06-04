@@ -160,7 +160,18 @@ public partial class MainWindow : Window
 
     private async void OnOpenGlGpuSetupClick(object? sender, RoutedEventArgs e)
     {
-        await ShowOnboardingWizardAsync(markOnboardingComplete: true);
+        try
+        {
+            await ShowOnboardingWizardAsync(markOnboardingComplete: true);
+        }
+        catch (Exception ex)
+        {
+            StartupDiagnostics.Log($"OpenGL GPU setup failed: {ex}");
+            if (DataContext is MainWindowViewModel vm)
+            {
+                vm.SetSceneStatus($"OpenGL GPU setup failed: {ex.Message}");
+            }
+        }
     }
 
     private async Task SaveSceneAsAsync(MainWindowViewModel vm)
@@ -215,7 +226,18 @@ public partial class MainWindow : Window
             return;
         }
 
-        await ShowOnboardingWizardAsync(markOnboardingComplete: true);
+        try
+        {
+            await ShowOnboardingWizardAsync(markOnboardingComplete: true);
+        }
+        catch (Exception ex)
+        {
+            StartupDiagnostics.Log($"Onboarding failed: {ex}");
+            if (DataContext is MainWindowViewModel vm)
+            {
+                vm.SetSceneStatus($"Onboarding failed: {ex.Message}");
+            }
+        }
     }
 
     private async Task ShowOnboardingWizardAsync(bool markOnboardingComplete)

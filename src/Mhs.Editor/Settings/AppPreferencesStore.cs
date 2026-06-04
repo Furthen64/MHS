@@ -45,13 +45,20 @@ public sealed class AppPreferencesStore
 
     public void Save(AppPreferences preferences)
     {
-        var directory = Path.GetDirectoryName(_filePath);
-        if (!string.IsNullOrWhiteSpace(directory))
+        try
         {
-            Directory.CreateDirectory(directory);
-        }
+            var directory = Path.GetDirectoryName(_filePath);
+            if (!string.IsNullOrWhiteSpace(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
 
-        var json = JsonSerializer.Serialize(preferences, JsonOptions);
-        File.WriteAllText(_filePath, json);
+            var json = JsonSerializer.Serialize(preferences, JsonOptions);
+            File.WriteAllText(_filePath, json);
+        }
+        catch (Exception ex)
+        {
+            StartupDiagnostics.Log($"Saving preferences failed: {ex}");
+        }
     }
 }
