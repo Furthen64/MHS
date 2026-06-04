@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Linq;
@@ -95,6 +96,7 @@ public sealed class SoftwareCubeViewport : Control
 
         DrawFloorOutlines(context, state.ActiveFloor);
         DrawGrid(context, state.ActiveAbsoluteZ);
+        var conveyorCellsByObject = ConveyorRouteCellVisualization.BuildSceneObjectCells(state.Scene.Objects);
 
         foreach (var renderable in SceneRenderOrder.GetVisibleBackToFront(state, Bounds))
         {
@@ -102,7 +104,9 @@ public sealed class SoftwareCubeViewport : Control
             var visibility = renderable.Visibility;
 
             var drawPosition = sceneObject.Position;
-            var drawRotation = sceneObject.RotationZDegrees;
+            var drawRotation = sceneObject.IsConveyor
+                ? sceneObject.GetConveyorFlowRotationDegrees()
+                : sceneObject.RotationZDegrees;
             var drawSize = sceneObject.EffectiveSize;
             if (state.IsSelectionRotationMode
                 && state.SelectedObject?.Id == sceneObject.Id
@@ -125,7 +129,7 @@ public sealed class SoftwareCubeViewport : Control
             var color = renderInfo.BaseColor.ToAvaloniaColor();
             if (string.Equals(sceneObject.PartType, "Conveyor", StringComparison.OrdinalIgnoreCase))
             {
-                DrawConveyorStrip(context, drawPosition, drawSize, drawRotation, color, renderInfo, opacity, false, state);
+                DrawConveyorCellsSw(context, sceneObject, drawPosition, drawSize, drawRotation, color, renderInfo, opacity, state, conveyorCellsByObject);
             }
             else
             {
@@ -133,8 +137,6 @@ public sealed class SoftwareCubeViewport : Control
                 DrawFacingMarker(context, drawPosition, drawSize, drawRotation, renderInfo, opacity, state);
             }
         }
-
-        DrawConveyorSceneJoins(context, state);
 
         if (state.IsMovingSelection && state.SelectedObject is { } moving && state.MovePreviewPosition is { } target)
         {
@@ -252,7 +254,10 @@ public sealed class SoftwareCubeViewport : Control
 
     private void OnBlinkTick(object? sender, EventArgs e)
     {
-        if (EditorState?.Scene.MaterialFlow.GetTokens().Count > 0)
+        if (EditorState is { } state
+            && (state.Scene.MaterialFlow.GetTokens().Count > 0
+                || state.Scene.Objects.Any(static obj => obj.IsConveyor)
+                || state.ActiveConveyorRoute is not null))
         {
             InvalidateVisual();
         }
@@ -262,6 +267,22 @@ public sealed class SoftwareCubeViewport : Control
     {
         var phase = (DateTime.UtcNow.Ticks / TimeSpan.TicksPerMillisecond) / 350;
         return phase % 2 == 0;
+    }
+
+    private static double Lerp(double a, double b, double t) => a + ((b - a) * t);
+
+    private static double Wrap01(double value)
+    {
+        var wrapped = value % 1.0;
+        return wrapped < 0 ? wrapped + 1.0 : wrapped;
+    }
+
+    private static double GetConveyorAnimationPhase(VoxelCoord position, double speed, double sign)
+    {
+        var seconds = DateTime.UtcNow.Ticks / (double)TimeSpan.TicksPerSecond;
+        var seed = ((position.X * 73856093) ^ (position.Y * 19349663) ^ (position.Z * 83492791)) & 1023;
+        var offset = seed / 1024.0;
+        return Wrap01(offset + seconds * speed * sign);
     }
 
     private void OnPointerMoved(object? sender, PointerEventArgs e)
@@ -613,6 +634,30 @@ public sealed class SoftwareCubeViewport : Control
         }
     }
 
+    private void DrawConveyorCellsSw(
+        DrawingContext context,
+        SceneObject sceneObject,
+        VoxelCoord fallbackPosition,
+        VoxelSize fallbackSize,
+        int fallbackRotationZDegrees,
+        Color color,
+        PartRenderInfo renderInfo,
+        double opacity,
+        EditorState state,
+        IReadOnlyDictionary<Guid, IReadOnlyList<ConveyorVisualCell>> cellsByObject)
+    {
+        if (!cellsByObject.TryGetValue(sceneObject.Id, out var cells) || cells.Count == 0)
+        {
+            DrawConveyorStrip(context, fallbackPosition, fallbackSize, fallbackRotationZDegrees, color, renderInfo, opacity, false, state);
+            return;
+        }
+
+        foreach (var cell in cells)
+        {
+            DrawConveyorCellSw(context, cell, color, opacity, state);
+        }
+    }
+
     private void DrawConveyorCellSw(DrawingContext context, ConveyorVisualCell cell, Color color, double opacity, EditorState state)
     {
         const double beltH = 0.14;
@@ -625,12 +670,12 @@ public sealed class SoftwareCubeViewport : Control
         var y1 = cell.Position.Y + 1;
         var z0 = cell.Position.Z;
 
-        var beltTop   = Darken(color, 0.28);
-        var beltRight = Darken(color, 0.20);
-        var beltFront = Darken(color, 0.16);
-        var railTop   = TintColor(color, Color.FromRgb(130, 142, 158), 0.35);
-        var railRight = TintColor(color, Color.FromRgb(95,  106, 118), 0.35);
-        var railFront = TintColor(color, Color.FromRgb(80,  90,  102), 0.35);
+        var beltTop = Color.FromRgb(44, 47, 54);
+        var beltRight = Color.FromRgb(33, 36, 43);
+        var beltFront = Color.FromRgb(29, 32, 39);
+        var railTop = Color.FromRgb(196, 203, 212);
+        var railRight = Color.FromRgb(142, 151, 163);
+        var railFront = Color.FromRgb(120, 129, 142);
 
         var isXFlow = cell.MainFlowDirection is PortDirection.PositiveX or PortDirection.NegativeX;
 
@@ -657,6 +702,9 @@ public sealed class SoftwareCubeViewport : Control
             DrawConveyorBarSw(context, x0,          x0 + railW,  y0 + railW,  y1 - railW,  z0, z0 + railH, railTop, railRight, railFront, opacity, state);
             DrawConveyorBarSw(context, x1 - railW,  x1,          y0 + railW,  y1 - railW,  z0, z0 + railH, railTop, railRight, railFront, opacity, state);
         }
+
+        DrawConveyorBeltMotionSw(context, cell, opacity, state);
+        DrawConveyorAmbientPacketSw(context, cell, opacity, state);
 
         var topA = Project(x0, y0, z0 + railH, state);
         var topB = Project(x1, y0, z0 + railH, state);
@@ -697,44 +745,124 @@ public sealed class SoftwareCubeViewport : Control
 
     private void DrawConveyorCellFlowSw(DrawingContext context, ConveyorVisualCell cell, double opacity, EditorState state)
     {
-        var z = cell.Position.Z + 0.205;
+        var z = cell.Position.Z + 0.208;
         var centerX = cell.Position.X + 0.5;
         var centerY = cell.Position.Y + 0.5;
-        var flowColor = cell.Kind == ConveyorVisualCellKind.Corner
-            ? Color.FromRgb(255, 214, 96)
-            : Color.FromRgb(255, 228, 112);
-        var glyphOpacity = Math.Min(opacity + 0.26, 1.0);
+        var flowColor = Color.FromRgb(255, 221, 118);
+        var glyphOpacity = Math.Min(opacity + 0.32, 1.0);
         var flowPen = new Pen(new SolidColorBrush(WithOpacity(flowColor, glyphOpacity)), 1.5);
         var arrowBrush = new SolidColorBrush(WithOpacity(flowColor, glyphOpacity));
 
-        if (cell.Kind == ConveyorVisualCellKind.Corner && cell.EntryDirection.HasValue)
+        var arrowDirection = cell.ExitDirection ?? cell.MainFlowDirection;
+        var (arrowDx, arrowDy) = DirectionToPlanarVector(arrowDirection);
+        var tail = Project(centerX - arrowDx * 0.26, centerY - arrowDy * 0.26, z, state);
+        var head = Project(centerX + arrowDx * 0.14, centerY + arrowDy * 0.14, z, state);
+        context.DrawLine(flowPen, tail, head);
+        DrawArrowHeadSw(context, arrowBrush, centerX, centerY, z, arrowDx, arrowDy, 0.16, 0.19, state);
+    }
+
+    private void DrawConveyorBeltMotionSw(DrawingContext context, ConveyorVisualCell cell, double opacity, EditorState state)
+    {
+        const double railW = 0.09;
+        var stripeColor = Color.FromRgb(104, 110, 122);
+        var stripeOpacity = Math.Clamp(opacity * 0.62 + 0.12, 0.15, 0.9);
+        var z = cell.Position.Z + 0.141;
+
+        var minX = cell.Position.X + railW;
+        var maxX = cell.Position.X + 1.0 - railW;
+        var minY = cell.Position.Y + railW;
+        var maxY = cell.Position.Y + 1.0 - railW;
+
+        var flowDirection = cell.ExitDirection ?? cell.MainFlowDirection;
+        var alongX = flowDirection is PortDirection.PositiveX or PortDirection.NegativeX;
+        var directionSign = flowDirection is PortDirection.PositiveX or PortDirection.PositiveY ? 1.0 : -1.0;
+        var phase = GetConveyorAnimationPhase(cell.Position, 0.95, directionSign);
+
+        const double stripeHalfWidth = 0.027;
+        for (var i = -1; i <= 2; i++)
         {
-            var (entryDx, entryDy) = DirectionToPlanarVector(cell.EntryDirection.Value);
-            var entryPoint = Project(centerX + entryDx * 0.34, centerY + entryDy * 0.34, z, state);
+            var t = Wrap01(phase + i * 0.31);
+            if (alongX)
+            {
+                var cx = Lerp(minX, maxX, t);
+                DrawConveyorTopQuadSw(context, cx - stripeHalfWidth, cx + stripeHalfWidth, minY, maxY, z, stripeColor, stripeOpacity, state);
+            }
+            else
+            {
+                var cy = Lerp(minY, maxY, t);
+                DrawConveyorTopQuadSw(context, minX, maxX, cy - stripeHalfWidth, cy + stripeHalfWidth, z, stripeColor, stripeOpacity, state);
+            }
+        }
+    }
 
-            var exitDirection = cell.ExitDirection ?? cell.MainFlowDirection;
-            var (exitDx, exitDy) = DirectionToPlanarVector(exitDirection);
-            var pivotX = centerX + (entryDx + exitDx) * 0.07;
-            var pivotY = centerY + (entryDy + exitDy) * 0.07;
-            var pivot = Project(pivotX, pivotY, z, state);
-            context.DrawLine(flowPen, entryPoint, pivot);
-
-            var cornerTip = Project(centerX + exitDx * 0.37, centerY + exitDy * 0.37, z, state);
-            context.DrawLine(flowPen, pivot, cornerTip);
-
-            DrawArrowHeadSw(context, arrowBrush, centerX, centerY, z, exitDx, exitDy, 0.18, 0.14, state);
-            DrawConveyorChevronSw(context, flowPen, centerX + exitDx * 0.03, centerY + exitDy * 0.03, z, exitDx, exitDy, 0.14, 0.095, state);
+    private void DrawConveyorAmbientPacketSw(DrawingContext context, ConveyorVisualCell cell, double opacity, EditorState state)
+    {
+        var flowDirection = cell.ExitDirection ?? cell.MainFlowDirection;
+        var (flowX, flowY) = DirectionToPlanarVector(flowDirection);
+        if (flowX == 0 && flowY == 0)
+        {
             return;
         }
 
-        var arrowDirection = cell.ExitDirection ?? cell.MainFlowDirection;
-        var (arrowDx, arrowDy) = DirectionToPlanarVector(arrowDirection);
-        var tail = Project(centerX - arrowDx * 0.27, centerY - arrowDy * 0.27, z, state);
-        var tip = Project(centerX + arrowDx * 0.38, centerY + arrowDy * 0.38, z, state);
-        context.DrawLine(flowPen, tail, tip);
-        DrawArrowHeadSw(context, arrowBrush, centerX, centerY, z, arrowDx, arrowDy, 0.18, 0.14, state);
-        DrawConveyorChevronSw(context, flowPen, centerX - arrowDx * 0.10, centerY - arrowDy * 0.10, z, arrowDx, arrowDy, 0.15, 0.10, state);
-        DrawConveyorChevronSw(context, flowPen, centerX + arrowDx * 0.07, centerY + arrowDy * 0.07, z, arrowDx, arrowDy, 0.12, 0.085, state);
+        var t = Wrap01(GetConveyorAnimationPhase(cell.Position, 0.72, 1.0));
+        var packetX = Lerp(cell.Position.X + 0.5 - flowX * 0.30, cell.Position.X + 0.5 + flowX * 0.30, t);
+        var packetY = Lerp(cell.Position.Y + 0.5 - flowY * 0.30, cell.Position.Y + 0.5 + flowY * 0.30, t);
+        if (cell.Kind == ConveyorVisualCellKind.Corner && cell.EntryDirection.HasValue)
+        {
+            var (entryX, entryY) = DirectionToPlanarVector(cell.EntryDirection.Value);
+            var entryPointX = cell.Position.X + 0.5 + entryX * 0.30;
+            var entryPointY = cell.Position.Y + 0.5 + entryY * 0.30;
+            var centerX = cell.Position.X + 0.5;
+            var centerY = cell.Position.Y + 0.5;
+            if (t < 0.5)
+            {
+                var localT = t / 0.5;
+                packetX = Lerp(entryPointX, centerX, localT);
+                packetY = Lerp(entryPointY, centerY, localT);
+            }
+            else
+            {
+                var localT = (t - 0.5) / 0.5;
+                packetX = Lerp(centerX, packetX, localT);
+                packetY = Lerp(centerY, packetY, localT);
+            }
+        }
+
+        var packetHalfLength = Math.Abs(flowX) > 0.5 ? 0.12 : 0.09;
+        var packetHalfWidth = Math.Abs(flowX) > 0.5 ? 0.09 : 0.12;
+        var z0 = cell.Position.Z + 0.145;
+        var z1 = z0 + 0.08;
+        DrawConveyorBarSw(
+            context,
+            packetX - packetHalfLength,
+            packetX + packetHalfLength,
+            packetY - packetHalfWidth,
+            packetY + packetHalfWidth,
+            z0,
+            z1,
+            Color.FromRgb(226, 152, 63),
+            Color.FromRgb(181, 118, 45),
+            Color.FromRgb(166, 102, 34),
+            Math.Min(opacity + 0.05, 1.0),
+            state);
+    }
+
+    private void DrawConveyorTopQuadSw(
+        DrawingContext context,
+        double x0,
+        double x1,
+        double y0,
+        double y1,
+        double z,
+        Color color,
+        double opacity,
+        EditorState state)
+    {
+        var a = Project(x0, y0, z, state);
+        var b = Project(x1, y0, z, state);
+        var c = Project(x1, y1, z, state);
+        var d = Project(x0, y1, z, state);
+        context.DrawGeometry(new SolidColorBrush(WithOpacity(color, opacity)), null, Polygon(a, b, c, d));
     }
 
     private void DrawConveyorChevronSw(
