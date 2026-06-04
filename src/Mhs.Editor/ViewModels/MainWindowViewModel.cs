@@ -13,10 +13,9 @@ namespace Mhs.Editor.ViewModels;
 
 public sealed class MainWindowViewModel : INotifyPropertyChanged
 {
-    private const int SourceInjectionCooldownTicks = 6;
+    private const float MaterialFlowTickSeconds = 0.25f;
     private readonly IEditorTool _selectTool = new SelectTool();
     private readonly ConveyorRouteTool _conveyorRouteTool = new();
-    private readonly Dictionary<Guid, int> _sourceInjectionCooldownByObjectId = [];
     private ViewportInteractionPreset _interactionPreset = ViewportInteractionPreset.BlenderLike;
     private bool _useOpenGlViewport = true;
     private string _preferredOpenGlGpuName = "System default GPU";
@@ -261,26 +260,21 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         get
         {
-            var tokens = EditorState.Scene.MaterialFlow.GetTokens();
-            if (tokens.Count == 0)
+            var routes = EditorState.Scene.ConveyorRouteFlow.Routes;
+            if (routes.Count == 0)
             {
-                return "Material Flow: no tokens";
+                return "Material Flow: no conveyor routes";
             }
 
-            var snapshot = EditorState.GetPortConnectivitySnapshot();
-            var details = string.Join(" | ", tokens.Select(token =>
+            var occupied = EditorState.Scene.ConveyorRouteFlow.OccupiedCellCount();
+            var details = string.Join(" | ", routes.Select((route, index) =>
             {
-                var stateLabel = token.State == MaterialTokenState.Active ? "active" : token.State.ToString().ToLowerInvariant();
-                if (snapshot.TryGetPort(token.Location.PortId, out var port))
-                {
-                    var portLabel = $"{ShortId(port.OwnerSceneObjectId)}:{port.Name}";
-                    return $"{token.MaterialKind} {ShortId(token.TokenId)} @ {portLabel} [{stateLabel}{FormatStatusSuffix(token.StatusText)}]";
-                }
-
-                var fallback = $"{ShortId(token.Location.ObjectId)}:{token.Location.PortId}";
-                return $"{token.MaterialKind} {ShortId(token.TokenId)} @ {fallback} [{stateLabel}{FormatStatusSuffix(token.StatusText)}]";
+                var routeOccupied = route.Slots.Count(slot => slot is not null);
+                var sender = route.SenderObjectId.HasValue ? ShortId(route.SenderObjectId.Value) : "-";
+                var receiver = route.ReceiverObjectId.HasValue ? ShortId(route.ReceiverObjectId.Value) : "-";
+                return $"R{index + 1}: {routeOccupied}/{route.Slots.Length} sender={sender} recv={receiver}";
             }));
-            return $"Material Flow: {tokens.Count} token(s) | {details}";
+            return $"Material Flow: {occupied} packet(s) on {routes.Count} route(s) | {details}";
         }
     }
 
@@ -480,6 +474,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         EditorState.ActiveTool.OnCancel(EditorState);
         EditorState.Scene.MaterialFlow.ClearTokens();
+        EditorState.Scene.ConveyorRouteFlow.Clear();
         EditorState.Scene.Objects.Clear();
         foreach (var sceneObject in loadedObjects)
         {
@@ -553,41 +548,30 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private void InjectDebugOre()
     {
-        if (EditorState.SelectedObject is null)
+        if (EditorState.SelectedObject is null
+            || !string.Equals(EditorState.SelectedObject.PartId, "mtrlsrc", StringComparison.OrdinalIgnoreCase))
         {
-            EditorState.StatusMessage = "Inject failed: select an object";
+            EditorState.StatusMessage = "Inject failed: select MtrlSrc";
             RaiseComputed();
             return;
         }
 
         var snapshot = EditorState.GetPortConnectivitySnapshot();
-        var selectedId = EditorState.SelectedObject.Id;
-        var candidatePort = snapshot.Ports
-            .Where(port => port.OwnerSceneObjectId == selectedId)
-            .OrderByDescending(port => port.Kind == PortKind.Output)
-            .ThenBy(port => port.PortId, StringComparer.Ordinal)
-            .FirstOrDefault();
-
-        if (candidatePort is null)
-        {
-            EditorState.StatusMessage = "Inject failed: selected object has no ports";
-            RaiseComputed();
-            return;
-        }
-
-        var token = EditorState.Scene.MaterialFlow.InjectToken(selectedId, candidatePort.PortId, MaterialKind.DebugOre);
-        EditorState.StatusMessage = $"Injected DebugOre {ShortId(token.TokenId)} at {candidatePort.Name}";
+        EditorState.Scene.ConveyorRouteFlow.Update(0f, snapshot, EditorState.Scene.Objects);
+        var injected = EditorState.Scene.ConveyorRouteFlow.TryInjectFromSender(EditorState.SelectedObject.Id);
+        EditorState.StatusMessage = injected
+            ? $"Injected DebugOre from {ShortId(EditorState.SelectedObject.Id)}"
+            : "Inject failed: source route input slot occupied or disconnected";
         RaiseComputed();
     }
 
     private void StepMaterialFlow()
     {
         var snapshot = EditorState.GetPortConnectivitySnapshot();
-        var moved = EditorState.Scene.MaterialFlow.Step(snapshot);
-        var consumed = ConsumeAtMaterialReceivers(snapshot);
-        EditorState.StatusMessage = consumed > 0
-            ? $"Material flow stepped: {moved} token(s) moved, {consumed} consumed"
-            : $"Material flow stepped: {moved} token(s) moved";
+        var changed = EditorState.Scene.ConveyorRouteFlow.Step(snapshot, EditorState.Scene.Objects);
+        EditorState.StatusMessage = changed > 0
+            ? $"Material flow stepped: {changed} route change(s)"
+            : "Material flow stepped: no route changes";
         RaiseComputed();
     }
 
@@ -599,10 +583,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
 
         var snapshot = EditorState.GetPortConnectivitySnapshot();
-        var injected = InjectFromMaterialSources(snapshot);
-        var moved = EditorState.Scene.MaterialFlow.Step(snapshot);
-        var consumed = ConsumeAtMaterialReceivers(snapshot);
-        if (injected > 0 || moved > 0 || consumed > 0)
+        var moved = EditorState.Scene.ConveyorRouteFlow.Update(MaterialFlowTickSeconds, snapshot, EditorState.Scene.Objects);
+        if (moved > 0)
         {
             RaiseComputed();
         }
@@ -611,6 +593,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private void ClearMaterialFlow()
     {
         EditorState.Scene.MaterialFlow.ClearTokens();
+        EditorState.Scene.ConveyorRouteFlow.Clear();
         EditorState.StatusMessage = "Material flow cleared";
         RaiseComputed();
     }
@@ -873,18 +856,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private void OnSceneObjectsChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
-        var liveSourceIds = EditorState.Scene.Objects
-            .Where(IsMaterialSource)
-            .Select(sceneObject => sceneObject.Id)
-            .ToHashSet();
-        var staleCooldownIds = _sourceInjectionCooldownByObjectId.Keys
-            .Where(objectId => !liveSourceIds.Contains(objectId))
-            .ToList();
-        foreach (var staleId in staleCooldownIds)
-        {
-            _sourceInjectionCooldownByObjectId.Remove(staleId);
-        }
-
+        var snapshot = EditorState.GetPortConnectivitySnapshot();
+        EditorState.Scene.ConveyorRouteFlow.Update(0f, snapshot, EditorState.Scene.Objects);
         RaiseComputed();
     }
 
@@ -958,65 +931,6 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     };
 
     private static string ShortId(Guid id) => id.ToString("N")[..8];
-
-    private static string FormatStatusSuffix(string? statusText)
-        => string.IsNullOrWhiteSpace(statusText) ? string.Empty : $", {statusText}";
-
-    private int InjectFromMaterialSources(PortConnectivitySnapshot snapshot)
-    {
-        var injectedCount = 0;
-        foreach (var source in EditorState.Scene.Objects.Where(IsMaterialSource))
-        {
-            var remainingTicks = _sourceInjectionCooldownByObjectId.GetValueOrDefault(source.Id, 0);
-            if (remainingTicks > 0)
-            {
-                _sourceInjectionCooldownByObjectId[source.Id] = remainingTicks - 1;
-                continue;
-            }
-
-            var outputPort = snapshot.Ports.FirstOrDefault(port =>
-                port.OwnerSceneObjectId == source.Id
-                && port.Kind is PortKind.Output or PortKind.Bidirectional);
-            if (outputPort is null || snapshot.GetOutgoingConnectionsForPort(outputPort.PortId).Count == 0)
-            {
-                continue;
-            }
-
-            EditorState.Scene.MaterialFlow.InjectToken(source.Id, outputPort.PortId, MaterialKind.DebugOre);
-            _sourceInjectionCooldownByObjectId[source.Id] = SourceInjectionCooldownTicks;
-            injectedCount++;
-        }
-
-        return injectedCount;
-    }
-
-    private int ConsumeAtMaterialReceivers(PortConnectivitySnapshot snapshot)
-    {
-        var receiverIds = EditorState.Scene.Objects
-            .Where(IsMaterialReceiver)
-            .Select(sceneObject => sceneObject.Id)
-            .ToHashSet();
-        if (receiverIds.Count == 0)
-        {
-            return 0;
-        }
-
-        return EditorState.Scene.MaterialFlow.ConsumeTokens(token =>
-        {
-            if (!snapshot.TryGetPort(token.Location.PortId, out var port))
-            {
-                return false;
-            }
-
-            return receiverIds.Contains(port.OwnerSceneObjectId) && port.Kind is PortKind.Input or PortKind.Bidirectional;
-        });
-    }
-
-    private static bool IsMaterialSource(SceneObject sceneObject)
-        => string.Equals(sceneObject.PartId, "mtrlsrc", StringComparison.OrdinalIgnoreCase);
-
-    private static bool IsMaterialReceiver(SceneObject sceneObject)
-        => string.Equals(sceneObject.PartId, "mtrlrecv", StringComparison.OrdinalIgnoreCase);
 
     private sealed class RelayCommand : ICommand
     {

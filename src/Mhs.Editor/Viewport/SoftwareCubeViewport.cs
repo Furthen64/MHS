@@ -704,7 +704,10 @@ public sealed class SoftwareCubeViewport : Control
         }
 
         DrawConveyorBeltMotionSw(context, cell, opacity, state);
-        DrawConveyorAmbientPacketSw(context, cell, opacity, state);
+        if (state.Scene.ConveyorRouteFlow.HasPacketAtCell(cell.Position))
+        {
+            DrawConveyorRoutePacketSw(context, cell, opacity, state);
+        }
 
         var topA = Project(x0, y0, z0 + railH, state);
         var topB = Project(x1, y0, z0 + railH, state);
@@ -795,38 +798,12 @@ public sealed class SoftwareCubeViewport : Control
         }
     }
 
-    private void DrawConveyorAmbientPacketSw(DrawingContext context, ConveyorVisualCell cell, double opacity, EditorState state)
+    private void DrawConveyorRoutePacketSw(DrawingContext context, ConveyorVisualCell cell, double opacity, EditorState state)
     {
         var flowDirection = cell.ExitDirection ?? cell.MainFlowDirection;
         var (flowX, flowY) = DirectionToPlanarVector(flowDirection);
-        if (flowX == 0 && flowY == 0)
-        {
-            return;
-        }
-
-        var t = Wrap01(GetConveyorAnimationPhase(cell.Position, 0.72, 1.0));
-        var packetX = Lerp(cell.Position.X + 0.5 - flowX * 0.30, cell.Position.X + 0.5 + flowX * 0.30, t);
-        var packetY = Lerp(cell.Position.Y + 0.5 - flowY * 0.30, cell.Position.Y + 0.5 + flowY * 0.30, t);
-        if (cell.Kind == ConveyorVisualCellKind.Corner && cell.EntryDirection.HasValue)
-        {
-            var (entryX, entryY) = DirectionToPlanarVector(cell.EntryDirection.Value);
-            var entryPointX = cell.Position.X + 0.5 + entryX * 0.30;
-            var entryPointY = cell.Position.Y + 0.5 + entryY * 0.30;
-            var centerX = cell.Position.X + 0.5;
-            var centerY = cell.Position.Y + 0.5;
-            if (t < 0.5)
-            {
-                var localT = t / 0.5;
-                packetX = Lerp(entryPointX, centerX, localT);
-                packetY = Lerp(entryPointY, centerY, localT);
-            }
-            else
-            {
-                var localT = (t - 0.5) / 0.5;
-                packetX = Lerp(centerX, packetX, localT);
-                packetY = Lerp(centerY, packetY, localT);
-            }
-        }
+        var packetX = cell.Position.X + 0.5;
+        var packetY = cell.Position.Y + 0.5;
 
         var packetHalfLength = Math.Abs(flowX) > 0.5 ? 0.12 : 0.09;
         var packetHalfWidth = Math.Abs(flowX) > 0.5 ? 0.09 : 0.12;

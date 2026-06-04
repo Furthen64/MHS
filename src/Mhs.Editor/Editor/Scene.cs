@@ -7,6 +7,7 @@ public sealed class Scene
 {
     public ObservableCollection<SceneObject> Objects { get; } = [];
     public MaterialFlowSimulator MaterialFlow { get; } = new();
+    public ConveyorRouteMaterialFlowSimulator ConveyorRouteFlow { get; } = new();
 
     public PortConnectivitySnapshot GetPortConnectivitySnapshot()
         => PortConnectivityAnalyzer.Analyze(Objects);

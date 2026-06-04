@@ -959,7 +959,10 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
         }
 
         DrawConveyorBeltMotion(cell, opacity, state, isPreview, previewIsValid);
-        DrawConveyorAmbientPacket(cell, opacity, state, isPreview);
+        if (!isPreview && state.Scene.ConveyorRouteFlow.HasPacketAtCell(cell.Position))
+        {
+            DrawConveyorRoutePacket(cell, opacity, state);
+        }
 
         var topA = Project(x0, y0, z0 + railH, state);
         var topB = Project(x1, y0, z0 + railH, state);
@@ -1093,13 +1096,8 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
         }
     }
 
-    private void DrawConveyorAmbientPacket(ConveyorVisualCell cell, double opacity, EditorState state, bool isPreview)
+    private void DrawConveyorRoutePacket(ConveyorVisualCell cell, double opacity, EditorState state)
     {
-        if (isPreview)
-        {
-            return;
-        }
-
         var flowDirection = cell.ExitDirection ?? cell.MainFlowDirection;
         var (flowX, flowY) = DirectionToPlanarVector(flowDirection);
         if (flowX == 0 && flowY == 0)
@@ -1107,50 +1105,18 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
             return;
         }
 
-        var t = Wrap01(GetConveyorAnimationPhase(cell.Position, 0.72, 1.0));
-        var pathStartX = cell.Position.X + 0.5 - flowX * 0.30;
-        var pathStartY = cell.Position.Y + 0.5 - flowY * 0.30;
-        var pathEndX = cell.Position.X + 0.5 + flowX * 0.30;
-        var pathEndY = cell.Position.Y + 0.5 + flowY * 0.30;
-
-        if (cell.Kind == ConveyorVisualCellKind.Corner && cell.EntryDirection.HasValue)
-        {
-            var (entryX, entryY) = DirectionToPlanarVector(cell.EntryDirection.Value);
-            var entryPointX = cell.Position.X + 0.5 + entryX * 0.30;
-            var entryPointY = cell.Position.Y + 0.5 + entryY * 0.30;
-            var centerX = cell.Position.X + 0.5;
-            var centerY = cell.Position.Y + 0.5;
-            if (t < 0.5)
-            {
-                var localT = t / 0.5;
-                pathEndX = Lerp(entryPointX, centerX, localT);
-                pathEndY = Lerp(entryPointY, centerY, localT);
-            }
-            else
-            {
-                var localT = (t - 0.5) / 0.5;
-                pathEndX = Lerp(centerX, pathEndX, localT);
-                pathEndY = Lerp(centerY, pathEndY, localT);
-            }
-
-            pathStartX = pathEndX;
-            pathStartY = pathEndY;
-        }
-        else
-        {
-            pathStartX = Lerp(pathStartX, pathEndX, t);
-            pathStartY = Lerp(pathStartY, pathEndY, t);
-        }
+        var packetX = cell.Position.X + 0.5;
+        var packetY = cell.Position.Y + 0.5;
 
         var packetHalfLength = Math.Abs(flowX) > 0.5 ? 0.12 : 0.09;
         var packetHalfWidth = Math.Abs(flowX) > 0.5 ? 0.09 : 0.12;
         var z0 = cell.Position.Z + 0.145;
         var z1 = z0 + 0.08;
         DrawConveyorBar(
-            pathStartX - packetHalfLength,
-            pathStartX + packetHalfLength,
-            pathStartY - packetHalfWidth,
-            pathStartY + packetHalfWidth,
+            packetX - packetHalfLength,
+            packetX + packetHalfLength,
+            packetY - packetHalfWidth,
+            packetY + packetHalfWidth,
             z0,
             z1,
             Color.FromRgb(226, 152, 63),
