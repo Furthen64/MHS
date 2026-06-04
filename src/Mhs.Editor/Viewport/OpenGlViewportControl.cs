@@ -1170,6 +1170,11 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
             180 => (-1.0, 0.0),
             _ => (0.0, -1.0)
         };
+        if (renderInfo.FlowMarkerKind == FlowMarkerKind.Incoming)
+        {
+            fdx = -fdx;
+            fdy = -fdy;
+        }
 
         var z1 = position.Z + effectiveSize.HeightZ;
         var cx = position.X + effectiveSize.WidthX / 2.0;
@@ -1194,7 +1199,19 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
         var tip = Project(tipX, tipY, z1, state);
 
         var markerColor = renderInfo.FacingMarkerColor.ToAvaloniaColor();
-        _renderer.AddFilledTriangle(tip, base1, base2, markerColor, Math.Min(opacity + 0.25, 1.0));
+        var markerOpacity = Math.Min(opacity + 0.25, 1.0);
+        if (renderInfo.FlowMarkerKind == FlowMarkerKind.Incoming)
+        {
+            var wingDistance = arrowLen * 0.55;
+            var wingSpread = arrowBase * 0.85;
+            var wing1 = Project(tipX - fdx * wingDistance + px * wingSpread, tipY - fdy * wingDistance + py * wingSpread, z1, state);
+            var wing2 = Project(tipX - fdx * wingDistance - px * wingSpread, tipY - fdy * wingDistance - py * wingSpread, z1, state);
+            _renderer.AddLine(tip, wing1, markerColor, markerOpacity);
+            _renderer.AddLine(tip, wing2, markerColor, markerOpacity);
+            return;
+        }
+
+        _renderer.AddFilledTriangle(tip, base1, base2, markerColor, markerOpacity);
     }
 
     private void DrawConveyorMarker(VoxelCoord position, VoxelSize effectiveSize, int rotationZDegrees,
