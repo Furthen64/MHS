@@ -281,7 +281,7 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
 
     private void OnBlinkTick(object? sender, EventArgs e)
     {
-        if (EditorState?.Scene.MaterialFlow.GetTokens().Any(token => token.State == MaterialTokenState.Blocked) == true)
+        if (EditorState?.Scene.MaterialFlow.GetTokens().Count > 0)
         {
             RequestNextFrameRendering();
         }
@@ -905,34 +905,90 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
             return;
         }
 
-        var visualHeight = 0.28;
+        const double beltH = 0.14;
+        const double railH = 0.18;
+        const double railW = 0.09;
+
         var x0 = cell.Position.X;
-        var x1 = cell.Position.X + 1;
+        var x1 = cell.Position.X + 1.0;
         var y0 = cell.Position.Y;
-        var y1 = cell.Position.Y + 1;
+        var y1 = cell.Position.Y + 1.0;
         var z0 = cell.Position.Z;
-        var z1 = cell.Position.Z + visualHeight;
 
-        var topA = Project(x0, y0, z1, state);
-        var topB = Project(x1, y0, z1, state);
-        var topC = Project(x1, y1, z1, state);
-        var topD = Project(x0, y1, z1, state);
+        var beltTop   = Darken(color, 0.28);
+        var beltRight = Darken(color, 0.20);
+        var beltFront = Darken(color, 0.16);
+        var railTop   = TintColor(color, Color.FromRgb(130, 142, 158), 0.35);
+        var railRight = TintColor(color, Color.FromRgb(95,  106, 118), 0.35);
+        var railFront = TintColor(color, Color.FromRgb(80,  90,  102), 0.35);
 
-        var bottomB = Project(x1, y0, z0, state);
-        var bottomC = Project(x1, y1, z0, state);
-        var bottomD = Project(x0, y1, z0, state);
+        var isXFlow = cell.MainFlowDirection is PortDirection.PositiveX or PortDirection.NegativeX;
 
-        _renderer.AddFilledQuad(topA, topB, topC, topD, Darken(color, 0.92), opacity);
-        _renderer.AddFilledQuad(topB, bottomB, bottomC, topC, Darken(color, 0.70), opacity * 0.7);
-        _renderer.AddFilledQuad(topD, topC, bottomC, bottomD, Darken(color, 0.58), opacity * 0.7);
+        if (cell.Kind is ConveyorVisualCellKind.Straight or ConveyorVisualCellKind.Endpoint)
+        {
+            if (isXFlow)
+            {
+                DrawConveyorBar(x0, x1, y0 + railW, y1 - railW, z0, z0 + beltH, beltTop, beltRight, beltFront, opacity, state);
+                DrawConveyorBar(x0, x1, y0, y0 + railW, z0, z0 + railH, railTop, railRight, railFront, opacity, state);
+                DrawConveyorBar(x0, x1, y1 - railW, y1, z0, z0 + railH, railTop, railRight, railFront, opacity, state);
+            }
+            else
+            {
+                DrawConveyorBar(x0 + railW, x1 - railW, y0, y1, z0, z0 + beltH, beltTop, beltRight, beltFront, opacity, state);
+                DrawConveyorBar(x0, x0 + railW, y0, y1, z0, z0 + railH, railTop, railRight, railFront, opacity, state);
+                DrawConveyorBar(x1 - railW, x1, y0, y1, z0, z0 + railH, railTop, railRight, railFront, opacity, state);
+            }
+        }
+        else
+        {
+            DrawConveyorBar(x0 + railW, x1 - railW, y0 + railW, y1 - railW, z0, z0 + beltH, beltTop, beltRight, beltFront, opacity, state);
+            DrawConveyorBar(x0,          x1,          y0,          y0 + railW,  z0, z0 + railH, railTop, railRight, railFront, opacity, state);
+            DrawConveyorBar(x0,          x1,          y1 - railW,  y1,          z0, z0 + railH, railTop, railRight, railFront, opacity, state);
+            DrawConveyorBar(x0,          x0 + railW,  y0 + railW,  y1 - railW,  z0, z0 + railH, railTop, railRight, railFront, opacity, state);
+            DrawConveyorBar(x1 - railW,  x1,          y0 + railW,  y1 - railW,  z0, z0 + railH, railTop, railRight, railFront, opacity, state);
+        }
 
+        var topA = Project(x0, y0, z0 + railH, state);
+        var topB = Project(x1, y0, z0 + railH, state);
+        var topC = Project(x1, y1, z0 + railH, state);
+        var topD = Project(x0, y1, z0 + railH, state);
         DrawConveyorCellTopBoundary(topA, topB, topC, topD, opacity);
+
         if (showFullCellBounds)
         {
             DrawOutline(cell.Position, new VoxelSize(1, 1, 1), Color.FromRgb(226, 226, 226), Math.Min(opacity + 0.16, 1), state);
         }
 
         DrawConveyorCellFlow(cell, opacity, state);
+    }
+
+    private void DrawConveyorBar(double x0, double x1, double y0, double y1, double z0, double z1,
+        Color topColor, Color rightColor, Color frontColor, double opacity, EditorState state)
+    {
+        if (_renderer is null)
+        {
+            return;
+        }
+
+        var tA = Project(x0, y0, z1, state);
+        var tB = Project(x1, y0, z1, state);
+        var tC = Project(x1, y1, z1, state);
+        var tD = Project(x0, y1, z1, state);
+        var bB = Project(x1, y0, z0, state);
+        var bC = Project(x1, y1, z0, state);
+        var bD = Project(x0, y1, z0, state);
+        _renderer.AddFilledQuad(tA, tB, tC, tD, topColor, opacity);
+        _renderer.AddFilledQuad(tB, bB, bC, tC, rightColor, opacity * 0.80);
+        _renderer.AddFilledQuad(tD, tC, bC, bD, frontColor, opacity * 0.80);
+    }
+
+    private static Color TintColor(Color tint, Color baseColor, double tintStrength)
+    {
+        return Color.FromArgb(
+            baseColor.A,
+            (byte)Math.Clamp((int)(baseColor.R * (1 - tintStrength) + tint.R * tintStrength), 0, 255),
+            (byte)Math.Clamp((int)(baseColor.G * (1 - tintStrength) + tint.G * tintStrength), 0, 255),
+            (byte)Math.Clamp((int)(baseColor.B * (1 - tintStrength) + tint.B * tintStrength), 0, 255));
     }
 
     private void DrawConveyorCellTopBoundary(Point topA, Point topB, Point topC, Point topD, double opacity)
@@ -957,7 +1013,7 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
             return;
         }
 
-        var z = cell.Position.Z + 0.31;
+        var z = cell.Position.Z + 0.21;
         var centerX = cell.Position.X + 0.5;
         var centerY = cell.Position.Y + 0.5;
         var flowColor = cell.Kind == ConveyorVisualCellKind.Corner
