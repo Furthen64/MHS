@@ -892,12 +892,12 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
             return;
         }
 
-        var showFullCellBounds = state.SelectedObject?.Id == sceneObject.Id
-            || state.HoveredObject?.Id == sceneObject.Id;
+        var isSelected = state.SelectedObject?.Id == sceneObject.Id;
+        var isHovered = state.HoveredObject?.Id == sceneObject.Id;
 
         foreach (var cell in cells)
         {
-            DrawConveyorCell(cell, color, opacity, showFullCellBounds, state);
+            DrawConveyorCell(cell, color, opacity, state, isSelected, isHovered);
         }
     }
 
@@ -905,8 +905,9 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
         ConveyorVisualCell cell,
         Color color,
         double opacity,
-        bool showFullCellBounds,
         EditorState state,
+        bool isSelected = false,
+        bool isHovered = false,
         bool isPreview = false,
         bool previewIsValid = true)
     {
@@ -931,6 +932,21 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
         var railTop = Color.FromRgb(196, 203, 212);
         var railRight = Color.FromRgb(142, 151, 163);
         var railFront = Color.FromRgb(120, 129, 142);
+        if (!isPreview && isSelected)
+        {
+            beltTop = TintColor(Color.FromRgb(120, 180, 255), beltTop, 0.22);
+            beltRight = TintColor(Color.FromRgb(120, 180, 255), beltRight, 0.18);
+            beltFront = TintColor(Color.FromRgb(120, 180, 255), beltFront, 0.18);
+            railTop = TintColor(Color.FromRgb(170, 210, 255), railTop, 0.20);
+            railRight = TintColor(Color.FromRgb(170, 210, 255), railRight, 0.16);
+            railFront = TintColor(Color.FromRgb(170, 210, 255), railFront, 0.16);
+        }
+        else if (!isPreview && isHovered)
+        {
+            beltTop = TintColor(Color.FromRgb(235, 220, 130), beltTop, 0.14);
+            beltRight = TintColor(Color.FromRgb(235, 220, 130), beltRight, 0.10);
+            beltFront = TintColor(Color.FromRgb(235, 220, 130), beltFront, 0.10);
+        }
 
         var isXFlow = cell.MainFlowDirection is PortDirection.PositiveX or PortDirection.NegativeX;
 
@@ -959,21 +975,27 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
         }
 
         DrawConveyorBeltMotion(cell, opacity, state, isPreview, previewIsValid);
-        if (!isPreview && state.Scene.ConveyorRouteFlow.HasPacketAtCell(cell.Position))
+        if (!isPreview && state.Scene.ConveyorRouteFlow.TryGetPacketAtCell(cell.Position, out var packet))
         {
-            DrawConveyorRoutePacket(cell, opacity, state);
+            DrawConveyorRoutePacket(cell, packet!, opacity, state);
+        }
+
+        if (!isPreview)
+        {
+            DrawConveyorInputMarkers(cell, opacity, state);
         }
 
         var topA = Project(x0, y0, z0 + railH, state);
         var topB = Project(x1, y0, z0 + railH, state);
         var topC = Project(x1, y1, z0 + railH, state);
         var topD = Project(x0, y1, z0 + railH, state);
-        DrawConveyorCellTopBoundary(topA, topB, topC, topD, opacity);
-
-        if (showFullCellBounds)
-        {
-            DrawOutline(cell.Position, new VoxelSize(1, 1, 1), Color.FromRgb(226, 226, 226), Math.Min(opacity + 0.16, 1), state);
-        }
+        var boundaryColor = !isPreview && isSelected
+            ? Color.FromRgb(160, 205, 255)
+            : !isPreview && isHovered
+                ? Color.FromRgb(232, 224, 150)
+                : Color.FromRgb(226, 226, 226);
+        var boundaryBoost = !isPreview && (isSelected || isHovered) ? 0.20 : 0.12;
+        DrawConveyorCellTopBoundary(topA, topB, topC, topD, boundaryColor, Math.Min(opacity + boundaryBoost, 1.0));
 
         DrawConveyorCellFlow(cell, opacity, state, isPreview, previewIsValid);
     }
@@ -1007,19 +1029,17 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
             (byte)Math.Clamp((int)(baseColor.B * (1 - tintStrength) + tint.B * tintStrength), 0, 255));
     }
 
-    private void DrawConveyorCellTopBoundary(Point topA, Point topB, Point topC, Point topD, double opacity)
+    private void DrawConveyorCellTopBoundary(Point topA, Point topB, Point topC, Point topD, Color boundaryColor, double opacity)
     {
         if (_renderer is null)
         {
             return;
         }
 
-        var boundaryColor = Color.FromRgb(226, 226, 226);
-        var boundaryOpacity = Math.Min(opacity + 0.12, 1.0);
-        _renderer.AddLine(topA, topB, boundaryColor, boundaryOpacity);
-        _renderer.AddLine(topB, topC, boundaryColor, boundaryOpacity);
-        _renderer.AddLine(topC, topD, boundaryColor, boundaryOpacity);
-        _renderer.AddLine(topD, topA, boundaryColor, boundaryOpacity);
+        _renderer.AddLine(topA, topB, boundaryColor, opacity);
+        _renderer.AddLine(topB, topC, boundaryColor, opacity);
+        _renderer.AddLine(topC, topD, boundaryColor, opacity);
+        _renderer.AddLine(topD, topA, boundaryColor, opacity);
     }
 
     private void DrawConveyorCellFlow(
@@ -1096,7 +1116,7 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
         }
     }
 
-    private void DrawConveyorRoutePacket(ConveyorVisualCell cell, double opacity, EditorState state)
+    private void DrawConveyorRoutePacket(ConveyorVisualCell cell, OrePacket packet, double opacity, EditorState state)
     {
         var flowDirection = cell.ExitDirection ?? cell.MainFlowDirection;
         var (flowX, flowY) = DirectionToPlanarVector(flowDirection);
@@ -1112,6 +1132,7 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
         var packetHalfWidth = Math.Abs(flowX) > 0.5 ? 0.09 : 0.12;
         var z0 = cell.Position.Z + 0.145;
         var z1 = z0 + 0.08;
+        var material = MaterialCatalog.Resolve(packet.MaterialId);
         DrawConveyorBar(
             packetX - packetHalfLength,
             packetX + packetHalfLength,
@@ -1119,11 +1140,75 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
             packetY + packetHalfWidth,
             z0,
             z1,
-            Color.FromRgb(226, 152, 63),
-            Color.FromRgb(181, 118, 45),
-            Color.FromRgb(166, 102, 34),
+            material.TopColor,
+            material.RightColor,
+            material.FrontColor,
             Math.Min(opacity + 0.05, 1.0),
             state);
+    }
+
+    private void DrawConveyorInputMarkers(ConveyorVisualCell cell, double opacity, EditorState state)
+    {
+        var attachments = GetSelectedRouteAttachmentsForCell(state, cell.Position);
+        if (attachments.Count == 0)
+        {
+            return;
+        }
+
+        var z = cell.Position.Z + 0.212;
+        const double markerSize = 0.10;
+        const double padding = 0.04;
+        var maxMarkers = Math.Min(attachments.Count, 3);
+        for (var i = 0; i < maxMarkers; i++)
+        {
+            var material = MaterialCatalog.Resolve(attachments[i].MaterialId);
+            var x0 = cell.Position.X + padding + i * (markerSize + 0.03);
+            var y0 = cell.Position.Y + 1.0 - padding - markerSize;
+            DrawConveyorTopQuad(
+                x0,
+                x0 + markerSize,
+                y0,
+                y0 + markerSize,
+                z,
+                material.TopColor,
+                Math.Min(opacity + 0.18, 1.0),
+                state);
+        }
+    }
+
+    private static IReadOnlyList<RouteInputAttachmentRuntime> GetSelectedRouteAttachmentsForCell(EditorState state, VoxelCoord cellPosition)
+    {
+        if (state.SelectedObject is not { IsConveyor: true } selected)
+        {
+            return Array.Empty<RouteInputAttachmentRuntime>();
+        }
+
+        var route = state.Scene.ConveyorRouteFlow.Routes
+            .FirstOrDefault(candidate => candidate.SegmentObjectIds.Contains(selected.Id));
+        if (route is null)
+        {
+            return Array.Empty<RouteInputAttachmentRuntime>();
+        }
+
+        var routeCellIndex = -1;
+        for (var i = 0; i < route.Cells.Count; i++)
+        {
+            if (route.Cells[i] == cellPosition)
+            {
+                routeCellIndex = i;
+                break;
+            }
+        }
+
+        if (routeCellIndex < 0)
+        {
+            return Array.Empty<RouteInputAttachmentRuntime>();
+        }
+
+        return route.InputAttachments
+            .Where(attachment => attachment.RouteCellIndex == routeCellIndex)
+            .OrderBy(attachment => attachment.ObjectId)
+            .ToArray();
     }
 
     private void DrawConveyorTopQuad(
@@ -1339,13 +1424,13 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
         var committedColor = Color.FromRgb(78, 158, 216);
         foreach (var cell in committedCells)
         {
-            DrawConveyorCell(cell, committedColor, 0.55, showFullCellBounds: false, state, isPreview: true, previewIsValid: true);
+            DrawConveyorCell(cell, committedColor, 0.55, state, isPreview: true, previewIsValid: true);
         }
 
         var previewColor = route.PreviewIsValid ? Color.FromRgb(70, 190, 90) : Color.FromRgb(230, 90, 90);
         foreach (var cell in previewCells)
         {
-            DrawConveyorCell(cell, previewColor, 0.45, showFullCellBounds: false, state, isPreview: true, previewIsValid: route.PreviewIsValid);
+            DrawConveyorCell(cell, previewColor, 0.45, state, isPreview: true, previewIsValid: route.PreviewIsValid);
         }
 
         foreach (var anchor in route.Anchors)

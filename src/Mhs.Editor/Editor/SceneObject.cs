@@ -4,6 +4,9 @@ namespace Mhs.Editor.Editor;
 
 public sealed class SceneObject
 {
+    public const float DefaultMaterialUnitsPerSecond = 1.0f;
+    public const string DefaultMaterialId = "Brown";
+
     public Guid Id { get; init; } = Guid.NewGuid();
     public string PartId { get; init; } = string.Empty;
     public string PartType { get; init; } = string.Empty;
@@ -14,6 +17,8 @@ public sealed class SceneObject
     public VoxelCoord? RouteStartCell { get; set; }
     public VoxelCoord? RouteEndCell { get; set; }
     public bool RouteFlowReversed { get; set; }
+    public float MaterialUnitsPerSecond { get; set; } = DefaultMaterialUnitsPerSecond;
+    public string MaterialId { get; set; } = DefaultMaterialId;
 
     public VoxelSize EffectiveSize => GetEffectiveSize(RotationZDegrees);
 

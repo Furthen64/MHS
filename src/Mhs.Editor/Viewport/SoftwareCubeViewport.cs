@@ -652,13 +652,22 @@ public sealed class SoftwareCubeViewport : Control
             return;
         }
 
+        var isSelected = state.SelectedObject?.Id == sceneObject.Id;
+        var isHovered = state.HoveredObject?.Id == sceneObject.Id;
         foreach (var cell in cells)
         {
-            DrawConveyorCellSw(context, cell, color, opacity, state);
+            DrawConveyorCellSw(context, cell, color, opacity, state, isSelected, isHovered);
         }
     }
 
-    private void DrawConveyorCellSw(DrawingContext context, ConveyorVisualCell cell, Color color, double opacity, EditorState state)
+    private void DrawConveyorCellSw(
+        DrawingContext context,
+        ConveyorVisualCell cell,
+        Color color,
+        double opacity,
+        EditorState state,
+        bool isSelected = false,
+        bool isHovered = false)
     {
         const double beltH = 0.14;
         const double railH = 0.18;
@@ -676,6 +685,21 @@ public sealed class SoftwareCubeViewport : Control
         var railTop = Color.FromRgb(196, 203, 212);
         var railRight = Color.FromRgb(142, 151, 163);
         var railFront = Color.FromRgb(120, 129, 142);
+        if (isSelected)
+        {
+            beltTop = TintColor(Color.FromRgb(120, 180, 255), beltTop, 0.22);
+            beltRight = TintColor(Color.FromRgb(120, 180, 255), beltRight, 0.18);
+            beltFront = TintColor(Color.FromRgb(120, 180, 255), beltFront, 0.18);
+            railTop = TintColor(Color.FromRgb(170, 210, 255), railTop, 0.20);
+            railRight = TintColor(Color.FromRgb(170, 210, 255), railRight, 0.16);
+            railFront = TintColor(Color.FromRgb(170, 210, 255), railFront, 0.16);
+        }
+        else if (isHovered)
+        {
+            beltTop = TintColor(Color.FromRgb(235, 220, 130), beltTop, 0.14);
+            beltRight = TintColor(Color.FromRgb(235, 220, 130), beltRight, 0.10);
+            beltFront = TintColor(Color.FromRgb(235, 220, 130), beltFront, 0.10);
+        }
 
         var isXFlow = cell.MainFlowDirection is PortDirection.PositiveX or PortDirection.NegativeX;
 
@@ -704,16 +728,24 @@ public sealed class SoftwareCubeViewport : Control
         }
 
         DrawConveyorBeltMotionSw(context, cell, opacity, state);
-        if (state.Scene.ConveyorRouteFlow.HasPacketAtCell(cell.Position))
+        if (state.Scene.ConveyorRouteFlow.TryGetPacketAtCell(cell.Position, out var packet))
         {
-            DrawConveyorRoutePacketSw(context, cell, opacity, state);
+            DrawConveyorRoutePacketSw(context, cell, packet!, opacity, state);
         }
 
         var topA = Project(x0, y0, z0 + railH, state);
         var topB = Project(x1, y0, z0 + railH, state);
         var topC = Project(x1, y1, z0 + railH, state);
         var topD = Project(x0, y1, z0 + railH, state);
-        var boundaryPen = new Pen(new SolidColorBrush(WithOpacity(Color.FromRgb(226, 226, 226), Math.Min(opacity + 0.12, 1.0))), 1);
+        var boundaryColor = isSelected
+            ? Color.FromRgb(160, 205, 255)
+            : isHovered
+                ? Color.FromRgb(232, 224, 150)
+                : Color.FromRgb(226, 226, 226);
+        var boundaryOpacity = isSelected || isHovered
+            ? Math.Min(opacity + 0.20, 1.0)
+            : Math.Min(opacity + 0.12, 1.0);
+        var boundaryPen = new Pen(new SolidColorBrush(WithOpacity(boundaryColor, boundaryOpacity)), 1);
         context.DrawLine(boundaryPen, topA, topB);
         context.DrawLine(boundaryPen, topB, topC);
         context.DrawLine(boundaryPen, topC, topD);
@@ -798,7 +830,7 @@ public sealed class SoftwareCubeViewport : Control
         }
     }
 
-    private void DrawConveyorRoutePacketSw(DrawingContext context, ConveyorVisualCell cell, double opacity, EditorState state)
+    private void DrawConveyorRoutePacketSw(DrawingContext context, ConveyorVisualCell cell, OrePacket packet, double opacity, EditorState state)
     {
         var flowDirection = cell.ExitDirection ?? cell.MainFlowDirection;
         var (flowX, flowY) = DirectionToPlanarVector(flowDirection);
@@ -809,6 +841,7 @@ public sealed class SoftwareCubeViewport : Control
         var packetHalfWidth = Math.Abs(flowX) > 0.5 ? 0.09 : 0.12;
         var z0 = cell.Position.Z + 0.145;
         var z1 = z0 + 0.08;
+        var material = MaterialCatalog.Resolve(packet.MaterialId);
         DrawConveyorBarSw(
             context,
             packetX - packetHalfLength,
@@ -817,9 +850,9 @@ public sealed class SoftwareCubeViewport : Control
             packetY + packetHalfWidth,
             z0,
             z1,
-            Color.FromRgb(226, 152, 63),
-            Color.FromRgb(181, 118, 45),
-            Color.FromRgb(166, 102, 34),
+            material.TopColor,
+            material.RightColor,
+            material.FrontColor,
             Math.Min(opacity + 0.05, 1.0),
             state);
     }

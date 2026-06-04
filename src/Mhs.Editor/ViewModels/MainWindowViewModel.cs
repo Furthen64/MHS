@@ -2,23 +2,33 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.ComponentModel;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using Avalonia.Input;
 using Mhs.Editor.Editor;
+using Mhs.Editor.Settings;
 
 namespace Mhs.Editor.ViewModels;
 
 public sealed class MainWindowViewModel : INotifyPropertyChanged
 {
     private const float MaterialFlowTickSeconds = 0.25f;
+    private const float ManualMaterialFlowStepSeconds = 0.35f;
     private readonly IEditorTool _selectTool = new SelectTool();
     private readonly ConveyorRouteTool _conveyorRouteTool = new();
     private ViewportInteractionPreset _interactionPreset = ViewportInteractionPreset.BlenderLike;
     private bool _useOpenGlViewport = true;
     private string _preferredOpenGlGpuName = "System default GPU";
+    private int _defaultSceneFloor;
+    private int _defaultSceneLayer;
+    private bool _defaultUseOpenGlViewport = true;
+    private bool _expertMode;
+    private string _selectedMtrlSrcUnitsPerSecondText = FormatRate(SceneObject.DefaultMaterialUnitsPerSecond);
+    private string _selectedMtrlSrcMaterialId = SceneObject.DefaultMaterialId;
+    private string _selectedMtrlSrcRateStatusText = "Select MtrlSrc";
 
     public MainWindowViewModel()
     {
@@ -41,6 +51,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         InjectDebugOreCommand = new RelayCommand(InjectDebugOre);
         StepMaterialFlowCommand = new RelayCommand(StepMaterialFlow);
         ClearMaterialFlowCommand = new RelayCommand(ClearMaterialFlow);
+        ApplySelectedMtrlSrcRateCommand = new RelayCommand(ApplySelectedMtrlSrcRate);
+        IncreaseSelectedMtrlSrcRateCommand = new RelayCommand(() => NudgeSelectedMtrlSrcRate(0.5f));
+        DecreaseSelectedMtrlSrcRateCommand = new RelayCommand(() => NudgeSelectedMtrlSrcRate(-0.5f));
 
         foreach (var part in EditorState.PartDefinitions)
         {
@@ -75,6 +88,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         MtrlRecvToolCommand ??= new RelayCommand(() => { });
 
         SetTool(_selectTool);
+        SyncSelectedMtrlSrcEditor();
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -102,6 +116,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand InjectDebugOreCommand { get; }
     public ICommand StepMaterialFlowCommand { get; }
     public ICommand ClearMaterialFlowCommand { get; }
+    public ICommand ApplySelectedMtrlSrcRateCommand { get; }
+    public ICommand IncreaseSelectedMtrlSrcRateCommand { get; }
+    public ICommand DecreaseSelectedMtrlSrcRateCommand { get; }
 
     public bool IsSelectActive => EditorState.ActiveTool is SelectTool;
     public bool IsHopperActive => EditorState.ActiveTool.Name == "Hopper";
@@ -121,9 +138,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public bool IsAutoCadLikeSettingsActive => _interactionPreset == ViewportInteractionPreset.AutoCadLike;
     public bool IsSoftwareViewportMode => !_useOpenGlViewport;
     public bool IsOpenGlViewportMode => _useOpenGlViewport;
+    public bool IsExpertMode => _expertMode;
+    public bool IsSimpleMode => !_expertMode;
     public ViewportInteractionPreset InteractionPreset => _interactionPreset;
     public bool UseOpenGlViewport => _useOpenGlViewport;
     public string PreferredOpenGlGpuName => _preferredOpenGlGpuName;
+    public int SceneViewportColumnSpan => _expertMode ? 1 : 2;
     public string LayerDisplayText => $"Layer: {EditorState.ActiveLayer} of {WorldVerticalSettings.LayersPerFloor - 1}";
     public string AbsoluteZDisplayText => $"Absolute Z: {EditorState.ActiveAbsoluteZ}";
 
@@ -161,7 +181,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 ? $" | Rot {EditorState.ActivePlacementRotationZDegrees}°"
                 : string.Empty;
             var viewportMode = _useOpenGlViewport ? "Viewport: OpenGL/Silk.NET" : "Viewport: Software";
-            var openGlInfo = _useOpenGlViewport && !string.IsNullOrWhiteSpace(EditorState.OpenGlBackendInfo)
+            var openGlInfo = _expertMode && _useOpenGlViewport && !string.IsNullOrWhiteSpace(EditorState.OpenGlBackendInfo)
                 ? $" | Preferred GPU: {PreferredOpenGlGpuName} | GL {EditorState.OpenGlBackendInfo}"
                 : string.Empty;
 
@@ -213,6 +233,54 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         EditorState.SelectedObject is null
             ? PreviewText()
             : "Status: Placed";
+
+    public bool SelectedMtrlSrcPanelVisible =>
+        EditorState.SelectedObject is { } selected
+        && string.Equals(selected.PartId, "mtrlsrc", StringComparison.OrdinalIgnoreCase);
+
+    public IReadOnlyList<string> AvailableMtrlSrcMaterialIds => MaterialCatalog.AvailableMaterialIds;
+
+    public string SelectedMtrlSrcUnitsPerSecondText
+    {
+        get => _selectedMtrlSrcUnitsPerSecondText;
+        set
+        {
+            var normalized = value ?? string.Empty;
+            if (string.Equals(_selectedMtrlSrcUnitsPerSecondText, normalized, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            _selectedMtrlSrcUnitsPerSecondText = normalized;
+            _selectedMtrlSrcRateStatusText = SelectedMtrlSrcPanelVisible
+                ? "Press Apply to update source settings"
+                : "Select MtrlSrc";
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(SelectedMtrlSrcRateStatusText));
+        }
+    }
+
+    public string SelectedMtrlSrcRateStatusText => _selectedMtrlSrcRateStatusText;
+
+    public string SelectedMtrlSrcMaterialId
+    {
+        get => _selectedMtrlSrcMaterialId;
+        set
+        {
+            var normalized = MaterialCatalog.NormalizeId(value);
+            if (string.Equals(_selectedMtrlSrcMaterialId, normalized, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            _selectedMtrlSrcMaterialId = normalized;
+            _selectedMtrlSrcRateStatusText = SelectedMtrlSrcPanelVisible
+                ? "Press Apply to update source settings"
+                : "Select MtrlSrc";
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(SelectedMtrlSrcRateStatusText));
+        }
+    }
 
     public string InspectorPortText
     {
@@ -270,13 +338,85 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             var details = string.Join(" | ", routes.Select((route, index) =>
             {
                 var routeOccupied = route.Slots.Count(slot => slot is not null);
-                var sender = route.SenderObjectId.HasValue ? ShortId(route.SenderObjectId.Value) : "-";
+                var sender = route.InputAttachments.Count > 0
+                    ? string.Join(",", route.InputAttachments.Select(source => ShortId(source.ObjectId)).Distinct())
+                    : "-";
+                var materials = route.InputAttachments.Count > 0
+                    ? string.Join("/", route.InputAttachments.Select(source => MaterialCatalog.NormalizeId(source.MaterialId)).Distinct(StringComparer.OrdinalIgnoreCase))
+                    : "-";
                 var receiver = route.ReceiverObjectId.HasValue ? ShortId(route.ReceiverObjectId.Value) : "-";
-                return $"R{index + 1}: {routeOccupied}/{route.Slots.Length} sender={sender} recv={receiver}";
+                return $"R{index + 1}: {routeOccupied}/{route.Slots.Length} src={sender} in={route.InputAttachments.Count} mat={materials} recv={receiver}";
             }));
             return $"Material Flow: {occupied} packet(s) on {routes.Count} route(s) | {details}";
         }
     }
+
+    public bool FloatingDebugPanelVisible => _expertMode;
+    public bool ExpertInspectorVisible => _expertMode;
+    public bool ExpertGpuLabelsVisible => _expertMode;
+
+    public string ConveyorDebugSelectionText
+    {
+        get
+        {
+            if (EditorState.SelectedObject is not { } selected)
+            {
+                return "Selection: none";
+            }
+
+            return selected.IsConveyor
+                ? $"Selection: conveyor {ShortId(selected.Id)}"
+                : $"Selection: {selected.PartType} {ShortId(selected.Id)}";
+        }
+    }
+
+    public string ConveyorDebugRouteSummaryText
+    {
+        get
+        {
+            if (TryGetSelectedConveyorRoute(out var route, out var selectedCells))
+            {
+                var occupied = route.Slots.Count(slot => slot is not null);
+                var sender = route.InputAttachments.Count > 0
+                    ? string.Join(",", route.InputAttachments.Select(source => ShortId(source.ObjectId)).Distinct())
+                    : "-";
+                var sourceRate = route.InputAttachments.Count > 0
+                    ? string.Join(" | ", route.InputAttachments.Select(source =>
+                        $"{ShortId(source.ObjectId)}->{source.RouteCellIndex}:{source.UnitsPerSecond.ToString("0.##", CultureInfo.InvariantCulture)}"))
+                    : "-";
+                var receiver = route.ReceiverObjectId.HasValue ? ShortId(route.ReceiverObjectId.Value) : "-";
+                return $"Route: {route.Cells.Count} cells | occupied {occupied}/{route.Slots.Length} | sender {sender} | recv {receiver} | inputs {route.InputAttachments.Count} | src {sourceRate} u/s | selected seg {selectedCells.Count} cell(s)";
+            }
+
+            if (EditorState.ActiveConveyorRoute is { } draft)
+            {
+                return $"Draft: {draft.Anchors.Count} anchor(s) on Z {draft.Z} | preview {(draft.PreviewEnd.HasValue ? (draft.PreviewIsValid ? "valid" : "blocked") : "waiting")}";
+            }
+
+            return "Route: select a conveyor to inspect its cell path";
+        }
+    }
+
+    public string ConveyorDebugGridText
+    {
+        get
+        {
+            if (TryGetSelectedConveyorRoute(out var route, out var selectedCells))
+            {
+                return BuildConveyorGridText(route, selectedCells);
+            }
+
+            if (EditorState.ActiveConveyorRoute is { } draft)
+            {
+                return $"anchors={draft.Anchors.Count}\npreview={(draft.PreviewEnd.HasValue ? draft.PreviewEnd.Value.ToString() : "-")}\nblocked={(draft.PreviewIsValid ? "-" : draft.InvalidReason ?? "-")}";
+            }
+
+            return "Select a conveyor to view its occupied cells in a grid.";
+        }
+    }
+
+    public string ConveyorDebugLegendText =>
+        "Legend: [nn]=route order  [##]=occupied packet  [S#]=selected conveyor cell  [..]=empty grid | selected route shows colored input markers in the viewport";
 
     public bool ConveyorRoutePanelVisible => EditorState.ActiveConveyorRoute is not null;
 
@@ -394,7 +534,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public void NewScene()
     {
-        LoadSceneFileData(new SceneFileData());
+        LoadSceneFileData(new SceneFileData
+        {
+            ActiveFloor = _defaultSceneFloor,
+            ActiveLayer = _defaultSceneLayer,
+            RendererMode = _defaultUseOpenGlViewport ? "opengl" : "software"
+        });
         EditorState.StatusMessage = "New scene";
         RaiseComputed();
     }
@@ -421,6 +566,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 PartId = resolvedPartId,
                 Position = sceneObject.Position,
                 RotationZDegrees = sceneObject.RotationZDegrees,
+                MaterialUnitsPerSecond = sceneObject.MaterialUnitsPerSecond,
+                MaterialId = string.Equals(sceneObject.PartId, "mtrlsrc", StringComparison.OrdinalIgnoreCase)
+                    ? MaterialCatalog.NormalizeId(sceneObject.MaterialId)
+                    : null,
                 SizeOverride = sizeOverride,
                 RouteStartCell = sceneObject.RouteStartCell,
                 RouteEndCell = sceneObject.RouteEndCell,
@@ -459,6 +608,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 Position = objectData.Position,
                 BaseSize = baseSize,
                 RotationZDegrees = RotationHelper.NormalizeDegrees(objectData.RotationZDegrees),
+                MaterialUnitsPerSecond = ResolveMaterialUnitsPerSecond(partDefinition.Id, objectData.MaterialUnitsPerSecond),
+                MaterialId = ResolveMaterialId(partDefinition.Id, objectData.MaterialId),
                 RouteStartCell = objectData.RouteStartCell,
                 RouteEndCell = objectData.RouteEndCell,
                 RouteFlowReversed = objectData.RouteFlowReversed
@@ -517,6 +668,26 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         RaiseComputed();
     }
 
+    public void ApplyAppPreferences(AppPreferences preferences, bool updateStatus = false)
+    {
+        _defaultSceneFloor = Math.Clamp(preferences.DefaultFloor, 0, WorldVerticalSettings.FloorCount - 1);
+        _defaultSceneLayer = Math.Clamp(preferences.DefaultLayer, 0, WorldVerticalSettings.LayersPerFloor - 1);
+        _defaultUseOpenGlViewport = !string.Equals(preferences.DefaultRendererMode, "software", StringComparison.OrdinalIgnoreCase);
+        _expertMode = string.Equals(preferences.UiMode, "expert", StringComparison.OrdinalIgnoreCase);
+        _useOpenGlViewport = _defaultUseOpenGlViewport;
+        _preferredOpenGlGpuName = string.IsNullOrWhiteSpace(preferences.PreferredOpenGlGpuName)
+            ? "System default GPU"
+            : preferences.PreferredOpenGlGpuName.Trim();
+        EditorState.ActiveFloor = _defaultSceneFloor;
+        EditorState.ActiveLayer = _defaultSceneLayer;
+        if (updateStatus)
+        {
+            EditorState.StatusMessage = "Settings updated";
+        }
+
+        RaiseComputed();
+    }
+
     private string FloorStackText(int floor)
     {
         var startZ = floor * WorldVerticalSettings.LayersPerFloor;
@@ -559,8 +730,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         var snapshot = EditorState.GetPortConnectivitySnapshot();
         EditorState.Scene.ConveyorRouteFlow.Update(0f, snapshot, EditorState.Scene.Objects);
         var injected = EditorState.Scene.ConveyorRouteFlow.TryInjectFromSender(EditorState.SelectedObject.Id);
+        var materialId = MaterialCatalog.NormalizeId(EditorState.SelectedObject.MaterialId);
         EditorState.StatusMessage = injected
-            ? $"Injected DebugOre from {ShortId(EditorState.SelectedObject.Id)}"
+            ? $"Injected {materialId} package from {ShortId(EditorState.SelectedObject.Id)}"
             : "Inject failed: source route input slot occupied or disconnected";
         RaiseComputed();
     }
@@ -568,7 +740,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private void StepMaterialFlow()
     {
         var snapshot = EditorState.GetPortConnectivitySnapshot();
-        var changed = EditorState.Scene.ConveyorRouteFlow.Step(snapshot, EditorState.Scene.Objects);
+        var changed = EditorState.Scene.ConveyorRouteFlow.Update(ManualMaterialFlowStepSeconds, snapshot, EditorState.Scene.Objects);
         EditorState.StatusMessage = changed > 0
             ? $"Material flow stepped: {changed} route change(s)"
             : "Material flow stepped: no route changes";
@@ -596,6 +768,46 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         EditorState.Scene.ConveyorRouteFlow.Clear();
         EditorState.StatusMessage = "Material flow cleared";
         RaiseComputed();
+    }
+
+    private void ApplySelectedMtrlSrcRate()
+    {
+        if (!TryGetSelectedMtrlSrc(out var selected))
+        {
+            _selectedMtrlSrcRateStatusText = "Select MtrlSrc";
+            RaiseComputed();
+            return;
+        }
+
+        if (!TryParseUnitsPerSecond(_selectedMtrlSrcUnitsPerSecondText, out var unitsPerSecond, out var error))
+        {
+            _selectedMtrlSrcRateStatusText = error;
+            RaiseComputed();
+            return;
+        }
+
+        selected.MaterialUnitsPerSecond = unitsPerSecond;
+        selected.MaterialId = MaterialCatalog.NormalizeId(_selectedMtrlSrcMaterialId);
+        _selectedMtrlSrcUnitsPerSecondText = FormatRate(unitsPerSecond);
+        _selectedMtrlSrcMaterialId = selected.MaterialId;
+        _selectedMtrlSrcRateStatusText = $"Producing {selected.MaterialId} at {FormatRate(unitsPerSecond)} units/second";
+        RefreshConveyorFlowTopology();
+        EditorState.StatusMessage = $"MtrlSrc set to {selected.MaterialId} at {FormatRate(unitsPerSecond)} units/second";
+        RaiseComputed();
+    }
+
+    private void NudgeSelectedMtrlSrcRate(float delta)
+    {
+        if (!TryGetSelectedMtrlSrc(out var selected))
+        {
+            _selectedMtrlSrcRateStatusText = "Select MtrlSrc";
+            RaiseComputed();
+            return;
+        }
+
+        var next = Math.Max(0.1f, selected.MaterialUnitsPerSecond + delta);
+        _selectedMtrlSrcUnitsPerSecondText = FormatRate(next);
+        ApplySelectedMtrlSrcRate();
     }
 
     private string MovePreviewText()
@@ -851,13 +1063,14 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private void OnEditorStatePropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        SyncSelectedMtrlSrcEditor();
         RaiseComputed();
     }
 
     private void OnSceneObjectsChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
-        var snapshot = EditorState.GetPortConnectivitySnapshot();
-        EditorState.Scene.ConveyorRouteFlow.Update(0f, snapshot, EditorState.Scene.Objects);
+        RefreshConveyorFlowTopology();
+        SyncSelectedMtrlSrcEditor();
         RaiseComputed();
     }
 
@@ -881,7 +1094,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(IsAutoCadLikeSettingsActive));
         OnPropertyChanged(nameof(IsSoftwareViewportMode));
         OnPropertyChanged(nameof(IsOpenGlViewportMode));
+        OnPropertyChanged(nameof(IsExpertMode));
+        OnPropertyChanged(nameof(IsSimpleMode));
         OnPropertyChanged(nameof(InteractionPreset));
+        OnPropertyChanged(nameof(SceneViewportColumnSpan));
         OnPropertyChanged(nameof(LayerDisplayText));
         OnPropertyChanged(nameof(AbsoluteZDisplayText));
         OnPropertyChanged(nameof(StatusText));
@@ -894,8 +1110,20 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(InspectorContextText));
         OnPropertyChanged(nameof(InspectorRangeText));
         OnPropertyChanged(nameof(InspectorExtraText));
+        OnPropertyChanged(nameof(SelectedMtrlSrcPanelVisible));
+        OnPropertyChanged(nameof(AvailableMtrlSrcMaterialIds));
+        OnPropertyChanged(nameof(SelectedMtrlSrcUnitsPerSecondText));
+        OnPropertyChanged(nameof(SelectedMtrlSrcMaterialId));
+        OnPropertyChanged(nameof(SelectedMtrlSrcRateStatusText));
         OnPropertyChanged(nameof(InspectorPortText));
         OnPropertyChanged(nameof(InspectorMaterialFlowText));
+        OnPropertyChanged(nameof(FloatingDebugPanelVisible));
+        OnPropertyChanged(nameof(ExpertInspectorVisible));
+        OnPropertyChanged(nameof(ExpertGpuLabelsVisible));
+        OnPropertyChanged(nameof(ConveyorDebugSelectionText));
+        OnPropertyChanged(nameof(ConveyorDebugRouteSummaryText));
+        OnPropertyChanged(nameof(ConveyorDebugGridText));
+        OnPropertyChanged(nameof(ConveyorDebugLegendText));
         OnPropertyChanged(nameof(ConveyorRoutePanelVisible));
         OnPropertyChanged(nameof(ConveyorRouteAnchorsValue));
         OnPropertyChanged(nameof(ConveyorRouteZValue));
@@ -931,6 +1159,216 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     };
 
     private static string ShortId(Guid id) => id.ToString("N")[..8];
+
+    private void RefreshConveyorFlowTopology()
+    {
+        var snapshot = EditorState.GetPortConnectivitySnapshot();
+        EditorState.Scene.ConveyorRouteFlow.Update(0f, snapshot, EditorState.Scene.Objects);
+    }
+
+    private void SyncSelectedMtrlSrcEditor()
+    {
+        if (TryGetSelectedMtrlSrc(out var selected))
+        {
+            var formatted = FormatRate(selected.MaterialUnitsPerSecond);
+            if (!string.Equals(_selectedMtrlSrcUnitsPerSecondText, formatted, StringComparison.Ordinal))
+            {
+                _selectedMtrlSrcUnitsPerSecondText = formatted;
+                OnPropertyChanged(nameof(SelectedMtrlSrcUnitsPerSecondText));
+            }
+
+            var materialId = MaterialCatalog.NormalizeId(selected.MaterialId);
+            if (!string.Equals(_selectedMtrlSrcMaterialId, materialId, StringComparison.Ordinal))
+            {
+                _selectedMtrlSrcMaterialId = materialId;
+                OnPropertyChanged(nameof(SelectedMtrlSrcMaterialId));
+            }
+
+            var status = $"Producing {materialId} at {formatted} units/second";
+            if (!string.Equals(_selectedMtrlSrcRateStatusText, status, StringComparison.Ordinal))
+            {
+                _selectedMtrlSrcRateStatusText = status;
+                OnPropertyChanged(nameof(SelectedMtrlSrcRateStatusText));
+            }
+
+            return;
+        }
+
+        const string idleText = "1";
+        if (!string.Equals(_selectedMtrlSrcUnitsPerSecondText, idleText, StringComparison.Ordinal))
+        {
+            _selectedMtrlSrcUnitsPerSecondText = idleText;
+            OnPropertyChanged(nameof(SelectedMtrlSrcUnitsPerSecondText));
+        }
+
+        if (!string.Equals(_selectedMtrlSrcMaterialId, SceneObject.DefaultMaterialId, StringComparison.Ordinal))
+        {
+            _selectedMtrlSrcMaterialId = SceneObject.DefaultMaterialId;
+            OnPropertyChanged(nameof(SelectedMtrlSrcMaterialId));
+        }
+
+        if (!string.Equals(_selectedMtrlSrcRateStatusText, "Select MtrlSrc", StringComparison.Ordinal))
+        {
+            _selectedMtrlSrcRateStatusText = "Select MtrlSrc";
+            OnPropertyChanged(nameof(SelectedMtrlSrcRateStatusText));
+        }
+    }
+
+    private bool TryGetSelectedMtrlSrc(out SceneObject selected)
+    {
+        if (EditorState.SelectedObject is { } source
+            && string.Equals(source.PartId, "mtrlsrc", StringComparison.OrdinalIgnoreCase))
+        {
+            selected = source;
+            return true;
+        }
+
+        selected = null!;
+        return false;
+    }
+
+    private bool TryGetSelectedConveyorRoute(out ConveyorRouteRuntime route, out HashSet<VoxelCoord> selectedCells)
+    {
+        selectedCells = [];
+        if (EditorState.SelectedObject is not { } selected || !selected.IsConveyor)
+        {
+            route = null!;
+            return false;
+        }
+
+        var allCells = Mhs.Editor.Viewport.ConveyorRouteCellVisualization.BuildSceneObjectCells(EditorState.Scene.Objects);
+        if (allCells.TryGetValue(selected.Id, out var cells))
+        {
+            selectedCells = cells.Select(cell => cell.Position).ToHashSet();
+        }
+
+        var matchedRoute = EditorState.Scene.ConveyorRouteFlow.Routes
+            .FirstOrDefault(candidate => candidate.SegmentObjectIds.Contains(selected.Id));
+        if (matchedRoute is null)
+        {
+            route = null!;
+            return false;
+        }
+
+        route = matchedRoute;
+        return true;
+    }
+
+    private static string BuildConveyorGridText(ConveyorRouteRuntime route, HashSet<VoxelCoord> selectedCells)
+    {
+        var allCells = route.Cells;
+        var minX = allCells.Min(cell => cell.X);
+        var maxX = allCells.Max(cell => cell.X);
+        var minY = allCells.Min(cell => cell.Y);
+        var maxY = allCells.Max(cell => cell.Y);
+        var indexByCell = allCells
+            .Select((cell, index) => new { cell, index })
+            .ToDictionary(item => item.cell, item => item.index);
+
+        var lines = new List<string>
+        {
+            $"     {string.Join(" ", Enumerable.Range(minX, maxX - minX + 1).Select(x => $" X{x,2}"))}"
+        };
+
+        for (var y = maxY; y >= minY; y--)
+        {
+            var row = new List<string> { $"Y{y,2} " };
+            for (var x = minX; x <= maxX; x++)
+            {
+                var coord = new VoxelCoord(x, y, allCells[0].Z);
+                if (!indexByCell.TryGetValue(coord, out var index))
+                {
+                    row.Add("[..]");
+                    continue;
+                }
+
+                var token = route.Slots[index] is not null
+                    ? "##"
+                    : index.ToString("00", CultureInfo.InvariantCulture);
+                if (selectedCells.Contains(coord))
+                {
+                    token = route.Slots[index] is not null ? "S#" : $"S{index % 10}";
+                }
+
+                row.Add($"[{token}]");
+            }
+
+            lines.Add(string.Join(" ", row));
+        }
+
+        lines.Add($"Z {allCells[0].Z} | start {allCells[0]} | end {allCells[^1]}");
+        if (route.InputAttachments.Count > 0)
+        {
+            lines.Add("Inputs:");
+            lines.AddRange(route.InputAttachments
+                .OrderBy(attachment => attachment.RouteCellIndex)
+                .ThenBy(attachment => attachment.ObjectId)
+                .Select(attachment =>
+                {
+                    var targetCell = attachment.RouteCellIndex >= 0 && attachment.RouteCellIndex < route.Cells.Count
+                        ? route.Cells[attachment.RouteCellIndex].ToString()
+                        : "?";
+                    return $"  src {ShortId(attachment.ObjectId)} mat={MaterialCatalog.NormalizeId(attachment.MaterialId)} cell={attachment.RouteCellIndex} @ {targetCell} rate={attachment.UnitsPerSecond.ToString("0.##", CultureInfo.InvariantCulture)} state={FormatAttachmentStatus(attachment.LastStatus)}";
+                }));
+        }
+        else
+        {
+            lines.Add("Inputs: none");
+        }
+
+        return string.Join(Environment.NewLine, lines);
+    }
+
+    private static string FormatAttachmentStatus(RouteInputAttachmentStatus status) => status switch
+    {
+        RouteInputAttachmentStatus.WaitingForSlot => "blocked",
+        RouteInputAttachmentStatus.WaitingForTurn => "waiting-turn",
+        RouteInputAttachmentStatus.Injected => "injected",
+        _ => "waiting-rate"
+    };
+
+    private static bool TryParseUnitsPerSecond(string text, out float unitsPerSecond, out string error)
+    {
+        if (!float.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out unitsPerSecond))
+        {
+            error = "Enter a numeric units/second value";
+            return false;
+        }
+
+        if (unitsPerSecond <= 0f)
+        {
+            error = "Units/second must be above 0";
+            return false;
+        }
+
+        error = string.Empty;
+        return true;
+    }
+
+    private static float ResolveMaterialUnitsPerSecond(string partId, float storedUnitsPerSecond)
+    {
+        if (string.Equals(partId, "mtrlsrc", StringComparison.OrdinalIgnoreCase))
+        {
+            return storedUnitsPerSecond > 0f
+                ? storedUnitsPerSecond
+                : SceneObject.DefaultMaterialUnitsPerSecond;
+        }
+
+        return Math.Max(0f, storedUnitsPerSecond);
+    }
+
+    private static string ResolveMaterialId(string partId, string? storedMaterialId)
+    {
+        if (string.Equals(partId, "mtrlsrc", StringComparison.OrdinalIgnoreCase))
+        {
+            return MaterialCatalog.NormalizeId(storedMaterialId);
+        }
+
+        return string.Empty;
+    }
+
+    private static string FormatRate(float unitsPerSecond)
+        => unitsPerSecond.ToString("0.##", CultureInfo.InvariantCulture);
 
     private sealed class RelayCommand : ICommand
     {

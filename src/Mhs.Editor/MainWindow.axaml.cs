@@ -41,9 +41,10 @@ public partial class MainWindow : Window
 
         InitializeComponent();
         DataContext = new MainWindowViewModel();
+        ApplyWindowPreferences();
         if (DataContext is MainWindowViewModel vm)
         {
-            vm.SetPreferredOpenGlGpu(_preferences.PreferredOpenGlGpuName);
+            vm.ApplyAppPreferences(_preferences);
         }
 
         _materialFlowTimer = new DispatcherTimer
@@ -170,6 +171,46 @@ public partial class MainWindow : Window
             if (DataContext is MainWindowViewModel vm)
             {
                 vm.SetSceneStatus($"OpenGL GPU setup failed: {ex.Message}");
+            }
+        }
+    }
+
+    private async void OnSettingsClick(object? sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var settingsVm = new SettingsWindowViewModel(_preferences, EnsureGpuOptionsDiscovered());
+            var settingsWindow = new SettingsWindow
+            {
+                DataContext = settingsVm
+            };
+
+            var accepted = await settingsWindow.ShowDialog<bool>(this);
+            if (!accepted)
+            {
+                return;
+            }
+
+            _preferences = settingsVm.ToPreferences(_preferences);
+            if (string.IsNullOrWhiteSpace(_preferences.PreferredOpenGlGpuName))
+            {
+                _preferences.PreferredOpenGlGpuName = "System default GPU";
+            }
+
+            _preferencesStore.Save(_preferences);
+            GpuDiscoveryService.ApplyProcessGpuPreference(_preferences.PreferredOpenGlGpuName);
+            ApplyWindowPreferences();
+            if (DataContext is MainWindowViewModel vm)
+            {
+                vm.ApplyAppPreferences(_preferences, updateStatus: true);
+            }
+        }
+        catch (Exception ex)
+        {
+            StartupDiagnostics.Log($"Settings dialog failed: {ex}");
+            if (DataContext is MainWindowViewModel vm)
+            {
+                vm.SetSceneStatus($"Settings failed: {ex.Message}");
             }
         }
     }
@@ -305,5 +346,12 @@ public partial class MainWindow : Window
         _availableGpuOptions = GpuDiscoveryService.Discover();
         StartupDiagnostics.Log($"GPU discovery complete. Found {_availableGpuOptions.Count} option(s).");
         return _availableGpuOptions;
+    }
+
+    private void ApplyWindowPreferences()
+    {
+        WindowState = _preferences.OpenMaximized
+            ? Avalonia.Controls.WindowState.Maximized
+            : Avalonia.Controls.WindowState.Normal;
     }
 }

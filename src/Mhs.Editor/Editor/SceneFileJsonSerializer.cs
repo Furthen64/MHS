@@ -25,6 +25,10 @@ public sealed class SceneFileObjectData
     public string PartId { get; init; } = string.Empty;
     public VoxelCoord Position { get; init; }
     public int RotationZDegrees { get; init; }
+    public float MaterialUnitsPerSecond { get; init; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? MaterialId { get; init; }
 
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public VoxelSize? SizeOverride { get; init; }

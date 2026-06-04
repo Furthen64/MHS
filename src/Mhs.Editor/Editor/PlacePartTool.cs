@@ -51,7 +51,13 @@ public sealed class PlacePartTool : IEditorTool
             PartType = _partDefinition.DisplayName,
             Position = position,
             BaseSize = _partDefinition.Size,
-            RotationZDegrees = rotation
+            RotationZDegrees = rotation,
+            MaterialUnitsPerSecond = string.Equals(_partDefinition.Id, "mtrlsrc", StringComparison.OrdinalIgnoreCase)
+                ? SceneObject.DefaultMaterialUnitsPerSecond
+                : 0f,
+            MaterialId = string.Equals(_partDefinition.Id, "mtrlsrc", StringComparison.OrdinalIgnoreCase)
+                ? SceneObject.DefaultMaterialId
+                : string.Empty
         };
 
         state.Scene.Objects.Add(sceneObject);

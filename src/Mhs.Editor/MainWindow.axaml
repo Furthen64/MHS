@@ -18,6 +18,8 @@
         <Menu DockPanel.Dock="Top">
             <MenuItem Header="☰">
                 <MenuItem Header="_Settings">
+                    <MenuItem Header="_Application Settings..." Click="OnSettingsClick" />
+                    <Separator />
                     <MenuItem Header="I want _Blender like settings"
                               IsChecked="{Binding IsBlenderLikeSettingsActive}"
                               Command="{Binding BlenderLikeSettingsCommand}" />
@@ -39,7 +41,23 @@
         </Menu>
 
         <Border DockPanel.Dock="Top" Background="#2A2E36" Padding="8">
-            <TextBlock Foreground="#E5E9F0" FontWeight="SemiBold" Text="Material Handling System Editor - PoC 3" />
+            <DockPanel LastChildFill="False">
+                <TextBlock DockPanel.Dock="Left"
+                           Foreground="#E5E9F0"
+                           FontWeight="SemiBold"
+                           VerticalAlignment="Center"
+                           Text="Material Handling System Editor - PoC 3" />
+                <Button DockPanel.Dock="Right"
+                        Padding="10,4"
+                        Background="#3A4250"
+                        Foreground="#F3F6FB"
+                        BorderBrush="#5C6B7F"
+                        BorderThickness="1"
+                        CornerRadius="6"
+                        Click="OnSettingsClick">
+                    <TextBlock Text="⚙️" FontSize="16" />
+                </Button>
+            </DockPanel>
         </Border>
 
         <Border DockPanel.Dock="Bottom" Background="#20232A" Padding="8,6">
@@ -61,7 +79,13 @@
                 </StackPanel>
             </Border>
 
-            <Border Grid.Column="1" Margin="8" Background="#121519" CornerRadius="4" BorderThickness="1" BorderBrush="#3B4252">
+            <Border Grid.Column="1"
+                    Grid.ColumnSpan="{Binding SceneViewportColumnSpan}"
+                    Margin="8"
+                    Background="#121519"
+                    CornerRadius="4"
+                    BorderThickness="1"
+                    BorderBrush="#3B4252">
                 <DockPanel>
                     <Border DockPanel.Dock="Top" Background="#1A1F27" Padding="8">
                         <StackPanel Orientation="Horizontal" Spacing="10">
@@ -92,11 +116,50 @@
                         <viewport:OpenGlViewportControl IsVisible="{Binding IsOpenGlViewportMode}"
                                                         EditorState="{Binding EditorState}"
                                                         InteractionPreset="{Binding InteractionPreset}" />
+
+                        <Border IsVisible="{Binding FloatingDebugPanelVisible}"
+                                HorizontalAlignment="Right"
+                                VerticalAlignment="Top"
+                                Margin="14"
+                                MaxWidth="380"
+                                Padding="12"
+                                Background="#D9131820"
+                                BorderBrush="#586A82"
+                                BorderThickness="1"
+                                CornerRadius="6">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="Conveyor Debug" FontWeight="Bold" Foreground="#F3F6FB" />
+                                <TextBlock Text="{Binding ConveyorDebugSelectionText}" Foreground="#D8DEE9" />
+                                <TextBlock Text="{Binding ConveyorDebugRouteSummaryText}" Foreground="#BFD2EA" TextWrapping="Wrap" />
+                                <Border Background="#0F1217"
+                                        BorderBrush="#374657"
+                                        BorderThickness="1"
+                                        CornerRadius="4"
+                                        Padding="8">
+                                    <TextBlock Text="{Binding ConveyorDebugGridText}"
+                                               Foreground="#E5E9F0"
+                                               FontFamily="Consolas"
+                                               TextWrapping="NoWrap" />
+                                </Border>
+                                <TextBlock Text="{Binding ConveyorDebugLegendText}" Foreground="#8EACCC" TextWrapping="Wrap" />
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <Button Content="Inject DebugOre" Command="{Binding InjectDebugOreCommand}" />
+                                    <Button Content="Step Flow" Command="{Binding StepMaterialFlowCommand}" />
+                                    <Button Content="Clear Flow" Command="{Binding ClearMaterialFlowCommand}" />
+                                </StackPanel>
+                                <TextBlock Text="{Binding InspectorMaterialFlowText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
                     </Grid>
                 </DockPanel>
             </Border>
 
-            <Border Grid.Column="2" Margin="8" Padding="10" Background="#232833" CornerRadius="4">
+            <Border Grid.Column="2"
+                    IsVisible="{Binding ExpertInspectorVisible}"
+                    Margin="8"
+                    Padding="10"
+                    Background="#232833"
+                    CornerRadius="4">
                 <StackPanel Spacing="8">
                     <TextBlock Text="Inspector" FontWeight="Bold" Foreground="#ECEFF4" FontSize="14" />
                     <TextBlock Text="{Binding InspectorSelectedText}" Foreground="#D8DEE9" />
@@ -109,12 +172,37 @@
                     <TextBlock Text="{Binding InspectorRangeText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
                     <TextBlock Text="{Binding InspectorExtraText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
                     <TextBlock Text="{Binding InspectorPortText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
-                    <StackPanel Orientation="Horizontal" Spacing="6">
-                        <Button Content="Inject DebugOre" Command="{Binding InjectDebugOreCommand}" />
-                        <Button Content="Step Flow" Command="{Binding StepMaterialFlowCommand}" />
-                        <Button Content="Clear Flow" Command="{Binding ClearMaterialFlowCommand}" />
-                    </StackPanel>
-                    <TextBlock Text="{Binding InspectorMaterialFlowText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
+
+                    <Border IsVisible="{Binding SelectedMtrlSrcPanelVisible}"
+                            Background="#1C212A"
+                            BorderBrush="#6C8F59"
+                            BorderThickness="1"
+                            CornerRadius="4"
+                            Padding="8">
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="MtrlSrc Settings" FontWeight="SemiBold" Foreground="#ECEFF4" />
+                            <TextBlock Text="Choose how many units/second this source produces when connected to a conveyor route."
+                                       Foreground="#C8D2DE"
+                                       TextWrapping="Wrap" />
+                            <Grid ColumnDefinitions="92,*" RowDefinitions="Auto" ColumnSpacing="6">
+                                <TextBlock Grid.Column="0"
+                                           VerticalAlignment="Center"
+                                           Text="Material"
+                                           Foreground="#AFC6E9" />
+                                <ComboBox Grid.Column="1"
+                                          ItemsSource="{Binding AvailableMtrlSrcMaterialIds}"
+                                          SelectedItem="{Binding SelectedMtrlSrcMaterialId, Mode=TwoWay}" />
+                            </Grid>
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <Button Content="-0.5" Command="{Binding DecreaseSelectedMtrlSrcRateCommand}" />
+                                <TextBox Width="92"
+                                         Text="{Binding SelectedMtrlSrcUnitsPerSecondText, Mode=TwoWay}" />
+                                <Button Content="+0.5" Command="{Binding IncreaseSelectedMtrlSrcRateCommand}" />
+                                <Button Content="Apply" Command="{Binding ApplySelectedMtrlSrcRateCommand}" />
+                            </StackPanel>
+                            <TextBlock Text="{Binding SelectedMtrlSrcRateStatusText}" Foreground="#A7D397" />
+                        </StackPanel>
+                    </Border>
 
                     <Border IsVisible="{Binding ConveyorRoutePanelVisible}"
                             Background="#1C212A"
@@ -160,8 +248,8 @@
                     <TextBlock Text="{Binding ActiveFloorSummaryText}" Foreground="#D8DEE9" Margin="0,6,0,0" />
                     <TextBlock Text="{Binding ActiveLayerSummaryText}" Foreground="#D8DEE9" />
                     <TextBlock Text="{Binding ActiveAbsoluteZSummaryText}" Foreground="#D8DEE9" />
-                    <TextBlock Text="{Binding PreferredOpenGlGpuSummaryText}" Foreground="#AFC6E9" TextWrapping="Wrap" />
-                    <TextBlock Text="{Binding OpenGlBackendSummaryText}" Foreground="#AFC6E9" TextWrapping="Wrap" />
+                    <TextBlock IsVisible="{Binding ExpertGpuLabelsVisible}" Text="{Binding PreferredOpenGlGpuSummaryText}" Foreground="#AFC6E9" TextWrapping="Wrap" />
+                    <TextBlock IsVisible="{Binding ExpertGpuLabelsVisible}" Text="{Binding OpenGlBackendSummaryText}" Foreground="#AFC6E9" TextWrapping="Wrap" />
                 </StackPanel>
             </Border>
         </Grid>

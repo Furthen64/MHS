@@ -8,7 +8,25 @@ namespace Mhs.Editor.Editor;
 
 public sealed class OrePacket
 {
-    public string MaterialId { get; set; } = "DebugOre";
+    public string MaterialId { get; set; } = SceneObject.DefaultMaterialId;
+}
+
+public enum RouteInputAttachmentStatus
+{
+    WaitingForRate,
+    WaitingForSlot,
+    WaitingForTurn,
+    Injected
+}
+
+public sealed class RouteInputAttachmentRuntime
+{
+    public Guid ObjectId { get; init; }
+    public int RouteCellIndex { get; init; }
+    public float UnitsPerSecond { get; set; } = SceneObject.DefaultMaterialUnitsPerSecond;
+    public float Accumulator { get; set; }
+    public string MaterialId { get; set; } = SceneObject.DefaultMaterialId;
+    public RouteInputAttachmentStatus LastStatus { get; set; } = RouteInputAttachmentStatus.WaitingForRate;
 }
 
 public sealed class ConveyorRouteRuntime
@@ -17,14 +35,14 @@ public sealed class ConveyorRouteRuntime
         string key,
         IReadOnlyList<Guid> segmentObjectIds,
         IReadOnlyList<VoxelCoord> cells,
-        Guid? senderObjectId,
+        IReadOnlyList<RouteInputAttachmentRuntime> inputAttachments,
         Guid? receiverObjectId)
     {
         Key = key;
         SegmentObjectIds = segmentObjectIds;
         Cells = cells;
         Slots = new OrePacket?[cells.Count];
-        SenderObjectId = senderObjectId;
+        InputAttachments = inputAttachments;
         ReceiverObjectId = receiverObjectId;
     }
 
@@ -32,10 +50,11 @@ public sealed class ConveyorRouteRuntime
     public IReadOnlyList<Guid> SegmentObjectIds { get; }
     public IReadOnlyList<VoxelCoord> Cells { get; }
     public OrePacket?[] Slots { get; }
+    public IReadOnlyList<RouteInputAttachmentRuntime> InputAttachments { get; set; }
     public float StepTimer { get; set; }
     public float SecondsPerStep { get; set; } = 0.35f;
-    public Guid? SenderObjectId { get; set; }
     public Guid? ReceiverObjectId { get; set; }
+    public Dictionary<int, int> NextInputAttachmentIndexByCell { get; } = [];
 }
 
 public sealed class ConveyorRouteMaterialFlowSimulator
@@ -53,6 +72,9 @@ public sealed class ConveyorRouteMaterialFlowSimulator
         => _routes.Sum(route => route.Slots.Count(slot => slot is not null));
 
     public bool HasPacketAtCell(VoxelCoord position)
+        => TryGetPacketAtCell(position, out _);
+
+    public bool TryGetPacketAtCell(VoxelCoord position, out OrePacket? packet)
     {
         foreach (var route in _routes)
         {
@@ -60,11 +82,13 @@ public sealed class ConveyorRouteMaterialFlowSimulator
             {
                 if (route.Cells[i] == position && route.Slots[i] is not null)
                 {
+                    packet = route.Slots[i];
                     return true;
                 }
             }
         }
 
+        packet = null;
         return false;
     }
 
@@ -74,7 +98,7 @@ public sealed class ConveyorRouteMaterialFlowSimulator
         var moved = 0;
         foreach (var route in _routes)
         {
-            moved += AdvanceOneStep(route);
+            moved += SimulateRouteStep(route);
         }
 
         return moved;
@@ -92,11 +116,19 @@ public sealed class ConveyorRouteMaterialFlowSimulator
         var moved = 0;
         foreach (var route in _routes)
         {
+            AccumulateInputAttachments(route, dtSeconds);
             route.StepTimer += dtSeconds;
+            var stepped = false;
             while (route.StepTimer >= route.SecondsPerStep)
             {
                 route.StepTimer -= route.SecondsPerStep;
-                moved += AdvanceOneStep(route);
+                moved += SimulateRouteStep(route);
+                stepped = true;
+            }
+
+            if (!stepped)
+            {
+                moved += ProcessInputAttachments(route);
             }
         }
 
@@ -105,13 +137,25 @@ public sealed class ConveyorRouteMaterialFlowSimulator
 
     public bool TryInjectFromSender(Guid senderObjectId)
     {
-        var route = _routes.FirstOrDefault(candidate => candidate.SenderObjectId == senderObjectId);
-        if (route is null || route.Slots.Length == 0 || route.Slots[0] is not null)
+        var route = _routes.FirstOrDefault(candidate => candidate.InputAttachments.Any(source => source.ObjectId == senderObjectId));
+        if (route is null || route.Slots.Length == 0)
         {
             return false;
         }
 
-        route.Slots[0] = new OrePacket();
+        var attachment = route.InputAttachments.First(candidate => candidate.ObjectId == senderObjectId);
+        if (attachment.RouteCellIndex < 0
+            || attachment.RouteCellIndex >= route.Slots.Length
+            || route.Slots[attachment.RouteCellIndex] is not null)
+        {
+            return false;
+        }
+
+        route.Slots[attachment.RouteCellIndex] = new OrePacket
+        {
+            MaterialId = MaterialCatalog.NormalizeId(attachment.MaterialId)
+        };
+        attachment.LastStatus = RouteInputAttachmentStatus.Injected;
         return true;
     }
 
@@ -119,6 +163,12 @@ public sealed class ConveyorRouteMaterialFlowSimulator
     {
         var objectById = sceneObjects.ToDictionary(objectRef => objectRef.Id);
         var conveyorCellsByObject = ConveyorRouteCellVisualization.BuildSceneObjectCells(sceneObjects);
+        var routeSegments = sceneObjects
+            .Where(sceneObject => sceneObject.IsRouteConveyorSegment)
+            .ToArray();
+        var materialSources = sceneObjects
+            .Where(sceneObject => string.Equals(sceneObject.PartId, "mtrlsrc", StringComparison.OrdinalIgnoreCase))
+            .ToArray();
         var conveyorIds = sceneObjects
             .Where(sceneObject => sceneObject.IsConveyor)
             .Select(sceneObject => sceneObject.Id)
@@ -136,6 +186,8 @@ public sealed class ConveyorRouteMaterialFlowSimulator
             nextByConveyorId[connection.FromObjectId] = connection.ToObjectId;
             previousByConveyorId[connection.ToObjectId] = connection.FromObjectId;
         }
+
+        MergeRouteSegmentCornerAdjacency(routeSegments, nextByConveyorId, previousByConveyorId);
 
         var chainHeads = conveyorIds.Where(id => !previousByConveyorId.ContainsKey(id)).ToList();
         var visited = new HashSet<Guid>();
@@ -164,6 +216,8 @@ public sealed class ConveyorRouteMaterialFlowSimulator
             }
         }
 
+        descriptors = AssignInputAttachments(descriptors, materialSources);
+
         var existingByKey = _routes.ToDictionary(route => route.Key, StringComparer.Ordinal);
         _routes.Clear();
         foreach (var descriptor in descriptors)
@@ -171,18 +225,21 @@ public sealed class ConveyorRouteMaterialFlowSimulator
             if (existingByKey.TryGetValue(descriptor.Key, out var existing)
                 && existing.Cells.SequenceEqual(descriptor.Cells))
             {
-                existing.SenderObjectId = descriptor.SenderObjectId;
                 existing.ReceiverObjectId = descriptor.ReceiverObjectId;
+                existing.InputAttachments = MergeInputAttachments(existing.InputAttachments, descriptor.InputAttachments, objectById);
+                NormalizeInputAttachmentTurnState(existing);
                 _routes.Add(existing);
                 continue;
             }
 
-            _routes.Add(new ConveyorRouteRuntime(
+            var runtime = new ConveyorRouteRuntime(
                 descriptor.Key,
                 descriptor.SegmentObjectIds,
                 descriptor.Cells,
-                descriptor.SenderObjectId,
-                descriptor.ReceiverObjectId));
+                BuildInputAttachments(descriptor.InputAttachments, objectById),
+                descriptor.ReceiverObjectId);
+            NormalizeInputAttachmentTurnState(runtime);
+            _routes.Add(runtime);
         }
     }
 
@@ -206,6 +263,52 @@ public sealed class ConveyorRouteMaterialFlowSimulator
         return chain;
     }
 
+    private static void MergeRouteSegmentCornerAdjacency(
+        IReadOnlyList<SceneObject> routeSegments,
+        IDictionary<Guid, Guid> nextByConveyorId,
+        IDictionary<Guid, Guid> previousByConveyorId)
+    {
+        foreach (var segment in routeSegments)
+        {
+            if (nextByConveyorId.ContainsKey(segment.Id))
+            {
+                continue;
+            }
+
+            var (_, segmentEnd) = segment.GetConveyorFlowEndpoints();
+            SceneObject? next = null;
+            foreach (var candidate in routeSegments)
+            {
+                if (candidate.Id == segment.Id || previousByConveyorId.ContainsKey(candidate.Id))
+                {
+                    continue;
+                }
+
+                var (candidateStart, _) = candidate.GetConveyorFlowEndpoints();
+                if (!IsAdjacent(segmentEnd, candidateStart))
+                {
+                    continue;
+                }
+
+                if (next is not null)
+                {
+                    next = null;
+                    break;
+                }
+
+                next = candidate;
+            }
+
+            if (next is null)
+            {
+                continue;
+            }
+
+            nextByConveyorId[segment.Id] = next.Id;
+            previousByConveyorId[next.Id] = segment.Id;
+        }
+    }
+
     private static RouteDescriptor BuildDescriptor(
         IReadOnlyList<Guid> chainObjectIds,
         PortConnectivitySnapshot snapshot,
@@ -225,18 +328,10 @@ public sealed class ConveyorRouteMaterialFlowSimulator
 
         var headId = chainObjectIds[0];
         var tailId = chainObjectIds[^1];
-        Guid? sender = null;
         Guid? receiver = null;
 
         foreach (var connection in snapshot.Connections)
         {
-            if (connection.ToObjectId == headId
-                && objectById.TryGetValue(connection.FromObjectId, out var fromObject)
-                && string.Equals(fromObject.PartId, "mtrlsrc", StringComparison.OrdinalIgnoreCase))
-            {
-                sender = fromObject.Id;
-            }
-
             if (connection.FromObjectId == tailId
                 && objectById.TryGetValue(connection.ToObjectId, out var toObject)
                 && string.Equals(toObject.PartId, "mtrlrecv", StringComparison.OrdinalIgnoreCase))
@@ -246,10 +341,35 @@ public sealed class ConveyorRouteMaterialFlowSimulator
         }
 
         var key = string.Join(">", chainObjectIds.Select(id => id.ToString("N")));
-        return new RouteDescriptor(key, chainObjectIds.ToArray(), cells, sender, receiver);
+        return new RouteDescriptor(key, chainObjectIds.ToArray(), cells, Array.Empty<RouteInputAttachmentDescriptor>(), receiver);
     }
 
-    private static int AdvanceOneStep(ConveyorRouteRuntime route)
+    private static int SimulateRouteStep(ConveyorRouteRuntime route)
+    {
+        var changes = ConsumeAtReceiver(route);
+        changes += MovePacketsForward(route);
+        changes += ProcessInputAttachments(route);
+        return changes;
+    }
+
+    private static int ConsumeAtReceiver(ConveyorRouteRuntime route)
+    {
+        if (route.Slots.Length == 0)
+        {
+            return 0;
+        }
+
+        var last = route.Slots.Length - 1;
+        if (route.Slots[last] is not null && route.ReceiverObjectId.HasValue)
+        {
+            route.Slots[last] = null;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    private static int MovePacketsForward(ConveyorRouteRuntime route)
     {
         if (route.Slots.Length == 0)
         {
@@ -258,13 +378,6 @@ public sealed class ConveyorRouteMaterialFlowSimulator
 
         var changes = 0;
         var last = route.Slots.Length - 1;
-
-        if (route.Slots[last] is not null && route.ReceiverObjectId.HasValue)
-        {
-            route.Slots[last] = null;
-            changes++;
-        }
-
         for (var i = last - 1; i >= 0; i--)
         {
             if (route.Slots[i] is null || route.Slots[i + 1] is not null)
@@ -277,19 +390,321 @@ public sealed class ConveyorRouteMaterialFlowSimulator
             changes++;
         }
 
-        if (route.Slots[0] is null && route.SenderObjectId.HasValue)
+        return changes;
+    }
+
+    private static void AccumulateInputAttachments(ConveyorRouteRuntime route, float dtSeconds)
+    {
+        if (route.InputAttachments.Count == 0 || route.Slots.Length == 0 || dtSeconds <= 0f)
         {
-            route.Slots[0] = new OrePacket();
-            changes++;
+            return;
         }
 
-        return changes;
+        foreach (var input in route.InputAttachments)
+        {
+            if (input.UnitsPerSecond <= 0f)
+            {
+                input.Accumulator = 0f;
+                continue;
+            }
+
+            input.Accumulator += dtSeconds * input.UnitsPerSecond;
+        }
+    }
+
+    private static int ProcessInputAttachments(ConveyorRouteRuntime route)
+    {
+        if (route.InputAttachments.Count == 0 || route.Slots.Length == 0)
+        {
+            return 0;
+        }
+
+        var injected = 0;
+        foreach (var group in route.InputAttachments
+                     .Where(static attachment => attachment.RouteCellIndex >= 0)
+                     .GroupBy(attachment => attachment.RouteCellIndex)
+                     .OrderBy(group => group.Key))
+        {
+            var cellIndex = group.Key;
+            if (cellIndex < 0 || cellIndex >= route.Slots.Length)
+            {
+                continue;
+            }
+
+            var contenders = group
+                .OrderBy(attachment => attachment.ObjectId)
+                .ToArray();
+
+            if (route.Slots[cellIndex] is not null)
+            {
+                foreach (var contender in contenders)
+                {
+                    contender.LastStatus = RouteInputAttachmentStatus.WaitingForSlot;
+                    ClampWaitingAccumulator(contender);
+                }
+
+                continue;
+            }
+
+            var start = NormalizeTurnIndex(
+                route.NextInputAttachmentIndexByCell.TryGetValue(cellIndex, out var nextIndex) ? nextIndex : 0,
+                contenders.Length);
+            var selectedIndex = -1;
+            for (var offset = 0; offset < contenders.Length; offset++)
+            {
+                var contenderIndex = (start + offset) % contenders.Length;
+                if (contenders[contenderIndex].Accumulator >= 1f)
+                {
+                    selectedIndex = contenderIndex;
+                    break;
+                }
+            }
+
+            if (selectedIndex < 0)
+            {
+                foreach (var contender in contenders)
+                {
+                    contender.LastStatus = RouteInputAttachmentStatus.WaitingForRate;
+                    ClampWaitingAccumulator(contender);
+                }
+
+                continue;
+            }
+
+            for (var i = 0; i < contenders.Length; i++)
+            {
+                if (i == selectedIndex)
+                {
+                    continue;
+                }
+
+                contenders[i].LastStatus = contenders[i].Accumulator >= 1f
+                    ? RouteInputAttachmentStatus.WaitingForTurn
+                    : RouteInputAttachmentStatus.WaitingForRate;
+                ClampWaitingAccumulator(contenders[i]);
+            }
+
+            var selected = contenders[selectedIndex];
+            route.Slots[cellIndex] = new OrePacket
+            {
+                MaterialId = MaterialCatalog.NormalizeId(selected.MaterialId)
+            };
+            selected.Accumulator = Math.Max(0f, selected.Accumulator - 1f);
+            selected.LastStatus = RouteInputAttachmentStatus.Injected;
+            route.NextInputAttachmentIndexByCell[cellIndex] = NormalizeTurnIndex(selectedIndex + 1, contenders.Length);
+            injected++;
+        }
+
+        return injected;
+    }
+
+    private static void ClampWaitingAccumulator(RouteInputAttachmentRuntime input)
+    {
+        if (input.Accumulator > 1f)
+        {
+            input.Accumulator = 1f;
+        }
+    }
+
+    private static int NormalizeTurnIndex(int nextIndex, int count)
+        => count <= 0 ? 0 : ((nextIndex % count) + count) % count;
+
+    private static List<RouteInputAttachmentRuntime> BuildInputAttachments(
+        IReadOnlyList<RouteInputAttachmentDescriptor> inputAttachments,
+        IReadOnlyDictionary<Guid, SceneObject> objectById)
+    {
+        var attachments = new List<RouteInputAttachmentRuntime>(inputAttachments.Count);
+        foreach (var descriptor in inputAttachments)
+        {
+            if (!objectById.TryGetValue(descriptor.SourceObjectId, out var sourceObject))
+            {
+                continue;
+            }
+
+            attachments.Add(new RouteInputAttachmentRuntime
+            {
+                ObjectId = descriptor.SourceObjectId,
+                RouteCellIndex = descriptor.RouteCellIndex,
+                UnitsPerSecond = Math.Max(0f, sourceObject.MaterialUnitsPerSecond),
+                MaterialId = MaterialCatalog.NormalizeId(sourceObject.MaterialId)
+            });
+        }
+
+        return attachments;
+    }
+
+    private static IReadOnlyList<RouteInputAttachmentRuntime> MergeInputAttachments(
+        IReadOnlyList<RouteInputAttachmentRuntime> existingAttachments,
+        IReadOnlyList<RouteInputAttachmentDescriptor> inputAttachments,
+        IReadOnlyDictionary<Guid, SceneObject> objectById)
+    {
+        var existingByKey = existingAttachments.ToDictionary(
+            attachment => (attachment.ObjectId, attachment.RouteCellIndex));
+        var merged = new List<RouteInputAttachmentRuntime>(inputAttachments.Count);
+        foreach (var descriptor in inputAttachments)
+        {
+            if (!objectById.TryGetValue(descriptor.SourceObjectId, out var sourceObject))
+            {
+                continue;
+            }
+
+            if (existingByKey.TryGetValue((descriptor.SourceObjectId, descriptor.RouteCellIndex), out var existing))
+            {
+                existing.UnitsPerSecond = Math.Max(0f, sourceObject.MaterialUnitsPerSecond);
+                existing.MaterialId = MaterialCatalog.NormalizeId(sourceObject.MaterialId);
+                merged.Add(existing);
+                continue;
+            }
+
+            merged.Add(new RouteInputAttachmentRuntime
+            {
+                ObjectId = descriptor.SourceObjectId,
+                RouteCellIndex = descriptor.RouteCellIndex,
+                UnitsPerSecond = Math.Max(0f, sourceObject.MaterialUnitsPerSecond),
+                MaterialId = MaterialCatalog.NormalizeId(sourceObject.MaterialId)
+            });
+        }
+
+        return merged;
+    }
+
+    private static List<RouteDescriptor> AssignInputAttachments(
+        IReadOnlyList<RouteDescriptor> descriptors,
+        IReadOnlyList<SceneObject> materialSources)
+    {
+        var attachmentsByRouteKey = new Dictionary<string, List<RouteInputAttachmentDescriptor>>(StringComparer.Ordinal);
+        foreach (var source in materialSources.OrderBy(source => source.Id))
+        {
+            if (!TryFindBestInputAttachment(descriptors, source, out var routeKey, out var routeCellIndex))
+            {
+                continue;
+            }
+
+            if (!attachmentsByRouteKey.TryGetValue(routeKey, out var attachments))
+            {
+                attachments = [];
+                attachmentsByRouteKey[routeKey] = attachments;
+            }
+
+            attachments.Add(new RouteInputAttachmentDescriptor(source.Id, routeCellIndex));
+        }
+
+        return descriptors
+            .Select(descriptor => descriptor with
+            {
+                InputAttachments = attachmentsByRouteKey.TryGetValue(descriptor.Key, out var attachments)
+                    ? attachments
+                        .OrderBy(attachment => attachment.RouteCellIndex)
+                        .ThenBy(attachment => attachment.SourceObjectId)
+                        .ToArray()
+                    : Array.Empty<RouteInputAttachmentDescriptor>()
+            })
+            .ToList();
+    }
+
+    private static bool TryFindBestInputAttachment(
+        IReadOnlyList<RouteDescriptor> descriptors,
+        SceneObject source,
+        out string routeKey,
+        out int routeCellIndex)
+    {
+        routeKey = string.Empty;
+        routeCellIndex = -1;
+        var bestScore = double.MaxValue;
+        var found = false;
+
+        var outputPort = GetMaterialSourceOutputPort(source);
+        foreach (var descriptor in descriptors)
+        {
+            for (var cellIndex = 0; cellIndex < descriptor.Cells.Count; cellIndex++)
+            {
+                var cell = descriptor.Cells[cellIndex];
+                if (!IsCellAdjacentToObject(source, cell))
+                {
+                    continue;
+                }
+
+                var dx = cell.X + 0.5 - outputPort.X;
+                var dy = cell.Y + 0.5 - outputPort.Y;
+                var dz = cell.Z + 0.5 - outputPort.Z;
+                var score = dx * dx + dy * dy + dz * dz;
+                if (!found
+                    || score < bestScore
+                    || (Math.Abs(score - bestScore) < 0.0001
+                        && (string.CompareOrdinal(descriptor.Key, routeKey) < 0
+                            || (string.Equals(descriptor.Key, routeKey, StringComparison.Ordinal) && cellIndex < routeCellIndex))))
+                {
+                    found = true;
+                    bestScore = score;
+                    routeKey = descriptor.Key;
+                    routeCellIndex = cellIndex;
+                }
+            }
+        }
+
+        return found;
+    }
+
+    private static PortPosition GetMaterialSourceOutputPort(SceneObject source)
+    {
+        var size = source.EffectiveSize;
+        var z = source.Position.Z + Math.Min(size.HeightZ, 1) * 0.5;
+        var rotation = RotationHelper.NormalizeDegrees(source.RotationZDegrees);
+        var local = rotation switch
+        {
+            0 => new PortPosition(size.WidthX, size.DepthY / 2.0, 0),
+            90 => new PortPosition(size.WidthX / 2.0, size.DepthY, 0),
+            180 => new PortPosition(0, size.DepthY / 2.0, 0),
+            _ => new PortPosition(size.WidthX / 2.0, 0, 0)
+        };
+
+        return new PortPosition(source.Position.X + local.X, source.Position.Y + local.Y, z);
+    }
+
+    private static bool IsCellAdjacentToObject(SceneObject sceneObject, VoxelCoord cell)
+    {
+        if (cell.Z < sceneObject.MinZ || cell.Z > sceneObject.MaxZ)
+        {
+            return false;
+        }
+
+        var adjacentX = (cell.X == sceneObject.MinX - 1 || cell.X == sceneObject.MaxX + 1)
+                        && cell.Y >= sceneObject.MinY
+                        && cell.Y <= sceneObject.MaxY;
+        var adjacentY = (cell.Y == sceneObject.MinY - 1 || cell.Y == sceneObject.MaxY + 1)
+                        && cell.X >= sceneObject.MinX
+                        && cell.X <= sceneObject.MaxX;
+        return adjacentX || adjacentY;
+    }
+
+    private static void NormalizeInputAttachmentTurnState(ConveyorRouteRuntime route)
+    {
+        var validCellIndices = route.InputAttachments
+            .GroupBy(attachment => attachment.RouteCellIndex)
+            .ToDictionary(group => group.Key, group => group.Count());
+        foreach (var cellIndex in route.NextInputAttachmentIndexByCell.Keys.ToArray())
+        {
+            if (!validCellIndices.TryGetValue(cellIndex, out var contenderCount))
+            {
+                route.NextInputAttachmentIndexByCell.Remove(cellIndex);
+                continue;
+            }
+
+            route.NextInputAttachmentIndexByCell[cellIndex] = NormalizeTurnIndex(
+                route.NextInputAttachmentIndexByCell[cellIndex],
+                contenderCount);
+        }
     }
 
     private sealed record RouteDescriptor(
         string Key,
         IReadOnlyList<Guid> SegmentObjectIds,
         IReadOnlyList<VoxelCoord> Cells,
-        Guid? SenderObjectId,
+        IReadOnlyList<RouteInputAttachmentDescriptor> InputAttachments,
         Guid? ReceiverObjectId);
+
+    private sealed record RouteInputAttachmentDescriptor(Guid SourceObjectId, int RouteCellIndex);
+
+    private static bool IsAdjacent(VoxelCoord a, VoxelCoord b)
+        => a.Z == b.Z && Math.Abs(a.X - b.X) + Math.Abs(a.Y - b.Y) == 1;
 }
