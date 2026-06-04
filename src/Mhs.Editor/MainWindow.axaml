@@ -116,6 +116,30 @@
                     </StackPanel>
                     <TextBlock Text="{Binding InspectorMaterialFlowText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
 
+                    <Border IsVisible="{Binding ConveyorRoutePanelVisible}"
+                            Background="#1C212A"
+                            BorderBrush="#3B4252"
+                            BorderThickness="1"
+                            CornerRadius="4"
+                            Padding="8">
+                        <StackPanel Spacing="6">
+                            <TextBlock Text="Conveyor Route" FontWeight="SemiBold" Foreground="#ECEFF4" />
+                            <Grid ColumnDefinitions="130,*" RowDefinitions="Auto,Auto,Auto,Auto">
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Anchors" Foreground="#AFC6E9" FontFamily="Consolas" />
+                                <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding ConveyorRouteAnchorsValue}" Foreground="#D8DEE9" FontFamily="Consolas" />
+
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Z Layer" Foreground="#AFC6E9" FontFamily="Consolas" />
+                                <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding ConveyorRouteZValue}" Foreground="#D8DEE9" FontFamily="Consolas" />
+
+                                <TextBlock Grid.Row="2" Grid.Column="0" Text="Preview" Foreground="#AFC6E9" FontFamily="Consolas" />
+                                <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding ConveyorRoutePreviewValue}" Foreground="#D8DEE9" FontFamily="Consolas" />
+
+                                <TextBlock Grid.Row="3" Grid.Column="0" Text="Block Reason" Foreground="#AFC6E9" FontFamily="Consolas" />
+                                <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding ConveyorRouteBlockedReasonValue}" Foreground="#D8DEE9" TextWrapping="Wrap" FontFamily="Consolas" />
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
                     <Separator Margin="0,6,0,6" />
                     <TextBlock Text="Floor / Layer" FontWeight="SemiBold" Foreground="#ECEFF4" />
                     <Border Background="{Binding Floor2StackBackground}" BorderBrush="{Binding Floor2StackBorder}" BorderThickness="1" CornerRadius="4" Padding="6,4">

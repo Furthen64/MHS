@@ -10,6 +10,7 @@ using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.OpenGL;
 using Avalonia.OpenGL.Controls;
+using Avalonia.Threading;
 using Mhs.Editor.Editor;
 using Mhs.Editor.Settings;
 using Mhs.Editor.Viewport.Gl;
@@ -29,6 +30,10 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
     private string? _initError;
     private bool _isPanning;
     private Point _lastPanPoint;
+    private readonly DispatcherTimer _blinkTimer = new()
+    {
+        Interval = TimeSpan.FromMilliseconds(250)
+    };
 
     static OpenGlViewportControl()
     {
@@ -46,6 +51,8 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
         AddHandler(PointerReleasedEvent, OnPointerReleased, RoutingStrategies.Tunnel | RoutingStrategies.Bubble, handledEventsToo: true);
         AddHandler(PointerExitedEvent, OnPointerExited, RoutingStrategies.Tunnel | RoutingStrategies.Bubble, handledEventsToo: true);
         AddHandler(PointerWheelChangedEvent, OnPointerWheelChanged, RoutingStrategies.Tunnel | RoutingStrategies.Bubble, handledEventsToo: true);
+        _blinkTimer.Tick += OnBlinkTick;
+        _blinkTimer.Start();
     }
 
     public EditorState? EditorState
@@ -270,6 +277,14 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
     private void OnObjectsChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
         RequestNextFrameRendering();
+    }
+
+    private void OnBlinkTick(object? sender, EventArgs e)
+    {
+        if (EditorState?.Scene.MaterialFlow.GetTokens().Any(token => token.State == MaterialTokenState.Blocked) == true)
+        {
+            RequestNextFrameRendering();
+        }
     }
 
     private void OnPointerMoved(object? sender, PointerEventArgs e)
@@ -598,6 +613,7 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
         }
 
         var snapshot = state.GetPortConnectivitySnapshot();
+        var blinkOn = IsBlinkOn();
         foreach (var token in tokens)
         {
             if (!snapshot.TryGetPort(token.Location.PortId, out var port))
@@ -605,9 +621,14 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
                 continue;
             }
 
+            if (token.State == MaterialTokenState.Blocked && !blinkOn)
+            {
+                continue;
+            }
+
             var color = token.State == MaterialTokenState.Active
                 ? Color.FromArgb(230, 230, 140, 40)
-                : Color.FromArgb(200, 210, 60, 60);
+                : Color.FromArgb(230, 255, 72, 72);
 
             var cx = port.WorldPosition.X;
             var cy = port.WorldPosition.Y;
@@ -641,6 +662,11 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
             .Where(obj => state.IntersectsActiveFloor(obj))
             .Select(obj => obj.Id)
             .ToHashSet();
+        var blockedPortIds = state.Scene.MaterialFlow.GetTokens()
+            .Where(token => token.State == MaterialTokenState.Blocked)
+            .Select(token => token.Location.PortId)
+            .ToHashSet(StringComparer.Ordinal);
+        var blinkOn = IsBlinkOn();
 
         foreach (var status in snapshot.PortStatuses)
         {
@@ -656,6 +682,12 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
                 PortConnectionStatus.InvalidNearby => Color.FromArgb(190, 244, 94, 94),
                 _ => Color.FromArgb(170, 255, 214, 96)
             };
+            if (blockedPortIds.Contains(port.PortId))
+            {
+                markerColor = blinkOn
+                    ? Color.FromArgb(245, 255, 70, 70)
+                    : Color.FromArgb(115, 255, 70, 70);
+            }
 
             var (dx, dy, dz) = port.Direction.ToVector();
             var markerZ = port.WorldPosition.Z + 0.26;
@@ -982,6 +1014,12 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
         PortDirection.NegativeY => (0, -1),
         _ => (0, 0)
     };
+
+    private static bool IsBlinkOn()
+    {
+        var phase = (DateTime.UtcNow.Ticks / TimeSpan.TicksPerMillisecond) / 350;
+        return phase % 2 == 0;
+    }
 
     private void DrawConveyorStrip(VoxelCoord position, VoxelSize size, int rotationZDegrees, Color color,
         PartRenderInfo renderInfo, double opacity, bool drawOutline, EditorState state)
