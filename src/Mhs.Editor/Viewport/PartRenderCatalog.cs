@@ -11,6 +11,13 @@ public sealed class PartRenderInfo
     public Rgba BaseColor { get; init; }
     public bool ShowFacingMarker { get; init; }
     public Rgba FacingMarkerColor { get; init; }
+    public FlowMarkerKind FlowMarkerKind { get; init; } = FlowMarkerKind.Outgoing;
+}
+
+public enum FlowMarkerKind
+{
+    Outgoing,
+    Incoming
 }
 
 public readonly record struct Rgba(float R, float G, float B, float A)
@@ -90,7 +97,8 @@ public static class PartRenderCatalog
             DisplayName = "MtrlRecv",
             BaseColor = new Rgba(0.31f, 0.70f, 0.57f, 1f),
             ShowFacingMarker = true,
-            FacingMarkerColor = new Rgba(0.87f, 0.98f, 1f, 1f)
+            FacingMarkerColor = new Rgba(0.87f, 0.98f, 1f, 1f),
+            FlowMarkerKind = FlowMarkerKind.Incoming
         }
     };
 
