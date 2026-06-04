@@ -284,6 +284,50 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
+    public bool ConveyorRoutePanelVisible => EditorState.ActiveConveyorRoute is not null;
+
+    public string ConveyorRouteAnchorsValue =>
+        EditorState.ActiveConveyorRoute is { } route ? route.Anchors.Count.ToString() : "-";
+
+    public string ConveyorRouteZValue =>
+        EditorState.ActiveConveyorRoute is { } route ? route.Z.ToString() : "-";
+
+    public string ConveyorRoutePreviewValue
+    {
+        get
+        {
+            if (EditorState.ActiveConveyorRoute is not { } route)
+            {
+                return "-";
+            }
+
+            if (!route.PreviewEnd.HasValue)
+            {
+                return "Waiting for next anchor";
+            }
+
+            return route.PreviewIsValid ? "Valid" : "Blocked";
+        }
+    }
+
+    public string ConveyorRouteBlockedReasonValue
+    {
+        get
+        {
+            if (EditorState.ActiveConveyorRoute is not { } route)
+            {
+                return "-";
+            }
+
+            if (!route.PreviewEnd.HasValue || route.PreviewIsValid)
+            {
+                return "-";
+            }
+
+            return route.InvalidReason ?? "invalid";
+        }
+    }
+
     public string Floor2StackText => FloorStackText(2);
     public string Floor1StackText => FloorStackText(1);
     public string Floor0StackText => FloorStackText(0);
@@ -502,7 +546,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private string PreviewText() =>
         EditorState.ActiveConveyorRoute is { } route
-            ? $"Route: Anchors {route.Anchors.Count} | Z {route.Z} | {(route.PreviewEnd.HasValue ? (route.PreviewIsValid ? "Preview valid" : $"Preview blocked ({route.InvalidReason ?? "invalid"})") : "Click next anchor")}"
+            ? "Preview: See Conveyor Route panel"
             : EditorState.GhostPreview is null
                 ? "Preview: None"
                 : $"Preview: {EditorState.GhostPreview.Part.DisplayName} @ {EditorState.GhostPreview.Position} ({EditorState.GhostPreview.EffectiveSize})";
@@ -879,6 +923,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(InspectorExtraText));
         OnPropertyChanged(nameof(InspectorPortText));
         OnPropertyChanged(nameof(InspectorMaterialFlowText));
+        OnPropertyChanged(nameof(ConveyorRoutePanelVisible));
+        OnPropertyChanged(nameof(ConveyorRouteAnchorsValue));
+        OnPropertyChanged(nameof(ConveyorRouteZValue));
+        OnPropertyChanged(nameof(ConveyorRoutePreviewValue));
+        OnPropertyChanged(nameof(ConveyorRouteBlockedReasonValue));
         OnPropertyChanged(nameof(Floor2StackText));
         OnPropertyChanged(nameof(Floor1StackText));
         OnPropertyChanged(nameof(Floor0StackText));

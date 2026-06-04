@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Specialized;
 using System.ComponentModel;
+using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Media;
+using Avalonia.Threading;
 using Mhs.Editor.Editor;
 
 namespace Mhs.Editor.Viewport;
@@ -25,6 +27,10 @@ public sealed class SoftwareCubeViewport : Control
 
     private bool _isPanning;
     private Point _lastPanPoint;
+    private readonly DispatcherTimer _blinkTimer = new()
+    {
+        Interval = TimeSpan.FromMilliseconds(250)
+    };
 
     public SoftwareCubeViewport()
     {
@@ -36,6 +42,8 @@ public sealed class SoftwareCubeViewport : Control
         PointerReleased += OnPointerReleased;
         PointerExited += OnPointerExited;
         PointerWheelChanged += OnPointerWheelChanged;
+        _blinkTimer.Tick += OnBlinkTick;
+        _blinkTimer.Start();
     }
 
     public EditorState? EditorState
@@ -186,6 +194,7 @@ public sealed class SoftwareCubeViewport : Control
         }
 
         var snapshot = state.GetPortConnectivitySnapshot();
+        var blinkOn = IsBlinkOn();
         foreach (var token in tokens)
         {
             if (!snapshot.TryGetPort(token.Location.PortId, out var port))
@@ -193,9 +202,14 @@ public sealed class SoftwareCubeViewport : Control
                 continue;
             }
 
+            if (token.State == MaterialTokenState.Blocked && !blinkOn)
+            {
+                continue;
+            }
+
             var color = token.State == MaterialTokenState.Active
                 ? Color.FromArgb(230, 230, 140, 40)
-                : Color.FromArgb(200, 210, 60, 60);
+                : Color.FromArgb(230, 255, 72, 72);
 
             var cx = port.WorldPosition.X;
             var cy = port.WorldPosition.Y;
@@ -234,6 +248,20 @@ public sealed class SoftwareCubeViewport : Control
     private void OnObjectsChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
         InvalidateVisual();
+    }
+
+    private void OnBlinkTick(object? sender, EventArgs e)
+    {
+        if (EditorState?.Scene.MaterialFlow.GetTokens().Any(token => token.State == MaterialTokenState.Blocked) == true)
+        {
+            InvalidateVisual();
+        }
+    }
+
+    private static bool IsBlinkOn()
+    {
+        var phase = (DateTime.UtcNow.Ticks / TimeSpan.TicksPerMillisecond) / 350;
+        return phase % 2 == 0;
     }
 
     private void OnPointerMoved(object? sender, PointerEventArgs e)
