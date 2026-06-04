@@ -252,7 +252,7 @@ public sealed class SoftwareCubeViewport : Control
 
     private void OnBlinkTick(object? sender, EventArgs e)
     {
-        if (EditorState?.Scene.MaterialFlow.GetTokens().Any(token => token.State == MaterialTokenState.Blocked) == true)
+        if (EditorState?.Scene.MaterialFlow.GetTokens().Count > 0)
         {
             InvalidateVisual();
         }
@@ -615,26 +615,53 @@ public sealed class SoftwareCubeViewport : Control
 
     private void DrawConveyorCellSw(DrawingContext context, ConveyorVisualCell cell, Color color, double opacity, EditorState state)
     {
-        var visualHeight = 0.28;
+        const double beltH = 0.14;
+        const double railH = 0.18;
+        const double railW = 0.09;
+
         var x0 = cell.Position.X;
         var x1 = cell.Position.X + 1;
         var y0 = cell.Position.Y;
         var y1 = cell.Position.Y + 1;
         var z0 = cell.Position.Z;
-        var z1 = cell.Position.Z + visualHeight;
 
-        var topA = Project(x0, y0, z1, state);
-        var topB = Project(x1, y0, z1, state);
-        var topC = Project(x1, y1, z1, state);
-        var topD = Project(x0, y1, z1, state);
-        var bottomB = Project(x1, y0, z0, state);
-        var bottomC = Project(x1, y1, z0, state);
-        var bottomD = Project(x0, y1, z0, state);
+        var beltTop   = Darken(color, 0.28);
+        var beltRight = Darken(color, 0.20);
+        var beltFront = Darken(color, 0.16);
+        var railTop   = TintColor(color, Color.FromRgb(130, 142, 158), 0.35);
+        var railRight = TintColor(color, Color.FromRgb(95,  106, 118), 0.35);
+        var railFront = TintColor(color, Color.FromRgb(80,  90,  102), 0.35);
 
-        context.DrawGeometry(new SolidColorBrush(WithOpacity(Darken(color, 0.92), opacity)), null, Polygon(topA, topB, topC, topD));
-        context.DrawGeometry(new SolidColorBrush(WithOpacity(Darken(color, 0.70), opacity * 0.7)), null, Polygon(topB, bottomB, bottomC, topC));
-        context.DrawGeometry(new SolidColorBrush(WithOpacity(Darken(color, 0.58), opacity * 0.7)), null, Polygon(topD, topC, bottomC, bottomD));
+        var isXFlow = cell.MainFlowDirection is PortDirection.PositiveX or PortDirection.NegativeX;
 
+        if (cell.Kind is ConveyorVisualCellKind.Straight or ConveyorVisualCellKind.Endpoint)
+        {
+            if (isXFlow)
+            {
+                DrawConveyorBarSw(context, x0, x1, y0 + railW, y1 - railW, z0, z0 + beltH, beltTop, beltRight, beltFront, opacity, state);
+                DrawConveyorBarSw(context, x0, x1, y0, y0 + railW, z0, z0 + railH, railTop, railRight, railFront, opacity, state);
+                DrawConveyorBarSw(context, x0, x1, y1 - railW, y1, z0, z0 + railH, railTop, railRight, railFront, opacity, state);
+            }
+            else
+            {
+                DrawConveyorBarSw(context, x0 + railW, x1 - railW, y0, y1, z0, z0 + beltH, beltTop, beltRight, beltFront, opacity, state);
+                DrawConveyorBarSw(context, x0, x0 + railW, y0, y1, z0, z0 + railH, railTop, railRight, railFront, opacity, state);
+                DrawConveyorBarSw(context, x1 - railW, x1, y0, y1, z0, z0 + railH, railTop, railRight, railFront, opacity, state);
+            }
+        }
+        else
+        {
+            DrawConveyorBarSw(context, x0 + railW, x1 - railW, y0 + railW, y1 - railW, z0, z0 + beltH, beltTop, beltRight, beltFront, opacity, state);
+            DrawConveyorBarSw(context, x0,          x1,          y0,          y0 + railW,  z0, z0 + railH, railTop, railRight, railFront, opacity, state);
+            DrawConveyorBarSw(context, x0,          x1,          y1 - railW,  y1,          z0, z0 + railH, railTop, railRight, railFront, opacity, state);
+            DrawConveyorBarSw(context, x0,          x0 + railW,  y0 + railW,  y1 - railW,  z0, z0 + railH, railTop, railRight, railFront, opacity, state);
+            DrawConveyorBarSw(context, x1 - railW,  x1,          y0 + railW,  y1 - railW,  z0, z0 + railH, railTop, railRight, railFront, opacity, state);
+        }
+
+        var topA = Project(x0, y0, z0 + railH, state);
+        var topB = Project(x1, y0, z0 + railH, state);
+        var topC = Project(x1, y1, z0 + railH, state);
+        var topD = Project(x0, y1, z0 + railH, state);
         var boundaryPen = new Pen(new SolidColorBrush(WithOpacity(Color.FromRgb(226, 226, 226), Math.Min(opacity + 0.12, 1.0))), 1);
         context.DrawLine(boundaryPen, topA, topB);
         context.DrawLine(boundaryPen, topB, topC);
@@ -644,9 +671,33 @@ public sealed class SoftwareCubeViewport : Control
         DrawConveyorCellFlowSw(context, cell, opacity, state);
     }
 
+    private void DrawConveyorBarSw(DrawingContext context, double x0, double x1, double y0, double y1,
+        double z0, double z1, Color topColor, Color rightColor, Color frontColor, double opacity, EditorState state)
+    {
+        var tA = Project(x0, y0, z1, state);
+        var tB = Project(x1, y0, z1, state);
+        var tC = Project(x1, y1, z1, state);
+        var tD = Project(x0, y1, z1, state);
+        var bB = Project(x1, y0, z0, state);
+        var bC = Project(x1, y1, z0, state);
+        var bD = Project(x0, y1, z0, state);
+        context.DrawGeometry(new SolidColorBrush(WithOpacity(topColor,   opacity)),        null, Polygon(tA, tB, tC, tD));
+        context.DrawGeometry(new SolidColorBrush(WithOpacity(rightColor, opacity * 0.80)), null, Polygon(tB, bB, bC, tC));
+        context.DrawGeometry(new SolidColorBrush(WithOpacity(frontColor, opacity * 0.80)), null, Polygon(tD, tC, bC, bD));
+    }
+
+    private static Color TintColor(Color tint, Color baseColor, double tintStrength)
+    {
+        return Color.FromArgb(
+            baseColor.A,
+            (byte)Math.Clamp((int)(baseColor.R * (1 - tintStrength) + tint.R * tintStrength), 0, 255),
+            (byte)Math.Clamp((int)(baseColor.G * (1 - tintStrength) + tint.G * tintStrength), 0, 255),
+            (byte)Math.Clamp((int)(baseColor.B * (1 - tintStrength) + tint.B * tintStrength), 0, 255));
+    }
+
     private void DrawConveyorCellFlowSw(DrawingContext context, ConveyorVisualCell cell, double opacity, EditorState state)
     {
-        var z = cell.Position.Z + 0.31;
+        var z = cell.Position.Z + 0.21;
         var centerX = cell.Position.X + 0.5;
         var centerY = cell.Position.Y + 0.5;
         var flowColor = cell.Kind == ConveyorVisualCellKind.Corner
