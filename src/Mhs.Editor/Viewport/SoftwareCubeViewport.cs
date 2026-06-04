@@ -697,7 +697,7 @@ public sealed class SoftwareCubeViewport : Control
 
     private void DrawConveyorCellFlowSw(DrawingContext context, ConveyorVisualCell cell, double opacity, EditorState state)
     {
-        var z = cell.Position.Z + 0.21;
+        var z = cell.Position.Z + 0.205;
         var centerX = cell.Position.X + 0.5;
         var centerY = cell.Position.Y + 0.5;
         var flowColor = cell.Kind == ConveyorVisualCellKind.Corner
@@ -722,29 +722,62 @@ public sealed class SoftwareCubeViewport : Control
             var cornerTip = Project(centerX + exitDx * 0.37, centerY + exitDy * 0.37, z, state);
             context.DrawLine(flowPen, pivot, cornerTip);
 
-            var perpX = -exitDy;
-            var perpY = exitDx;
-            var baseX = centerX + exitDx * 0.18;
-            var baseY = centerY + exitDy * 0.18;
-            var arrowA = Project(baseX + perpX * 0.14, baseY + perpY * 0.14, z, state);
-            var arrowB = Project(baseX - perpX * 0.14, baseY - perpY * 0.14, z, state);
-            context.DrawGeometry(arrowBrush, null, Polygon(cornerTip, arrowA, arrowB));
+            DrawArrowHeadSw(context, arrowBrush, centerX, centerY, z, exitDx, exitDy, 0.18, 0.14, state);
+            DrawConveyorChevronSw(context, flowPen, centerX + exitDx * 0.03, centerY + exitDy * 0.03, z, exitDx, exitDy, 0.14, 0.095, state);
             return;
         }
 
         var arrowDirection = cell.ExitDirection ?? cell.MainFlowDirection;
         var (arrowDx, arrowDy) = DirectionToPlanarVector(arrowDirection);
-        var tail = Project(centerX - arrowDx * 0.16, centerY - arrowDy * 0.16, z, state);
+        var tail = Project(centerX - arrowDx * 0.27, centerY - arrowDy * 0.27, z, state);
         var tip = Project(centerX + arrowDx * 0.38, centerY + arrowDy * 0.38, z, state);
         context.DrawLine(flowPen, tail, tip);
+        DrawArrowHeadSw(context, arrowBrush, centerX, centerY, z, arrowDx, arrowDy, 0.18, 0.14, state);
+        DrawConveyorChevronSw(context, flowPen, centerX - arrowDx * 0.10, centerY - arrowDy * 0.10, z, arrowDx, arrowDy, 0.15, 0.10, state);
+        DrawConveyorChevronSw(context, flowPen, centerX + arrowDx * 0.07, centerY + arrowDy * 0.07, z, arrowDx, arrowDy, 0.12, 0.085, state);
+    }
 
-        var perpXa = -arrowDy;
-        var perpYa = arrowDx;
-        var baseCenterX = centerX + arrowDx * 0.18;
-        var baseCenterY = centerY + arrowDy * 0.18;
-        var arrowA2 = Project(baseCenterX + perpXa * 0.14, baseCenterY + perpYa * 0.14, z, state);
-        var arrowB2 = Project(baseCenterX - perpXa * 0.14, baseCenterY - perpYa * 0.14, z, state);
-        context.DrawGeometry(arrowBrush, null, Polygon(tip, arrowA2, arrowB2));
+    private void DrawConveyorChevronSw(
+        DrawingContext context,
+        Pen pen,
+        double centerX,
+        double centerY,
+        double z,
+        double dirX,
+        double dirY,
+        double depth,
+        double halfWidth,
+        EditorState state)
+    {
+        var perpX = -dirY;
+        var perpY = dirX;
+        var tip = Project(centerX + dirX * depth, centerY + dirY * depth, z, state);
+        var left = Project(centerX - dirX * depth + perpX * halfWidth, centerY - dirY * depth + perpY * halfWidth, z, state);
+        var right = Project(centerX - dirX * depth - perpX * halfWidth, centerY - dirY * depth - perpY * halfWidth, z, state);
+        context.DrawLine(pen, left, tip);
+        context.DrawLine(pen, right, tip);
+    }
+
+    private void DrawArrowHeadSw(
+        DrawingContext context,
+        IBrush brush,
+        double centerX,
+        double centerY,
+        double z,
+        double dirX,
+        double dirY,
+        double tipDistance,
+        double halfWidth,
+        EditorState state)
+    {
+        var perpX = -dirY;
+        var perpY = dirX;
+        var tip = Project(centerX + dirX * (tipDistance + 0.19), centerY + dirY * (tipDistance + 0.19), z, state);
+        var baseX = centerX + dirX * tipDistance;
+        var baseY = centerY + dirY * tipDistance;
+        var arrowA = Project(baseX + perpX * halfWidth, baseY + perpY * halfWidth, z, state);
+        var arrowB = Project(baseX - perpX * halfWidth, baseY - perpY * halfWidth, z, state);
+        context.DrawGeometry(brush, null, Polygon(tip, arrowA, arrowB));
     }
 
     private static (double X, double Y) DirectionToPlanarVector(PortDirection direction) => direction switch
