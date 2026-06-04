@@ -71,6 +71,19 @@ public partial class MainWindow : Window
         }
     }
 
+    private void OnSceneTreeSelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (sender is not ListBox listBox)
+        {
+            return;
+        }
+
+        if (listBox.SelectedItem is SceneTreeNodeViewModel { IsGroupHeader: true })
+        {
+            listBox.UnselectAll();
+        }
+    }
+
     private void OnNewSceneClick(object? sender, RoutedEventArgs e)
     {
         if (DataContext is not MainWindowViewModel vm)

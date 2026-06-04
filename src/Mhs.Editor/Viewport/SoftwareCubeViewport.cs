@@ -407,12 +407,19 @@ public sealed class SoftwareCubeViewport : Control
         {
             state.ActiveTool.OnPointerPressed(context);
 
-            if (e is PointerPressedEventArgs pressed
-                && pressed.ClickCount >= 2
-                && state.ActiveTool is ConveyorRouteTool routeTool
-                && routeTool.HasFinishableRoute(state))
+            if (e is PointerPressedEventArgs pressed && pressed.ClickCount >= 2)
             {
-                routeTool.FinishRoute(state);
+                if (state.ActiveTool is ConveyorRouteTool routeTool && routeTool.HasFinishableRoute(state))
+                {
+                    routeTool.FinishRoute(state);
+                }
+                else if (state.ActiveTool is SelectTool && state.SelectedObject is { } obj)
+                {
+                    var cx = obj.Position.X + obj.EffectiveSize.WidthX * 0.5;
+                    var cy = obj.Position.Y + obj.EffectiveSize.DepthY * 0.5;
+                    var cz = obj.Position.Z + obj.EffectiveSize.HeightZ * 0.5;
+                    ViewportMath.CenterViewOn(state, Bounds, cx, cy, cz);
+                }
             }
         }
 
@@ -432,6 +439,9 @@ public sealed class SoftwareCubeViewport : Control
             return null;
         }
 
+        SceneObject? bestNonConveyor = null;
+        SceneObject? bestConveyor = null;
+
         for (var i = state.Scene.Objects.Count - 1; i >= 0; i--)
         {
             var sceneObject = state.Scene.Objects[i];
@@ -441,13 +451,22 @@ public sealed class SoftwareCubeViewport : Control
             }
 
             var bounds = GetObjectScreenBounds(sceneObject, state).Inflate(2);
-            if (bounds.Contains(point))
+            if (!bounds.Contains(point))
             {
-                return sceneObject;
+                continue;
+            }
+
+            if (sceneObject.IsConveyor)
+            {
+                bestConveyor ??= sceneObject;
+            }
+            else
+            {
+                bestNonConveyor ??= sceneObject;
             }
         }
 
-        return null;
+        return bestNonConveyor ?? bestConveyor;
     }
 
     private Rect GetObjectScreenBounds(SceneObject sceneObject, EditorState state)

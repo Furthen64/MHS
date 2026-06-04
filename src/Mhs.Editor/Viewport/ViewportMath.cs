@@ -78,4 +78,14 @@ public static class ViewportMath
         state.ViewportPanY = pointer.Y - originBefore.Y - worldOffsetY * state.ViewportZoom;
         return true;
     }
+
+    public static void CenterViewOn(EditorState state, Rect bounds, double worldX, double worldY, double worldZ)
+    {
+        var tileWidth = TileWidth * state.ViewportZoom;
+        var tileHeight = TileHeight * state.ViewportZoom;
+        var heightScale = HeightScale * state.ViewportZoom;
+
+        state.ViewportPanX = -(worldX - worldY) * (tileWidth / 2.0);
+        state.ViewportPanY = bounds.Height * 0.22 - (worldX + worldY) * (tileHeight / 2.0) + worldZ * heightScale;
+    }
 }
