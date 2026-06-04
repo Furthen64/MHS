@@ -898,7 +898,14 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
         }
     }
 
-    private void DrawConveyorCell(ConveyorVisualCell cell, Color color, double opacity, bool showFullCellBounds, EditorState state)
+    private void DrawConveyorCell(
+        ConveyorVisualCell cell,
+        Color color,
+        double opacity,
+        bool showFullCellBounds,
+        EditorState state,
+        bool isPreview = false,
+        bool previewIsValid = true)
     {
         if (_renderer is null)
         {
@@ -959,7 +966,7 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
             DrawOutline(cell.Position, new VoxelSize(1, 1, 1), Color.FromRgb(226, 226, 226), Math.Min(opacity + 0.16, 1), state);
         }
 
-        DrawConveyorCellFlow(cell, opacity, state);
+        DrawConveyorCellFlow(cell, opacity, state, isPreview, previewIsValid);
     }
 
     private void DrawConveyorBar(double x0, double x1, double y0, double y1, double z0, double z1,
@@ -1006,20 +1013,27 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
         _renderer.AddLine(topD, topA, boundaryColor, boundaryOpacity);
     }
 
-    private void DrawConveyorCellFlow(ConveyorVisualCell cell, double opacity, EditorState state)
+    private void DrawConveyorCellFlow(
+        ConveyorVisualCell cell,
+        double opacity,
+        EditorState state,
+        bool isPreview = false,
+        bool previewIsValid = true)
     {
         if (_renderer is null)
         {
             return;
         }
 
-        var z = cell.Position.Z + 0.21;
+        var z = cell.Position.Z + 0.205;
         var centerX = cell.Position.X + 0.5;
         var centerY = cell.Position.Y + 0.5;
-        var flowColor = cell.Kind == ConveyorVisualCellKind.Corner
+        var flowColor = isPreview && !previewIsValid
+            ? Color.FromRgb(255, 126, 126)
+            : cell.Kind == ConveyorVisualCellKind.Corner
             ? Color.FromRgb(255, 214, 96)
             : Color.FromRgb(255, 228, 112);
-        var glyphOpacity = Math.Min(opacity + 0.26, 1.0);
+        var glyphOpacity = Math.Min(opacity + (isPreview ? 0.22 : 0.28), 1.0);
 
         if (cell.Kind == ConveyorVisualCellKind.Corner && cell.EntryDirection.HasValue)
         {
@@ -1036,30 +1050,72 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
 
             var cornerTip = Project(centerX + exitDx * 0.37, centerY + exitDy * 0.37, z, state);
             _renderer.AddLine(pivot, cornerTip, flowColor, glyphOpacity);
-
-            var cornerPerpX = -exitDy;
-            var cornerPerpY = exitDx;
-            var cornerBaseX = centerX + exitDx * 0.18;
-            var cornerBaseY = centerY + exitDy * 0.18;
-            var cornerArrowA = Project(cornerBaseX + cornerPerpX * 0.14, cornerBaseY + cornerPerpY * 0.14, z, state);
-            var cornerArrowB = Project(cornerBaseX - cornerPerpX * 0.14, cornerBaseY - cornerPerpY * 0.14, z, state);
-            _renderer.AddFilledTriangle(cornerTip, cornerArrowA, cornerArrowB, flowColor, glyphOpacity);
+            DrawArrowHeadGl(centerX, centerY, z, exitDx, exitDy, 0.18, 0.14, flowColor, glyphOpacity, state);
+            DrawConveyorChevronGl(centerX + exitDx * 0.03, centerY + exitDy * 0.03, z, exitDx, exitDy, 0.14, 0.095, flowColor, glyphOpacity * 0.9, state);
             return;
         }
 
         var arrowDirection = cell.ExitDirection ?? cell.MainFlowDirection;
         var (arrowDx, arrowDy) = DirectionToPlanarVector(arrowDirection);
-        var tail = Project(centerX - arrowDx * 0.16, centerY - arrowDy * 0.16, z, state);
-        var tip = Project(centerX + arrowDx * 0.38, centerY + arrowDy * 0.38, z, state);
-        _renderer.AddLine(tail, tip, flowColor, glyphOpacity);
+        var tail = Project(centerX - arrowDx * 0.27, centerY - arrowDy * 0.27, z, state);
+        var tip = Project(centerX + arrowDx * 0.37, centerY + arrowDy * 0.37, z, state);
+        _renderer.AddLine(tail, tip, flowColor, glyphOpacity * 0.82);
+        DrawArrowHeadGl(centerX, centerY, z, arrowDx, arrowDy, 0.18, 0.14, flowColor, glyphOpacity, state);
+        DrawConveyorChevronGl(centerX - arrowDx * 0.10, centerY - arrowDy * 0.10, z, arrowDx, arrowDy, 0.15, 0.10, flowColor, glyphOpacity, state);
+        DrawConveyorChevronGl(centerX + arrowDx * 0.07, centerY + arrowDy * 0.07, z, arrowDx, arrowDy, 0.12, 0.085, flowColor, glyphOpacity * 0.92, state);
+    }
 
-        var perpX = -arrowDy;
-        var perpY = arrowDx;
-        var baseX = centerX + arrowDx * 0.18;
-        var baseY = centerY + arrowDy * 0.18;
-        var arrowA = Project(baseX + perpX * 0.14, baseY + perpY * 0.14, z, state);
-        var arrowB = Project(baseX - perpX * 0.14, baseY - perpY * 0.14, z, state);
-        _renderer.AddFilledTriangle(tip, arrowA, arrowB, flowColor, glyphOpacity);
+    private void DrawConveyorChevronGl(
+        double centerX,
+        double centerY,
+        double z,
+        double dirX,
+        double dirY,
+        double depth,
+        double halfWidth,
+        Color color,
+        double opacity,
+        EditorState state)
+    {
+        if (_renderer is null)
+        {
+            return;
+        }
+
+        var perpX = -dirY;
+        var perpY = dirX;
+        var tip = Project(centerX + dirX * depth, centerY + dirY * depth, z, state);
+        var left = Project(centerX - dirX * depth + perpX * halfWidth, centerY - dirY * depth + perpY * halfWidth, z, state);
+        var right = Project(centerX - dirX * depth - perpX * halfWidth, centerY - dirY * depth - perpY * halfWidth, z, state);
+        _renderer.AddLine(left, tip, color, opacity);
+        _renderer.AddLine(right, tip, color, opacity);
+    }
+
+    private void DrawArrowHeadGl(
+        double centerX,
+        double centerY,
+        double z,
+        double dirX,
+        double dirY,
+        double tipDistance,
+        double halfWidth,
+        Color color,
+        double opacity,
+        EditorState state)
+    {
+        if (_renderer is null)
+        {
+            return;
+        }
+
+        var perpX = -dirY;
+        var perpY = dirX;
+        var tip = Project(centerX + dirX * (tipDistance + 0.19), centerY + dirY * (tipDistance + 0.19), z, state);
+        var baseX = centerX + dirX * tipDistance;
+        var baseY = centerY + dirY * tipDistance;
+        var arrowA = Project(baseX + perpX * halfWidth, baseY + perpY * halfWidth, z, state);
+        var arrowB = Project(baseX - perpX * halfWidth, baseY - perpY * halfWidth, z, state);
+        _renderer.AddFilledTriangle(tip, arrowA, arrowB, color, opacity);
     }
 
     private static (double X, double Y) DirectionToPlanarVector(PortDirection direction) => direction switch
@@ -1184,13 +1240,13 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
         var committedColor = Color.FromRgb(78, 158, 216);
         foreach (var cell in committedCells)
         {
-            DrawConveyorCell(cell, committedColor, 0.55, showFullCellBounds: false, state);
+            DrawConveyorCell(cell, committedColor, 0.55, showFullCellBounds: false, state, isPreview: true, previewIsValid: true);
         }
 
         var previewColor = route.PreviewIsValid ? Color.FromRgb(70, 190, 90) : Color.FromRgb(230, 90, 90);
         foreach (var cell in previewCells)
         {
-            DrawConveyorCell(cell, previewColor, 0.45, showFullCellBounds: false, state);
+            DrawConveyorCell(cell, previewColor, 0.45, showFullCellBounds: false, state, isPreview: true, previewIsValid: route.PreviewIsValid);
         }
 
         foreach (var anchor in route.Anchors)
