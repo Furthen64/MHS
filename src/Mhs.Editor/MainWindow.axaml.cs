@@ -355,12 +355,12 @@ public partial class MainWindow : Window
         switch (e.Key)
         {
             case Key.Enter:
-                TopLevel.GetTopLevel(this)?.FocusManager?.ClearFocus();
+                Focus();
                 e.Handled = true;
                 break;
             case Key.Escape:
                 textBox.Text = _inspectorNameEditStartText;
-                TopLevel.GetTopLevel(this)?.FocusManager?.ClearFocus();
+                Focus();
                 e.Handled = true;
                 break;
         }
