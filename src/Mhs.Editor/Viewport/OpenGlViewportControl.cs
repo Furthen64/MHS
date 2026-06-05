@@ -215,7 +215,7 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
             && state.IntersectsActiveLayer(hovered)
             && state.SelectedObject?.Id != hovered.Id)
         {
-            DrawOutline(hovered.Position, hovered.EffectiveSize, Color.FromRgb(215, 215, 130), 0.8, state);
+            DrawOutline(hovered.Position, hovered.EffectiveSize, Color.FromRgb(232, 224, 150), 0.92, state);
         }
 
         if (state.SelectedObject is { } selected && state.IntersectsActiveLayer(selected))
@@ -227,10 +227,11 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
                 ? state.SelectionRotationPreviewDegrees
                 : selected.RotationZDegrees;
             var outlineSize = selected.GetEffectiveSize(outlineRotation);
-            DrawOutline(outlinePosition, outlineSize, Color.FromRgb(120, 180, 255), 1.0, state);
+            DrawOutline(outlinePosition, outlineSize, Color.FromRgb(88, 196, 255), selected.IsConveyor ? 0.95 : 1.0, state);
         }
 
         DrawPortDebug(state);
+        DrawSelectedConveyorRouteOverlay(state);
         DrawMaterialTokens(state);
         DrawRotationAxisGuide(state);
 
@@ -669,7 +670,7 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
 
     private void DrawPortDebug(EditorState state)
     {
-        if (_renderer is null)
+        if (_renderer is null || !state.ShowConveyorDebug)
         {
             return;
         }
@@ -860,6 +861,41 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
         _renderer.AddLine(topD, Project(x0, y1, z0, state), color, opacity);
     }
 
+    private void DrawSelectedConveyorRouteOverlay(EditorState state)
+    {
+        if (_renderer is null || state.SelectedObject is not { IsConveyor: true } selected)
+        {
+            return;
+        }
+
+        var route = state.Scene.ConveyorRouteFlow.Routes
+            .FirstOrDefault(candidate => candidate.SegmentObjectIds.Contains(selected.Id));
+        if (route is null)
+        {
+            return;
+        }
+
+        var overlayColor = Color.FromRgb(112, 214, 255);
+        foreach (var cell in route.Cells)
+        {
+            DrawConveyorTopQuad(
+                cell.X + 0.04,
+                cell.X + 0.96,
+                cell.Y + 0.04,
+                cell.Y + 0.96,
+                cell.Z + 0.205,
+                Color.FromRgb(70, 190, 255),
+                0.16,
+                state);
+
+            var a = Project(cell.X + 0.04, cell.Y + 0.04, cell.Z + 0.215, state);
+            var b = Project(cell.X + 0.96, cell.Y + 0.04, cell.Z + 0.215, state);
+            var c = Project(cell.X + 0.96, cell.Y + 0.96, cell.Z + 0.215, state);
+            var d = Project(cell.X + 0.04, cell.Y + 0.96, cell.Z + 0.215, state);
+            DrawConveyorCellTopBoundary(a, b, c, d, overlayColor, 0.98);
+        }
+    }
+
     private void DrawIsoBox(VoxelCoord position, VoxelSize size, Color color, double opacity, bool drawOutline, EditorState state)
     {
         if (_renderer is null)
@@ -999,7 +1035,7 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
             DrawConveyorRoutePacket(cell, packet!, opacity, state);
         }
 
-        if (!isPreview)
+        if (!isPreview && state.ShowConveyorDebug)
         {
             DrawConveyorInputMarkers(cell, opacity, state);
         }

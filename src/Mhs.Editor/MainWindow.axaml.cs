@@ -4,11 +4,14 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
+using Avalonia.Visuals;
+using Avalonia.VisualTree;
 using Mhs.Editor.Editor;
 using Mhs.Editor.Settings;
 using Mhs.Editor.ViewModels;
@@ -65,6 +68,17 @@ public partial class MainWindow : Window
             return;
         }
 
+        if (ShouldIgnoreGlobalShortcuts(e.Source))
+        {
+            return;
+        }
+
+        if (e.Key == Key.F && vm.FocusSelectedObject(GetActiveViewportBounds()))
+        {
+            e.Handled = true;
+            return;
+        }
+
         if (vm.HandleKeyDown(e.Key))
         {
             e.Handled = true;
@@ -81,6 +95,20 @@ public partial class MainWindow : Window
         if (listBox.SelectedItem is SceneTreeNodeViewModel { IsGroupHeader: true })
         {
             listBox.UnselectAll();
+        }
+    }
+
+    private void OnSceneTreeDoubleTapped(object? sender, TappedEventArgs e)
+    {
+        if (sender is not ListBox { SelectedItem: SceneTreeNodeViewModel { IsGroupHeader: false } node }
+            || DataContext is not MainWindowViewModel vm)
+        {
+            return;
+        }
+
+        if (vm.FocusSceneTreeNode(node, GetActiveViewportBounds()))
+        {
+            e.Handled = true;
         }
     }
 
@@ -271,6 +299,31 @@ public partial class MainWindow : Window
 
     private static string GetDisplayName(IStorageItem item)
         => string.IsNullOrWhiteSpace(item.Name) ? "scene" : item.Name;
+
+    private Avalonia.Rect GetActiveViewportBounds()
+    {
+        if (OpenGlViewport.IsVisible && OpenGlViewport.Bounds.Width > 0 && OpenGlViewport.Bounds.Height > 0)
+        {
+            return OpenGlViewport.Bounds;
+        }
+
+        if (SoftwareViewport.Bounds.Width > 0 && SoftwareViewport.Bounds.Height > 0)
+        {
+            return SoftwareViewport.Bounds;
+        }
+
+        return Bounds;
+    }
+
+    private static bool ShouldIgnoreGlobalShortcuts(object? source)
+    {
+        if (source is not Visual visual)
+        {
+            return false;
+        }
+
+        return visual.GetSelfAndVisualAncestors().Any(item => item is TextBox or ComboBox);
+    }
 
     private async void OnOpened(object? sender, EventArgs e)
     {

@@ -168,7 +168,7 @@ public sealed class SoftwareCubeViewport : Control
             && state.IntersectsActiveLayer(hovered)
             && state.SelectedObject?.Id != hovered.Id)
         {
-            DrawOutline(context, hovered.Position, hovered.EffectiveSize, Color.FromRgb(215, 215, 130), 1.5, state);
+            DrawOutline(context, hovered.Position, hovered.EffectiveSize, Color.FromRgb(232, 224, 150), 1.8, state);
         }
 
         if (state.SelectedObject is { } selected && state.IntersectsActiveLayer(selected))
@@ -180,9 +180,10 @@ public sealed class SoftwareCubeViewport : Control
                 ? state.SelectionRotationPreviewDegrees
                 : selected.RotationZDegrees;
             var outlineSize = selected.GetEffectiveSize(outlineRotation);
-            DrawOutline(context, outlinePosition, outlineSize, Color.FromRgb(120, 180, 255), 2, state);
+            DrawOutline(context, outlinePosition, outlineSize, Color.FromRgb(88, 196, 255), selected.IsConveyor ? 2.6 : 3.0, state);
         }
 
+        DrawSelectedConveyorRouteOverlay(context, state);
         DrawMaterialTokens(context, state);
         DrawRotationAxisGuide(context, state);
     }
@@ -1148,6 +1149,37 @@ public sealed class SoftwareCubeViewport : Control
         context.DrawLine(pen, topB, Project(x1, y0, z0, state));
         context.DrawLine(pen, topC, Project(x1, y1, z0, state));
         context.DrawLine(pen, topD, Project(x0, y1, z0, state));
+    }
+
+    private void DrawSelectedConveyorRouteOverlay(DrawingContext context, EditorState state)
+    {
+        if (state.SelectedObject is not { IsConveyor: true } selected)
+        {
+            return;
+        }
+
+        var route = state.Scene.ConveyorRouteFlow.Routes
+            .FirstOrDefault(candidate => candidate.SegmentObjectIds.Contains(selected.Id));
+        if (route is null)
+        {
+            return;
+        }
+
+        var fillBrush = new SolidColorBrush(WithOpacity(Color.FromRgb(70, 190, 255), 0.16));
+        var pen = new Pen(new SolidColorBrush(Color.FromRgb(112, 214, 255)), 2.2);
+        foreach (var cell in route.Cells)
+        {
+            var z = cell.Z + 0.205;
+            var a = Project(cell.X + 0.04, cell.Y + 0.04, z, state);
+            var b = Project(cell.X + 0.96, cell.Y + 0.04, z, state);
+            var c = Project(cell.X + 0.96, cell.Y + 0.96, z, state);
+            var d = Project(cell.X + 0.04, cell.Y + 0.96, z, state);
+            context.DrawGeometry(fillBrush, null, Polygon(a, b, c, d));
+            context.DrawLine(pen, a, b);
+            context.DrawLine(pen, b, c);
+            context.DrawLine(pen, c, d);
+            context.DrawLine(pen, d, a);
+        }
     }
 
     private void DrawIsoBox(DrawingContext context, VoxelCoord position, VoxelSize size, Color color, double opacity, bool drawOutline, EditorState state)

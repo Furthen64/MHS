@@ -37,6 +37,7 @@ public sealed class EditorState : INotifyPropertyChanged
     private string _openGlBackendInfo = "N/A";
     private string _statusMessage = "Ready";
     private ConveyorRouteDraft? _activeConveyorRoute;
+    private bool _showConveyorDebug = true;
 
     public EditorState()
     {
@@ -241,6 +242,12 @@ public sealed class EditorState : INotifyPropertyChanged
     {
         get => _activeConveyorRoute;
         set => SetField(ref _activeConveyorRoute, value);
+    }
+
+    public bool ShowConveyorDebug
+    {
+        get => _showConveyorDebug;
+        set => SetField(ref _showConveyorDebug, value);
     }
 
     public int ActiveAbsoluteZ => WorldVerticalSettings.ToAbsoluteZ(ActiveFloor, ActiveLayer);

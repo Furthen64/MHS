@@ -11,6 +11,7 @@ public sealed class SceneObject
     public Guid Id { get; init; } = Guid.NewGuid();
     public string PartId { get; init; } = string.Empty;
     public string PartType { get; init; } = string.Empty;
+    public string DisplayName { get; set; } = string.Empty;
     public VoxelCoord Position { get; set; }
     public VoxelSize BaseSize { get; init; }
 
