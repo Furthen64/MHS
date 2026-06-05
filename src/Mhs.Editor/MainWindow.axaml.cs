@@ -30,6 +30,7 @@ public partial class MainWindow : Window
     private IReadOnlyList<GpuOption>? _availableGpuOptions;
     private AppPreferences _preferences;
     private IStorageFile? _currentSceneFile;
+    private string _inspectorNameEditStartText = string.Empty;
 
     public MainWindow()
     {
@@ -68,7 +69,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (ShouldIgnoreGlobalShortcuts(e.Source))
+        if (IsTextInputFocused(e.Source))
         {
             return;
         }
@@ -315,14 +316,54 @@ public partial class MainWindow : Window
         return Bounds;
     }
 
-    private static bool ShouldIgnoreGlobalShortcuts(object? source)
+    private static bool IsEditableInputVisual(Visual? visual)
     {
-        if (source is not Visual visual)
+        if (visual is null)
         {
             return false;
         }
 
         return visual.GetSelfAndVisualAncestors().Any(item => item is TextBox or ComboBox);
+    }
+
+    private bool IsTextInputFocused(object? source)
+    {
+        if (source is Visual sourceVisual && IsEditableInputVisual(sourceVisual))
+        {
+            return true;
+        }
+
+        var focusedVisual = TopLevel.GetTopLevel(this)?.FocusManager?.GetFocusedElement() as Visual;
+        return IsEditableInputVisual(focusedVisual);
+    }
+
+    private void OnInspectorNameGotFocus(object? sender, GotFocusEventArgs e)
+    {
+        if (sender is TextBox textBox)
+        {
+            _inspectorNameEditStartText = textBox.Text ?? string.Empty;
+        }
+    }
+
+    private void OnInspectorNameKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (sender is not TextBox textBox)
+        {
+            return;
+        }
+
+        switch (e.Key)
+        {
+            case Key.Enter:
+                TopLevel.GetTopLevel(this)?.FocusManager?.ClearFocus();
+                e.Handled = true;
+                break;
+            case Key.Escape:
+                textBox.Text = _inspectorNameEditStartText;
+                TopLevel.GetTopLevel(this)?.FocusManager?.ClearFocus();
+                e.Handled = true;
+                break;
+        }
     }
 
     private async void OnOpened(object? sender, EventArgs e)

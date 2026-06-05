@@ -239,9 +239,12 @@
                                    Text="Name"
                                    VerticalAlignment="Center"
                                    Foreground="#AFC6E9" />
-                        <TextBox Grid.Column="1"
+                        <TextBox x:Name="InspectorNameTextBox"
+                                 Grid.Column="1"
                                  IsEnabled="{Binding HasSelectedObject}"
-                                 Text="{Binding SelectedObjectName, Mode=TwoWay}" />
+                                 Text="{Binding SelectedObjectName, Mode=TwoWay}"
+                                 GotFocus="OnInspectorNameGotFocus"
+                                 KeyDown="OnInspectorNameKeyDown" />
                     </Grid>
                     <TextBlock Text="{Binding InspectorIdText}" Foreground="#D8DEE9" />
                     <TextBlock Text="{Binding InspectorPositionText}" Foreground="#D8DEE9" />
