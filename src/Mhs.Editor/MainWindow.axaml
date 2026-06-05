@@ -16,25 +16,26 @@
         MinHeight="600">
     <Window.Styles>
         <Style Selector="Button.catalog-tool">
-            <Setter Property="Background" Value="#202733" />
-            <Setter Property="Foreground" Value="#DEE6F0" />
-            <Setter Property="BorderBrush" Value="#364355" />
+            <Setter Property="Background" Value="#2A3038" />
+            <Setter Property="Foreground" Value="#D9DEE5" />
+            <Setter Property="BorderBrush" Value="#404853" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="CornerRadius" Value="4" />
-            <Setter Property="Padding" Value="8,6" />
+            <Setter Property="CornerRadius" Value="3" />
+            <Setter Property="Padding" Value="6,4" />
+            <Setter Property="FontSize" Value="10.5" />
         </Style>
         <Style Selector="Button.part-tile">
-            <Setter Property="Background" Value="#1C2430" />
-            <Setter Property="BorderBrush" Value="#2D394A" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="CornerRadius" Value="4" />
-            <Setter Property="Padding" Value="6" />
-            <Setter Property="Margin" Value="0" />
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="Padding" Value="4,5" />
+            <Setter Property="Margin" Value="0,1" />
             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
         </Style>
         <Style Selector="Button.part-tile:pointerover">
-            <Setter Property="Background" Value="#223043" />
-            <Setter Property="BorderBrush" Value="#4F6E98" />
+            <Setter Property="Background" Value="#20262E" />
+            <Setter Property="BorderBrush" Value="#4A5463" />
         </Style>
     </Window.Styles>
     <DockPanel>
@@ -87,11 +88,11 @@
             <TextBlock Foreground="#D8DEE9" Text="{Binding StatusText}" />
         </Border>
 
-        <Grid ColumnDefinitions="320,*,300" Background="#1B1D23">
+        <Grid ColumnDefinitions="236,*,300" Background="#1B1D23">
             <DockPanel Grid.Column="0" Margin="8" LastChildFill="True">
-                <Border DockPanel.Dock="Top" Padding="10" Background="#1A202B" CornerRadius="4" Margin="0,0,0,6">
-                    <StackPanel Spacing="10">
-                        <TextBlock Text="Parts Browser" FontWeight="Bold" Foreground="#ECEFF4" FontSize="14" />
+                <Border DockPanel.Dock="Top" Padding="10" Background="#20252C" CornerRadius="4" Margin="0,0,0,6">
+                    <StackPanel Spacing="8">
+                        <TextBlock Text="Material Handling" FontWeight="SemiBold" Foreground="#ECEFF4" FontSize="13" />
                         <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="6">
                             <Button Grid.Column="0" Classes="catalog-tool" Content="Select" Command="{Binding SelectToolCommand}" />
                             <Button Grid.Column="1" Classes="catalog-tool" Content="Move" Command="{Binding MoveSelectionCommand}" />
@@ -103,33 +104,34 @@
                                  Background="#131922"
                                  BorderBrush="#3B4C61"
                                  Foreground="#E5E9F0" />
-                        <ScrollViewer MaxHeight="560">
+                        <ScrollViewer MaxHeight="620">
                             <ItemsControl ItemsSource="{Binding PartCatalogSections}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="vm:PartCatalogSectionViewModel">
-                                        <StackPanel Spacing="6" Margin="0,8,0,0">
+                                        <StackPanel Spacing="3" Margin="0,6,0,0">
                                             <TextBlock Text="{Binding Name}"
-                                                       Foreground="#8EA1B5"
-                                                       FontSize="12"
+                                                       Foreground="#8F98A4"
+                                                       FontSize="10"
                                                        FontWeight="Bold" />
                                             <ItemsControl ItemsSource="{Binding Items}">
                                                 <ItemsControl.ItemsPanel>
                                                     <ItemsPanelTemplate>
-                                                        <UniformGrid Columns="3" />
+                                                       <UniformGrid Columns="2" />
                                                     </ItemsPanelTemplate>
                                                 </ItemsControl.ItemsPanel>
                                                 <ItemsControl.ItemTemplate>
                                                     <DataTemplate x:DataType="vm:PartCatalogItemViewModel">
                                                         <Button Classes="part-tile" Command="{Binding ActivateCommand}">
-                                                            <StackPanel Spacing="4" HorizontalAlignment="Center">
-                                                                <Image Source="{Binding Thumbnail}" Width="56" Height="56" Stretch="Uniform" />
+                                                            <StackPanel Spacing="3" HorizontalAlignment="Center">
+                                                               <Image Source="{Binding Thumbnail}" Width="44" Height="44" Stretch="Uniform" />
                                                                 <TextBlock Text="{Binding DisplayName}"
                                                                            Foreground="#DEE6F0"
-                                                                           FontSize="11"
+                                                                           FontSize="10"
                                                                            TextWrapping="Wrap"
                                                                            HorizontalAlignment="Center"
                                                                            TextAlignment="Center"
-                                                                           MaxWidth="88" />
+                                                                           MaxWidth="92"
+                                                                           MaxHeight="28" />
                                                             </StackPanel>
                                                         </Button>
                                                     </DataTemplate>
