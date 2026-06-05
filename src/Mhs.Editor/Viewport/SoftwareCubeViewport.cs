@@ -853,8 +853,11 @@ public sealed class SoftwareCubeViewport : Control
     {
         var flowDirection = cell.ExitDirection ?? cell.MainFlowDirection;
         var (flowX, flowY) = DirectionToPlanarVector(flowDirection);
-        var packetX = cell.Position.X + 0.5;
-        var packetY = cell.Position.Y + 0.5;
+        var sideX = -flowY;
+        var sideY = flowX;
+        const double packetSideOffset = 0.17;
+        var packetX = cell.Position.X + 0.5 + sideX * packetSideOffset;
+        var packetY = cell.Position.Y + 0.5 + sideY * packetSideOffset;
         var clumpUnits = Math.Max(1, packet.UnitCount);
         var clumpScale = Math.Min(1.85, 1.0 + (Math.Sqrt(clumpUnits) - 1.0) * 0.38);
         var clumpHeightScale = Math.Min(2.1, 1.0 + (clumpUnits - 1) * 0.14);
