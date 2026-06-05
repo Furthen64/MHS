@@ -45,11 +45,23 @@ public static class MaterialCatalog
             "Yellow",
             Color.FromRgb(236, 201, 91),
             Color.FromRgb(198, 164, 60),
-            Color.FromRgb(171, 137, 43))
+            Color.FromRgb(171, 137, 43)),
+        new MaterialDefinition(
+            "Coal",
+            "Coal",
+            Color.FromRgb(74, 79, 88),
+            Color.FromRgb(56, 60, 68),
+            Color.FromRgb(43, 47, 54)),
+        new MaterialDefinition(
+            "Sand",
+            "Sand",
+            Color.FromRgb(233, 206, 144),
+            Color.FromRgb(203, 174, 112),
+            Color.FromRgb(180, 149, 92))
     ]);
 
     private static readonly IReadOnlyList<string> MaterialIds = new ReadOnlyCollection<string>(
-        new List<string> { "Brown", "Green", "Blue", "Gray", "Yellow" });
+        new List<string> { "Brown", "Green", "Blue", "Gray", "Yellow", "Coal", "Sand" });
 
     public static IReadOnlyList<string> AvailableMaterialIds => MaterialIds;
 
