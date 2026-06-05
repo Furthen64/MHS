@@ -855,11 +855,14 @@ public sealed class SoftwareCubeViewport : Control
         var (flowX, flowY) = DirectionToPlanarVector(flowDirection);
         var packetX = cell.Position.X + 0.5;
         var packetY = cell.Position.Y + 0.5;
+        var clumpUnits = Math.Max(1, packet.UnitCount);
+        var clumpScale = Math.Min(1.85, 1.0 + (Math.Sqrt(clumpUnits) - 1.0) * 0.38);
+        var clumpHeightScale = Math.Min(2.1, 1.0 + (clumpUnits - 1) * 0.14);
 
-        var packetHalfLength = Math.Abs(flowX) > 0.5 ? 0.12 : 0.09;
-        var packetHalfWidth = Math.Abs(flowX) > 0.5 ? 0.09 : 0.12;
+        var packetHalfLength = (Math.Abs(flowX) > 0.5 ? 0.12 : 0.09) * clumpScale;
+        var packetHalfWidth = (Math.Abs(flowX) > 0.5 ? 0.09 : 0.12) * clumpScale;
         var z0 = cell.Position.Z + 0.145;
-        var z1 = z0 + 0.08;
+        var z1 = z0 + 0.08 * clumpHeightScale;
         var material = MaterialCatalog.Resolve(packet.MaterialId);
         DrawConveyorBarSw(
             context,
