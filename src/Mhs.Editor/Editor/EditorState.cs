@@ -46,10 +46,28 @@ public sealed class EditorState : INotifyPropertyChanged
             new PartDefinition { Id = "hopper", DisplayName = "Hopper", Size = new VoxelSize(1, 1, 2), Color = Color.FromRgb(240, 200, 90) },
             new PartDefinition { Id = "bin", DisplayName = "Bin", Size = new VoxelSize(2, 2, 1), Color = Color.FromRgb(90, 150, 240) },
             new PartDefinition { Id = "conveyor", DisplayName = "Conveyor", Size = new VoxelSize(1, 1, 1), Color = Color.FromRgb(70, 80, 90) },
+            new PartDefinition { Id = "conveyor_straight", DisplayName = "Conveyor (Straight)", Size = new VoxelSize(2, 1, 1), Color = Color.FromRgb(88, 98, 112) },
+            new PartDefinition { Id = "conveyor_incline", DisplayName = "Conveyor (Incline)", Size = new VoxelSize(2, 1, 1), Color = Color.FromRgb(106, 100, 90) },
+            new PartDefinition { Id = "conveyor_curve", DisplayName = "Conveyor (Curve)", Size = new VoxelSize(2, 2, 1), Color = Color.FromRgb(110, 104, 94) },
+            new PartDefinition { Id = "conveyor_merge", DisplayName = "Conveyor (Merge)", Size = new VoxelSize(2, 2, 1), Color = Color.FromRgb(96, 104, 115) },
+            new PartDefinition { Id = "conveyor_split", DisplayName = "Conveyor (Split)", Size = new VoxelSize(2, 2, 1), Color = Color.FromRgb(100, 108, 118) },
+            new PartDefinition { Id = "transfer_plate", DisplayName = "Transfer Plate", Size = new VoxelSize(2, 2, 1), Color = Color.FromRgb(120, 120, 112) },
             new PartDefinition { Id = "chute", DisplayName = "Chute", Size = new VoxelSize(2, 1, 1), Color = Color.FromRgb(150, 150, 150) },
             new PartDefinition { Id = "tall_hopper", DisplayName = "Tall Hopper", Size = new VoxelSize(2, 2, 4), Color = Color.FromRgb(214, 132, 66) },
             new PartDefinition { Id = "mtrlsrc", DisplayName = "MtrlSrc", Size = new VoxelSize(1, 1, 1), Color = Color.FromRgb(199, 107, 61) },
-            new PartDefinition { Id = "mtrlrecv", DisplayName = "MtrlRecv", Size = new VoxelSize(1, 1, 1), Color = Color.FromRgb(80, 178, 146) }
+            new PartDefinition { Id = "mtrlrecv", DisplayName = "MtrlRecv", Size = new VoxelSize(1, 1, 1), Color = Color.FromRgb(80, 178, 146) },
+            new PartDefinition { Id = "lift_elevator", DisplayName = "Lift / Elevator", Size = new VoxelSize(1, 1, 4), Color = Color.FromRgb(165, 165, 172) },
+            new PartDefinition { Id = "drop_chute", DisplayName = "Drop Chute", Size = new VoxelSize(1, 1, 3), Color = Color.FromRgb(136, 136, 136) },
+            new PartDefinition { Id = "spiral_lift", DisplayName = "Spiral Lift", Size = new VoxelSize(2, 2, 3), Color = Color.FromRgb(181, 145, 82) },
+            new PartDefinition { Id = "support_frame", DisplayName = "Support Frame", Size = new VoxelSize(1, 1, 3), Color = Color.FromRgb(108, 117, 130) },
+            new PartDefinition { Id = "beam", DisplayName = "Beam", Size = new VoxelSize(2, 1, 1), Color = Color.FromRgb(118, 126, 136) },
+            new PartDefinition { Id = "platform", DisplayName = "Platform", Size = new VoxelSize(2, 2, 1), Color = Color.FromRgb(139, 129, 98) },
+            new PartDefinition { Id = "wall", DisplayName = "Wall", Size = new VoxelSize(1, 1, 2), Color = Color.FromRgb(126, 132, 144) },
+            new PartDefinition { Id = "fence", DisplayName = "Fence", Size = new VoxelSize(2, 1, 1), Color = Color.FromRgb(132, 122, 98) },
+            new PartDefinition { Id = "ladder", DisplayName = "Ladder", Size = new VoxelSize(1, 1, 2), Color = Color.FromRgb(122, 130, 138) },
+            new PartDefinition { Id = "motor", DisplayName = "Motor", Size = new VoxelSize(1, 1, 1), Color = Color.FromRgb(86, 124, 138) },
+            new PartDefinition { Id = "sensor", DisplayName = "Sensor", Size = new VoxelSize(1, 1, 1), Color = Color.FromRgb(126, 146, 108) },
+            new PartDefinition { Id = "control_box", DisplayName = "Control Box", Size = new VoxelSize(1, 1, 1), Color = Color.FromRgb(108, 112, 122) }
         ];
 
         _activeTool = new SelectTool();
