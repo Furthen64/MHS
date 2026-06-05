@@ -29,7 +29,14 @@ public sealed class RouteInputAttachmentRuntime
     public float Accumulator { get; set; }
     public string MaterialId { get; set; } = SceneObject.DefaultMaterialId;
     public RouteInputAttachmentStatus LastStatus { get; set; } = RouteInputAttachmentStatus.WaitingForRate;
+    public float OutputPulseTimer { get; set; }
+    public string LastInjectedMaterialId { get; set; } = SceneObject.DefaultMaterialId;
 }
+
+public readonly record struct SourceOutputPulseState(
+    VoxelCoord TargetCell,
+    string MaterialId,
+    float NormalizedIntensity);
 
 public sealed class ConveyorRouteRuntime
 {
@@ -61,6 +68,7 @@ public sealed class ConveyorRouteRuntime
 
 public sealed class ConveyorRouteMaterialFlowSimulator
 {
+    private const float SourceOutputPulseDurationSeconds = 0.28f;
     private readonly List<ConveyorRouteRuntime> _routes = [];
 
     public IReadOnlyList<ConveyorRouteRuntime> Routes => new ReadOnlyCollection<ConveyorRouteRuntime>(_routes);
@@ -158,8 +166,35 @@ public sealed class ConveyorRouteMaterialFlowSimulator
             MaterialId = MaterialCatalog.NormalizeId(attachment.MaterialId),
             UnitCount = NormalizeGranulesPerPacket(attachment.GranulesPerPacket)
         };
+        attachment.OutputPulseTimer = SourceOutputPulseDurationSeconds;
+        attachment.LastInjectedMaterialId = route.Slots[attachment.RouteCellIndex]!.MaterialId;
         attachment.LastStatus = RouteInputAttachmentStatus.Injected;
         return true;
+    }
+
+    public bool TryGetSourceOutputPulse(Guid sourceObjectId, out SourceOutputPulseState pulse)
+    {
+        foreach (var route in _routes)
+        {
+            var attachment = route.InputAttachments.FirstOrDefault(candidate => candidate.ObjectId == sourceObjectId);
+            if (attachment is null
+                || attachment.OutputPulseTimer <= 0f
+                || attachment.RouteCellIndex < 0
+                || attachment.RouteCellIndex >= route.Cells.Count)
+            {
+                continue;
+            }
+
+            var normalized = Math.Clamp(attachment.OutputPulseTimer / SourceOutputPulseDurationSeconds, 0f, 1f);
+            pulse = new SourceOutputPulseState(
+                route.Cells[attachment.RouteCellIndex],
+                MaterialCatalog.NormalizeId(attachment.LastInjectedMaterialId),
+                normalized);
+            return true;
+        }
+
+        pulse = default;
+        return false;
     }
 
     private void SyncRoutes(PortConnectivitySnapshot snapshot, IReadOnlyList<SceneObject> sceneObjects)
@@ -405,6 +440,7 @@ public sealed class ConveyorRouteMaterialFlowSimulator
 
         foreach (var input in route.InputAttachments)
         {
+            input.OutputPulseTimer = Math.Max(0f, input.OutputPulseTimer - dtSeconds);
             if (input.UnitsPerSecond <= 0f)
             {
                 input.Accumulator = 0f;
@@ -495,6 +531,8 @@ public sealed class ConveyorRouteMaterialFlowSimulator
                 UnitCount = unitCount
             };
             selected.Accumulator = Math.Max(0f, selected.Accumulator - 1f);
+            selected.OutputPulseTimer = SourceOutputPulseDurationSeconds;
+            selected.LastInjectedMaterialId = route.Slots[cellIndex]!.MaterialId;
             selected.LastStatus = RouteInputAttachmentStatus.Injected;
             route.NextInputAttachmentIndexByCell[cellIndex] = NormalizeTurnIndex(selectedIndex + 1, contenders.Length);
             injected++;

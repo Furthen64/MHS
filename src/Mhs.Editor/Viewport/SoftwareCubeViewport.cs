@@ -135,6 +135,10 @@ public sealed class SoftwareCubeViewport : Control
             {
                 DrawIsoBox(context, drawPosition, drawSize, color, opacity, drawOutline: false, state);
                 DrawFacingMarker(context, drawPosition, drawSize, drawRotation, renderInfo, opacity, state);
+                if (string.Equals(sceneObject.PartId, "mtrlsrc", StringComparison.OrdinalIgnoreCase))
+                {
+                    DrawMtrlSrcOutputPulse(context, sceneObject, drawPosition, drawSize, drawRotation, renderInfo, opacity, state);
+                }
             }
         }
 
@@ -1359,7 +1363,7 @@ public sealed class SoftwareCubeViewport : Control
     }
 
     private void DrawFacingMarker(DrawingContext context, VoxelCoord position, VoxelSize effectiveSize,
-        int rotationZDegrees, PartRenderInfo renderInfo, double opacity, EditorState state)
+        int rotationZDegrees, PartRenderInfo renderInfo, double opacity, EditorState state, Color? markerColorOverride = null)
     {
         if (!renderInfo.ShowFacingMarker)
         {
@@ -1410,7 +1414,7 @@ public sealed class SoftwareCubeViewport : Control
         var base2 = Project(tailX - px * arrowBase, tailY - py * arrowBase, z1, state);
         var tip   = Project(tipX, tipY, z1, state);
 
-        var markerColor = renderInfo.FacingMarkerColor.ToAvaloniaColor();
+        var markerColor = markerColorOverride ?? renderInfo.FacingMarkerColor.ToAvaloniaColor();
         var markerOpacity = Math.Min(opacity + 0.25, 1.0);
         if (renderInfo.FlowMarkerKind == FlowMarkerKind.Incoming)
         {
@@ -1426,6 +1430,79 @@ public sealed class SoftwareCubeViewport : Control
 
         var brush = new SolidColorBrush(WithOpacity(markerColor, markerOpacity));
         context.DrawGeometry(brush, null, Polygon(tip, base1, base2));
+    }
+
+    private void DrawMtrlSrcOutputPulse(
+        DrawingContext context,
+        SceneObject sourceObject,
+        VoxelCoord position,
+        VoxelSize size,
+        int rotationZDegrees,
+        PartRenderInfo renderInfo,
+        double opacity,
+        EditorState state)
+    {
+        if (!state.Scene.ConveyorRouteFlow.TryGetSourceOutputPulse(sourceObject.Id, out var pulse))
+        {
+            return;
+        }
+
+        var intensity = Math.Clamp(pulse.NormalizedIntensity, 0f, 1f);
+        if (intensity <= 0f)
+        {
+            return;
+        }
+
+        var material = MaterialCatalog.Resolve(pulse.MaterialId);
+        var markerOpacity = Math.Min(opacity + 0.45 + intensity * 0.35, 1.0);
+        DrawFacingMarker(context, position, size, rotationZDegrees, renderInfo, markerOpacity, state, material.TopColor);
+
+        var outlineColor = TintColor(Color.FromRgb(255, 255, 255), material.TopColor, 0.30);
+        DrawOutline(context, position, size, WithOpacity(outlineColor, 0.25 + intensity * 0.55), 1.6 + intensity * 1.2, state);
+
+        var sourceCenterX = position.X + size.WidthX * 0.5;
+        var sourceCenterY = position.Y + size.DepthY * 0.5;
+        var sourceZ = position.Z + size.HeightZ + 0.06;
+        var targetCenterX = pulse.TargetCell.X + 0.5;
+        var targetCenterY = pulse.TargetCell.Y + 0.5;
+
+        var dirX = targetCenterX - sourceCenterX;
+        var dirY = targetCenterY - sourceCenterY;
+        var dirLength = Math.Sqrt((dirX * dirX) + (dirY * dirY));
+        if (dirLength < 0.001)
+        {
+            var normalized = RotationHelper.NormalizeDegrees(rotationZDegrees);
+            (dirX, dirY) = normalized switch
+            {
+                0 => (1.0, 0.0),
+                90 => (0.0, 1.0),
+                180 => (-1.0, 0.0),
+                _ => (0.0, -1.0)
+            };
+        }
+        else
+        {
+            dirX /= dirLength;
+            dirY /= dirLength;
+        }
+
+        var progress = 1.0 - intensity;
+        var travel = 0.18 + progress * 0.82;
+        var flashX = sourceCenterX + dirX * travel;
+        var flashY = sourceCenterY + dirY * travel;
+        var flashSize = 0.048 + intensity * 0.040;
+        var flashCenter = Project(flashX, flashY, sourceZ, state);
+        var radius = 4.0 + (flashSize * 26.0);
+        var flashBrush = new SolidColorBrush(WithOpacity(material.TopColor, 0.40 + intensity * 0.55));
+        var flashPen = new Pen(new SolidColorBrush(WithOpacity(Color.FromRgb(245, 245, 245), 0.25 + intensity * 0.45)), 1.0 + intensity * 0.8);
+        context.DrawGeometry(
+            flashBrush,
+            flashPen,
+            Polygon(
+                new Point(flashCenter.X, flashCenter.Y - radius),
+                new Point(flashCenter.X + radius, flashCenter.Y),
+                new Point(flashCenter.X, flashCenter.Y + radius),
+                new Point(flashCenter.X - radius, flashCenter.Y)));
     }
 
     private void DrawConveyorMarker(DrawingContext context, VoxelCoord position, VoxelSize effectiveSize, int rotationZDegrees,
