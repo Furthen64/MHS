@@ -185,6 +185,10 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
             {
                 DrawIsoBox(drawPosition, drawSize, color, opacity, drawOutline: false, state);
                 DrawFacingMarker(drawPosition, drawSize, drawRotation, renderInfo, opacity, state);
+                if (string.Equals(sceneObject.PartId, "mtrlsrc", StringComparison.OrdinalIgnoreCase))
+                {
+                    DrawMtrlSrcOutputPulse(sceneObject, drawPosition, drawSize, drawRotation, renderInfo, opacity, state);
+                }
             }
         }
 
@@ -1667,7 +1671,7 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
     }
 
     private void DrawFacingMarker(VoxelCoord position, VoxelSize effectiveSize,
-        int rotationZDegrees, PartRenderInfo renderInfo, double opacity, EditorState state)
+        int rotationZDegrees, PartRenderInfo renderInfo, double opacity, EditorState state, Color? markerColorOverride = null)
     {
         if (_renderer is null)
         {
@@ -1721,7 +1725,7 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
         var base2 = Project(tailX - px * arrowBase, tailY - py * arrowBase, z1, state);
         var tip = Project(tipX, tipY, z1, state);
 
-        var markerColor = renderInfo.FacingMarkerColor.ToAvaloniaColor();
+        var markerColor = markerColorOverride ?? renderInfo.FacingMarkerColor.ToAvaloniaColor();
         var markerOpacity = Math.Min(opacity + 0.25, 1.0);
         if (renderInfo.FlowMarkerKind == FlowMarkerKind.Incoming)
         {
@@ -1735,6 +1739,80 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
         }
 
         _renderer.AddFilledTriangle(tip, base1, base2, markerColor, markerOpacity);
+    }
+
+    private void DrawMtrlSrcOutputPulse(
+        SceneObject sourceObject,
+        VoxelCoord position,
+        VoxelSize size,
+        int rotationZDegrees,
+        PartRenderInfo renderInfo,
+        double opacity,
+        EditorState state)
+    {
+        if (_renderer is null
+            || !state.Scene.ConveyorRouteFlow.TryGetSourceOutputPulse(sourceObject.Id, out var pulse))
+        {
+            return;
+        }
+
+        var intensity = Math.Clamp(pulse.NormalizedIntensity, 0f, 1f);
+        if (intensity <= 0f)
+        {
+            return;
+        }
+
+        var material = MaterialCatalog.Resolve(pulse.MaterialId);
+        var markerOpacity = Math.Min(opacity + 0.45 + intensity * 0.35, 1.0);
+        DrawFacingMarker(position, size, rotationZDegrees, renderInfo, markerOpacity, state, material.TopColor);
+
+        var outlineColor = TintColor(Color.FromRgb(255, 255, 255), material.TopColor, 0.30);
+        DrawOutline(position, size, outlineColor, Math.Min(0.30 + intensity * 0.60, 1.0), state);
+
+        var sourceCenterX = position.X + size.WidthX * 0.5;
+        var sourceCenterY = position.Y + size.DepthY * 0.5;
+        var sourceZ = position.Z + size.HeightZ + 0.06;
+        var targetCenterX = pulse.TargetCell.X + 0.5;
+        var targetCenterY = pulse.TargetCell.Y + 0.5;
+
+        var dirX = targetCenterX - sourceCenterX;
+        var dirY = targetCenterY - sourceCenterY;
+        var dirLength = Math.Sqrt((dirX * dirX) + (dirY * dirY));
+        if (dirLength < 0.001)
+        {
+            var normalized = RotationHelper.NormalizeDegrees(rotationZDegrees);
+            (dirX, dirY) = normalized switch
+            {
+                0 => (1.0, 0.0),
+                90 => (0.0, 1.0),
+                180 => (-1.0, 0.0),
+                _ => (0.0, -1.0)
+            };
+        }
+        else
+        {
+            dirX /= dirLength;
+            dirY /= dirLength;
+        }
+
+        var progress = 1.0 - intensity;
+        var travel = 0.18 + progress * 0.82;
+        var flashX = sourceCenterX + dirX * travel;
+        var flashY = sourceCenterY + dirY * travel;
+        var halfSize = 0.060 + intensity * 0.042;
+
+        var top = Project(flashX, flashY - halfSize, sourceZ, state);
+        var right = Project(flashX + halfSize, flashY, sourceZ, state);
+        var bottom = Project(flashX, flashY + halfSize, sourceZ, state);
+        var left = Project(flashX - halfSize, flashY, sourceZ, state);
+
+        var flashOpacity = Math.Min(0.40 + intensity * 0.55, 1.0);
+        _renderer.AddFilledTriangle(top, right, bottom, material.TopColor, flashOpacity);
+        _renderer.AddFilledTriangle(top, bottom, left, material.TopColor, flashOpacity);
+        _renderer.AddLine(top, right, Color.FromRgb(245, 245, 245), Math.Min(0.30 + intensity * 0.40, 1.0));
+        _renderer.AddLine(right, bottom, Color.FromRgb(245, 245, 245), Math.Min(0.30 + intensity * 0.40, 1.0));
+        _renderer.AddLine(bottom, left, Color.FromRgb(245, 245, 245), Math.Min(0.30 + intensity * 0.40, 1.0));
+        _renderer.AddLine(left, top, Color.FromRgb(245, 245, 245), Math.Min(0.30 + intensity * 0.40, 1.0));
     }
 
     private void DrawConveyorMarker(VoxelCoord position, VoxelSize effectiveSize, int rotationZDegrees,
