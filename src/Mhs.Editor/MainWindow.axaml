@@ -14,6 +14,29 @@
         Height="950"
         MinWidth="900"
         MinHeight="600">
+    <Window.Styles>
+        <Style Selector="Button.catalog-tool">
+            <Setter Property="Background" Value="#202733" />
+            <Setter Property="Foreground" Value="#DEE6F0" />
+            <Setter Property="BorderBrush" Value="#364355" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="4" />
+            <Setter Property="Padding" Value="8,6" />
+        </Style>
+        <Style Selector="Button.part-tile">
+            <Setter Property="Background" Value="#1C2430" />
+            <Setter Property="BorderBrush" Value="#2D394A" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="4" />
+            <Setter Property="Padding" Value="6" />
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        </Style>
+        <Style Selector="Button.part-tile:pointerover">
+            <Setter Property="Background" Value="#223043" />
+            <Setter Property="BorderBrush" Value="#4F6E98" />
+        </Style>
+    </Window.Styles>
     <DockPanel>
         <Menu DockPanel.Dock="Top">
             <MenuItem Header="☰">
@@ -64,19 +87,67 @@
             <TextBlock Foreground="#D8DEE9" Text="{Binding StatusText}" />
         </Border>
 
-        <Grid ColumnDefinitions="220,*,300" Background="#1B1D23">
+        <Grid ColumnDefinitions="320,*,300" Background="#1B1D23">
             <DockPanel Grid.Column="0" Margin="8" LastChildFill="True">
-                <Border DockPanel.Dock="Top" Padding="10" Background="#232833" CornerRadius="4" Margin="0,0,0,6">
-                    <StackPanel Spacing="8">
-                        <TextBlock Text="Parts Palette" FontWeight="Bold" Foreground="#ECEFF4" FontSize="14" />
-                        <RadioButton Content="Select" GroupName="Tools" IsChecked="{Binding IsSelectActive}" Command="{Binding SelectToolCommand}" />
-                        <RadioButton Content="Hopper" GroupName="Tools" IsChecked="{Binding IsHopperActive}" Command="{Binding HopperToolCommand}" />
-                        <RadioButton Content="Bin" GroupName="Tools" IsChecked="{Binding IsBinActive}" Command="{Binding BinToolCommand}" />
-                        <RadioButton Content="Conveyor Route" GroupName="Tools" IsChecked="{Binding IsConveyorRouteActive}" Command="{Binding ConveyorRouteToolCommand}" />
-                        <RadioButton Content="Chute" GroupName="Tools" IsChecked="{Binding IsChuteActive}" Command="{Binding ChuteToolCommand}" />
-                        <RadioButton Content="Tall Hopper" GroupName="Tools" IsChecked="{Binding IsTallHopperActive}" Command="{Binding TallHopperToolCommand}" />
-                        <RadioButton Content="MtrlSrc" GroupName="Tools" IsChecked="{Binding IsMtrlSrcActive}" Command="{Binding MtrlSrcToolCommand}" />
-                        <RadioButton Content="MtrlRecv" GroupName="Tools" IsChecked="{Binding IsMtrlRecvActive}" Command="{Binding MtrlRecvToolCommand}" />
+                <Border DockPanel.Dock="Top" Padding="10" Background="#1A202B" CornerRadius="4" Margin="0,0,0,6">
+                    <StackPanel Spacing="10">
+                        <TextBlock Text="Parts Browser" FontWeight="Bold" Foreground="#ECEFF4" FontSize="14" />
+                        <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="6">
+                            <Button Grid.Column="0" Classes="catalog-tool" Content="Select" Command="{Binding SelectToolCommand}" />
+                            <Button Grid.Column="1" Classes="catalog-tool" Content="Move" Command="{Binding MoveSelectionCommand}" />
+                            <Button Grid.Column="2" Classes="catalog-tool" Content="Rotate" Command="{Binding RotateSelectionCommand}" />
+                            <Button Grid.Column="3" Classes="catalog-tool" Content="Delete" Command="{Binding DeleteSelectionCommand}" />
+                        </Grid>
+                        <TextBox PlaceholderText="Search parts..."
+                                 Text="{Binding PartSearchText, Mode=TwoWay}"
+                                 Background="#131922"
+                                 BorderBrush="#3B4C61"
+                                 Foreground="#E5E9F0" />
+                        <ScrollViewer MaxHeight="560">
+                            <ItemsControl ItemsSource="{Binding PartCatalogSections}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:PartCatalogSectionViewModel">
+                                        <StackPanel Spacing="6" Margin="0,8,0,0">
+                                            <TextBlock Text="{Binding Name}"
+                                                       Foreground="#8EA1B5"
+                                                       FontSize="12"
+                                                       FontWeight="Bold" />
+                                            <ItemsControl ItemsSource="{Binding Items}">
+                                                <ItemsControl.ItemsPanel>
+                                                    <ItemsPanelTemplate>
+                                                        <UniformGrid Columns="3" />
+                                                    </ItemsPanelTemplate>
+                                                </ItemsControl.ItemsPanel>
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate x:DataType="vm:PartCatalogItemViewModel">
+                                                        <Button Classes="part-tile" Command="{Binding ActivateCommand}">
+                                                            <StackPanel Spacing="4" HorizontalAlignment="Center">
+                                                                <Image Source="{Binding Thumbnail}" Width="56" Height="56" Stretch="Uniform" />
+                                                                <TextBlock Text="{Binding DisplayName}"
+                                                                           Foreground="#DEE6F0"
+                                                                           FontSize="11"
+                                                                           TextWrapping="Wrap"
+                                                                           HorizontalAlignment="Center"
+                                                                           TextAlignment="Center"
+                                                                           MaxWidth="88" />
+                                                            </StackPanel>
+                                                        </Button>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                        <Button Content="Browse More Parts..."
+                                Command="{Binding BrowseMorePartsCommand}"
+                                Background="#233A5A"
+                                Foreground="#E8F1FC"
+                                BorderBrush="#4A6F9F"
+                                BorderThickness="1"
+                                CornerRadius="4"
+                                Padding="10,6" />
                     </StackPanel>
                 </Border>
 

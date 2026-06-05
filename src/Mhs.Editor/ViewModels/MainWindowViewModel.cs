@@ -23,6 +23,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private static readonly IReadOnlyList<int> MtrlSrcGranuleCountOptions = [1, 5, 10, 50, 100];
     private readonly IEditorTool _selectTool = new SelectTool();
     private readonly ConveyorRouteTool _conveyorRouteTool = new();
+    private readonly Dictionary<string, RelayCommand> _placePartToolCommandsByPartId = new(StringComparer.OrdinalIgnoreCase);
+    private readonly IReadOnlyList<PartCatalogMetadataEntry> _partCatalogEntries;
     private ViewportInteractionPreset _interactionPreset = ViewportInteractionPreset.BlenderLike;
     private bool _useOpenGlViewport = true;
     private string _preferredOpenGlGpuName = "System default GPU";
@@ -35,6 +37,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private int _selectedMtrlSrcGranulesPerPacket = SceneObject.DefaultMaterialGranulesPerPacket;
     private string _selectedMtrlSrcRateStatusText = "Select MtrlSrc";
     private SceneTreeNodeViewModel? _selectedSceneTreeNode;
+    private string _partSearchText = string.Empty;
 
     public MainWindowViewModel()
     {
@@ -44,6 +47,14 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         SelectToolCommand = new RelayCommand(() => SetTool(_selectTool));
         ConveyorRouteToolCommand = new RelayCommand(() => SetTool(_conveyorRouteTool));
+        MoveSelectionCommand = new RelayCommand(StartMoveSelection);
+        RotateSelectionCommand = new RelayCommand(RotateAction);
+        DeleteSelectionCommand = new RelayCommand(DeleteSelection);
+        BrowseMorePartsCommand = new RelayCommand(() =>
+        {
+            EditorState.StatusMessage = "Browse More Parts is not wired yet.";
+            RaiseComputed();
+        });
         Floor0Command = new RelayCommand(() => SetActiveFloor(0));
         Floor1Command = new RelayCommand(() => SetActiveFloor(1));
         Floor2Command = new RelayCommand(() => SetActiveFloor(2));
@@ -63,35 +74,19 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         foreach (var part in EditorState.PartDefinitions)
         {
-            switch (part.Id)
-            {
-                case "hopper":
-                    HopperToolCommand = new RelayCommand(() => SetTool(new PlacePartTool(part)));
-                    break;
-                case "bin":
-                    BinToolCommand = new RelayCommand(() => SetTool(new PlacePartTool(part)));
-                    break;
-                case "chute":
-                    ChuteToolCommand = new RelayCommand(() => SetTool(new PlacePartTool(part)));
-                    break;
-                case "tall_hopper":
-                    TallHopperToolCommand = new RelayCommand(() => SetTool(new PlacePartTool(part)));
-                    break;
-                case "mtrlsrc":
-                    MtrlSrcToolCommand = new RelayCommand(() => SetTool(new PlacePartTool(part)));
-                    break;
-                case "mtrlrecv":
-                    MtrlRecvToolCommand = new RelayCommand(() => SetTool(new PlacePartTool(part)));
-                    break;
-            }
+            var command = new RelayCommand(() => SetTool(new PlacePartTool(part)));
+            _placePartToolCommandsByPartId[part.Id] = command;
         }
 
-        HopperToolCommand ??= new RelayCommand(() => { });
-        BinToolCommand ??= new RelayCommand(() => { });
-        ChuteToolCommand ??= new RelayCommand(() => { });
-        TallHopperToolCommand ??= new RelayCommand(() => { });
-        MtrlSrcToolCommand ??= new RelayCommand(() => { });
-        MtrlRecvToolCommand ??= new RelayCommand(() => { });
+        HopperToolCommand = ResolvePlacePartToolCommand("hopper");
+        BinToolCommand = ResolvePlacePartToolCommand("bin");
+        ChuteToolCommand = ResolvePlacePartToolCommand("chute");
+        TallHopperToolCommand = ResolvePlacePartToolCommand("tall_hopper");
+        MtrlSrcToolCommand = ResolvePlacePartToolCommand("mtrlsrc");
+        MtrlRecvToolCommand = ResolvePlacePartToolCommand("mtrlrecv");
+
+        _partCatalogEntries = PartCatalogLoader.LoadCatalog();
+        RebuildPartCatalogSections();
 
         SetTool(_selectTool);
         SyncSelectedMtrlSrcEditor();
@@ -103,6 +98,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public ICommand SelectToolCommand { get; }
     public ICommand ConveyorRouteToolCommand { get; }
+    public ICommand MoveSelectionCommand { get; }
+    public ICommand RotateSelectionCommand { get; }
+    public ICommand DeleteSelectionCommand { get; }
+    public ICommand BrowseMorePartsCommand { get; }
     public ICommand HopperToolCommand { get; }
     public ICommand BinToolCommand { get; }
     public ICommand ChuteToolCommand { get; }
@@ -127,6 +126,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand DecreaseSelectedMtrlSrcRateCommand { get; }
 
     public ObservableCollection<SceneTreeNodeViewModel> SceneTreeNodes { get; } = [];
+    public ObservableCollection<PartCatalogSectionViewModel> PartCatalogSections { get; } = [];
 
     public SceneTreeNodeViewModel? SelectedSceneTreeNode
     {
@@ -172,6 +172,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     }
 
     public bool IsSelectActive => EditorState.ActiveTool is SelectTool;
+    public bool IsMoveActionActive => EditorState.IsMovingSelection;
+    public bool IsRotateActionActive => EditorState.IsSelectionRotationMode;
     public bool IsHopperActive => EditorState.ActiveTool.Name == "Hopper";
     public bool IsBinActive => EditorState.ActiveTool.Name == "Bin";
     public bool IsConveyorRouteActive => EditorState.ActiveTool is ConveyorRouteTool;
@@ -195,6 +197,22 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public bool UseOpenGlViewport => _useOpenGlViewport;
     public string PreferredOpenGlGpuName => _preferredOpenGlGpuName;
     public int SceneViewportColumnSpan => _expertMode ? 1 : 2;
+    public string PartSearchText
+    {
+        get => _partSearchText;
+        set
+        {
+            var next = value ?? string.Empty;
+            if (string.Equals(_partSearchText, next, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            _partSearchText = next;
+            RebuildPartCatalogSections();
+            OnPropertyChanged();
+        }
+    }
     public string LayerDisplayText => $"Layer: {EditorState.ActiveLayer} of {WorldVerticalSettings.LayersPerFloor - 1}";
     public string AbsoluteZDisplayText => $"Absolute Z: {EditorState.ActiveAbsoluteZ}";
 
@@ -950,6 +968,87 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         return $"Move Preview: Target X {target.X}, Y {target.Y}, Z {target.Z} | Valid: {validity}";
     }
 
+    private RelayCommand ResolvePlacePartToolCommand(string partId)
+    {
+        if (_placePartToolCommandsByPartId.TryGetValue(partId, out var command))
+        {
+            return command;
+        }
+
+        return new RelayCommand(() => { });
+    }
+
+    private void RebuildPartCatalogSections()
+    {
+        IEnumerable<PartCatalogMetadataEntry> source = _partCatalogEntries;
+        if (!string.IsNullOrWhiteSpace(_partSearchText))
+        {
+            var query = _partSearchText.Trim();
+            source = source.Where(entry =>
+                entry.DisplayName.Contains(query, StringComparison.OrdinalIgnoreCase)
+                || entry.Category.Contains(query, StringComparison.OrdinalIgnoreCase)
+                || entry.Tags.Any(tag => tag.Contains(query, StringComparison.OrdinalIgnoreCase)));
+        }
+
+        var sectionOrder = source
+            .Select(entry => entry.Category)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var grouped = source
+            .GroupBy(entry => entry.Category, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(group => sectionOrder.FindIndex(category => string.Equals(category, group.Key, StringComparison.OrdinalIgnoreCase)));
+
+        PartCatalogSections.Clear();
+        foreach (var group in grouped)
+        {
+            var items = group
+                .Select(entry => new PartCatalogItemViewModel
+                {
+                    Id = entry.Id,
+                    DisplayName = entry.DisplayName,
+                    Category = entry.Category,
+                    Tags = entry.Tags,
+                    Thumbnail = entry.Thumbnail,
+                    ToolType = entry.ToolType,
+                    IsPlaceable = entry.IsPlaceable,
+                    ActivateCommand = new RelayCommand(() => ActivatePartCatalogEntry(entry))
+                })
+                .ToList();
+
+            PartCatalogSections.Add(new PartCatalogSectionViewModel
+            {
+                Name = group.Key.ToUpperInvariant(),
+                Items = items
+            });
+        }
+    }
+
+    private void ActivatePartCatalogEntry(PartCatalogMetadataEntry entry)
+    {
+        if (entry.ToolType.Equals("route", StringComparison.OrdinalIgnoreCase))
+        {
+            SetTool(_conveyorRouteTool);
+            return;
+        }
+
+        if (!entry.ToolType.Equals("place", StringComparison.OrdinalIgnoreCase))
+        {
+            EditorState.StatusMessage = $"{entry.DisplayName} is not available yet.";
+            RaiseComputed();
+            return;
+        }
+
+        if (_placePartToolCommandsByPartId.TryGetValue(entry.Id, out var command))
+        {
+            command.Execute(null);
+            return;
+        }
+
+        EditorState.StatusMessage = $"{entry.DisplayName} has no placement tool yet.";
+        RaiseComputed();
+    }
+
     private void SetTool(IEditorTool tool)
     {
         EditorState.ActiveTool.OnCancel(EditorState);
@@ -1207,6 +1306,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private void RaiseComputed()
     {
         OnPropertyChanged(nameof(IsSelectActive));
+        OnPropertyChanged(nameof(IsMoveActionActive));
+        OnPropertyChanged(nameof(IsRotateActionActive));
         OnPropertyChanged(nameof(IsHopperActive));
         OnPropertyChanged(nameof(IsBinActive));
         OnPropertyChanged(nameof(IsConveyorRouteActive));
