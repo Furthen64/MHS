@@ -1433,19 +1433,19 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
     {
         if (string.Equals(materialId, "Coal", StringComparison.OrdinalIgnoreCase))
         {
-            granuleCount = Math.Min(Math.Max(clumpUnits * 3, 3), 24);
-            minGranuleSize = 0.070;
-            maxGranuleSize = 0.135;
-            granuleHeightScale = 0.88;
+            granuleCount = Math.Min(Math.Max(clumpUnits, 1), 100);
+            minGranuleSize = 0.105;
+            maxGranuleSize = 0.190;
+            granuleHeightScale = 1.0;
             return true;
         }
 
         if (string.Equals(materialId, "Sand", StringComparison.OrdinalIgnoreCase))
         {
-            granuleCount = Math.Min(Math.Max(clumpUnits * 8, 8), 56);
-            minGranuleSize = 0.032;
-            maxGranuleSize = 0.066;
-            granuleHeightScale = 0.60;
+            granuleCount = Math.Min(Math.Max(clumpUnits, 1), 100);
+            minGranuleSize = 0.050;
+            maxGranuleSize = 0.092;
+            granuleHeightScale = 0.72;
             return true;
         }
 

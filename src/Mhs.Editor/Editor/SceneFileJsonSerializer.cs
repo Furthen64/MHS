@@ -26,6 +26,7 @@ public sealed class SceneFileObjectData
     public VoxelCoord Position { get; init; }
     public int RotationZDegrees { get; init; }
     public float MaterialUnitsPerSecond { get; init; }
+    public int MaterialGranulesPerPacket { get; init; }
 
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? MaterialId { get; init; }
