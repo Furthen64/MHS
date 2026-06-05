@@ -802,8 +802,8 @@ public sealed class SoftwareCubeViewport : Control
         var z = cell.Position.Z + 0.208;
         var centerX = cell.Position.X + 0.5;
         var centerY = cell.Position.Y + 0.5;
-        var flowColor = Color.FromRgb(255, 221, 118);
-        var glyphOpacity = Math.Min(opacity + 0.32, 1.0);
+        var flowColor = Color.FromRgb(245, 215, 145);
+        var glyphOpacity = Math.Clamp(opacity * 0.44 + 0.10, 0.12, 0.54);
         var flowPen = new Pen(new SolidColorBrush(WithOpacity(flowColor, glyphOpacity)), 1.5);
         var arrowBrush = new SolidColorBrush(WithOpacity(flowColor, glyphOpacity));
 
@@ -859,7 +859,7 @@ public sealed class SoftwareCubeViewport : Control
         var packetX = cell.Position.X + 0.5 + sideX * packetSideOffset;
         var packetY = cell.Position.Y + 0.5 + sideY * packetSideOffset;
         var clumpUnits = Math.Max(1, packet.UnitCount);
-        var clumpScale = Math.Min(1.85, 1.0 + (Math.Sqrt(clumpUnits) - 1.0) * 0.38);
+        var clumpScale = Math.Min(2.05, 1.18 + (Math.Sqrt(clumpUnits) - 1.0) * 0.42);
         var clumpHeightScale = Math.Min(2.1, 1.0 + (clumpUnits - 1) * 0.14);
 
         var packetHalfLength = (Math.Abs(flowX) > 0.5 ? 0.12 : 0.09) * clumpScale;
@@ -889,7 +889,7 @@ public sealed class SoftwareCubeViewport : Control
         }
 
         var z1 = z0 + 0.08 * clumpHeightScale;
-        DrawConveyorBarSw(
+        DrawOutlinedConveyorBarSw(
             context,
             packetX - packetHalfLength,
             packetX + packetHalfLength,
@@ -901,6 +901,7 @@ public sealed class SoftwareCubeViewport : Control
             material.RightColor,
             material.FrontColor,
             particleOpacity,
+            GetMaterialOutlineColor(material),
             state);
     }
 
@@ -940,7 +941,7 @@ public sealed class SoftwareCubeViewport : Control
             var rightColor = TintColor(Color.FromRgb(20, 20, 20), material.RightColor, 0.06 + HashToUnit(tintSeed ^ 0x3D4E5F71u) * 0.16);
             var frontColor = TintColor(Color.FromRgb(20, 20, 20), material.FrontColor, 0.06 + HashToUnit(tintSeed ^ 0x9B7AA321u) * 0.16);
 
-            DrawConveyorBarSw(
+            DrawOutlinedConveyorBarSw(
                 context,
                 centerX - halfSize,
                 centerX + halfSize,
@@ -952,8 +953,41 @@ public sealed class SoftwareCubeViewport : Control
                 rightColor,
                 frontColor,
                 opacity,
+                GetMaterialOutlineColor(material),
                 state);
         }
+    }
+
+    private void DrawOutlinedConveyorBarSw(
+        DrawingContext context,
+        double x0,
+        double x1,
+        double y0,
+        double y1,
+        double z0,
+        double z1,
+        Color topColor,
+        Color rightColor,
+        Color frontColor,
+        double opacity,
+        Color outlineColor,
+        EditorState state)
+    {
+        const double outlinePad = 0.014;
+        DrawConveyorBarSw(
+            context,
+            x0 - outlinePad,
+            x1 + outlinePad,
+            y0 - outlinePad,
+            y1 + outlinePad,
+            z0 - 0.003,
+            z1 + 0.006,
+            outlineColor,
+            outlineColor,
+            outlineColor,
+            Math.Min(opacity + 0.12, 1.0),
+            state);
+        DrawConveyorBarSw(context, x0, x1, y0, y1, z0, z1, topColor, rightColor, frontColor, opacity, state);
     }
 
     private void DrawConveyorTopQuadSw(
@@ -1037,18 +1071,18 @@ public sealed class SoftwareCubeViewport : Control
         if (string.Equals(materialId, "Coal", StringComparison.OrdinalIgnoreCase))
         {
             granuleCount = Math.Min(Math.Max(clumpUnits * 3, 3), 24);
-            minGranuleSize = 0.048;
-            maxGranuleSize = 0.098;
-            granuleHeightScale = 0.82;
+            minGranuleSize = 0.070;
+            maxGranuleSize = 0.135;
+            granuleHeightScale = 0.88;
             return true;
         }
 
         if (string.Equals(materialId, "Sand", StringComparison.OrdinalIgnoreCase))
         {
             granuleCount = Math.Min(Math.Max(clumpUnits * 8, 8), 56);
-            minGranuleSize = 0.018;
-            maxGranuleSize = 0.042;
-            granuleHeightScale = 0.56;
+            minGranuleSize = 0.032;
+            maxGranuleSize = 0.066;
+            granuleHeightScale = 0.60;
             return true;
         }
 
@@ -1080,6 +1114,14 @@ public sealed class SoftwareCubeViewport : Control
 
     private static double HashToUnit(uint hash)
         => (hash & 0x00FFFFFFu) / 16777215.0;
+
+    private static Color GetMaterialOutlineColor(MaterialDefinition material)
+    {
+        var luminance = (material.TopColor.R * 0.299) + (material.TopColor.G * 0.587) + (material.TopColor.B * 0.114);
+        return luminance < 115
+            ? Color.FromRgb(202, 211, 219)
+            : Color.FromRgb(42, 45, 52);
+    }
 
     private void DrawOutline(DrawingContext context, VoxelCoord position, VoxelSize size, Color color, double thickness, EditorState state)
     {
