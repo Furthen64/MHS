@@ -18,6 +18,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 {
     private const float MaterialFlowTickSeconds = 0.25f;
     private const float ManualMaterialFlowStepSeconds = 0.35f;
+    private static readonly IReadOnlyList<int> MtrlSrcGranuleCountOptions = [1, 5, 10, 50, 100];
     private readonly IEditorTool _selectTool = new SelectTool();
     private readonly ConveyorRouteTool _conveyorRouteTool = new();
     private ViewportInteractionPreset _interactionPreset = ViewportInteractionPreset.BlenderLike;
@@ -29,6 +30,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private bool _expertMode;
     private string _selectedMtrlSrcUnitsPerSecondText = FormatRate(SceneObject.DefaultMaterialUnitsPerSecond);
     private string _selectedMtrlSrcMaterialId = SceneObject.DefaultMaterialId;
+    private int _selectedMtrlSrcGranulesPerPacket = SceneObject.DefaultMaterialGranulesPerPacket;
     private string _selectedMtrlSrcRateStatusText = "Select MtrlSrc";
     private SceneTreeNodeViewModel? _selectedSceneTreeNode;
 
@@ -281,6 +283,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public IReadOnlyList<string> AvailableMtrlSrcMaterialIds => MaterialCatalog.AvailableMaterialIds;
 
+    public IReadOnlyList<int> AvailableMtrlSrcGranuleCounts => MtrlSrcGranuleCountOptions;
+
     public string SelectedMtrlSrcUnitsPerSecondText
     {
         get => _selectedMtrlSrcUnitsPerSecondText;
@@ -315,6 +319,26 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             }
 
             _selectedMtrlSrcMaterialId = normalized;
+            _selectedMtrlSrcRateStatusText = SelectedMtrlSrcPanelVisible
+                ? "Press Apply to update source settings"
+                : "Select MtrlSrc";
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(SelectedMtrlSrcRateStatusText));
+        }
+    }
+
+    public int SelectedMtrlSrcGranulesPerPacket
+    {
+        get => _selectedMtrlSrcGranulesPerPacket;
+        set
+        {
+            var normalized = NormalizeMtrlSrcGranulesPerPacket(value);
+            if (_selectedMtrlSrcGranulesPerPacket == normalized)
+            {
+                return;
+            }
+
+            _selectedMtrlSrcGranulesPerPacket = normalized;
             _selectedMtrlSrcRateStatusText = SelectedMtrlSrcPanelVisible
                 ? "Press Apply to update source settings"
                 : "Select MtrlSrc";
@@ -608,6 +632,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 Position = sceneObject.Position,
                 RotationZDegrees = sceneObject.RotationZDegrees,
                 MaterialUnitsPerSecond = sceneObject.MaterialUnitsPerSecond,
+                MaterialGranulesPerPacket = sceneObject.MaterialGranulesPerPacket,
                 MaterialId = string.Equals(sceneObject.PartId, "mtrlsrc", StringComparison.OrdinalIgnoreCase)
                     ? MaterialCatalog.NormalizeId(sceneObject.MaterialId)
                     : null,
@@ -650,6 +675,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 BaseSize = baseSize,
                 RotationZDegrees = RotationHelper.NormalizeDegrees(objectData.RotationZDegrees),
                 MaterialUnitsPerSecond = ResolveMaterialUnitsPerSecond(partDefinition.Id, objectData.MaterialUnitsPerSecond),
+                MaterialGranulesPerPacket = ResolveMaterialGranulesPerPacket(partDefinition.Id, objectData.MaterialGranulesPerPacket),
                 MaterialId = ResolveMaterialId(partDefinition.Id, objectData.MaterialId),
                 RouteStartCell = objectData.RouteStartCell,
                 RouteEndCell = objectData.RouteEndCell,
@@ -829,11 +855,13 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         selected.MaterialUnitsPerSecond = unitsPerSecond;
         selected.MaterialId = MaterialCatalog.NormalizeId(_selectedMtrlSrcMaterialId);
+        selected.MaterialGranulesPerPacket = NormalizeMtrlSrcGranulesPerPacket(_selectedMtrlSrcGranulesPerPacket);
         _selectedMtrlSrcUnitsPerSecondText = FormatRate(unitsPerSecond);
         _selectedMtrlSrcMaterialId = selected.MaterialId;
-        _selectedMtrlSrcRateStatusText = $"Producing {selected.MaterialId} at {FormatRate(unitsPerSecond)} units/second";
+        _selectedMtrlSrcGranulesPerPacket = selected.MaterialGranulesPerPacket;
+        _selectedMtrlSrcRateStatusText = FormatMtrlSrcStatus(selected.MaterialId, unitsPerSecond, selected.MaterialGranulesPerPacket);
         RefreshConveyorFlowTopology();
-        EditorState.StatusMessage = $"MtrlSrc set to {selected.MaterialId} at {FormatRate(unitsPerSecond)} units/second";
+        EditorState.StatusMessage = $"MtrlSrc set to {selected.MaterialId} at {FormatRate(unitsPerSecond)} units/second, {selected.MaterialGranulesPerPacket} granules/packet";
         RaiseComputed();
     }
 
@@ -1159,8 +1187,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(InspectorExtraText));
         OnPropertyChanged(nameof(SelectedMtrlSrcPanelVisible));
         OnPropertyChanged(nameof(AvailableMtrlSrcMaterialIds));
+        OnPropertyChanged(nameof(AvailableMtrlSrcGranuleCounts));
         OnPropertyChanged(nameof(SelectedMtrlSrcUnitsPerSecondText));
         OnPropertyChanged(nameof(SelectedMtrlSrcMaterialId));
+        OnPropertyChanged(nameof(SelectedMtrlSrcGranulesPerPacket));
         OnPropertyChanged(nameof(SelectedMtrlSrcRateStatusText));
         OnPropertyChanged(nameof(InspectorPortText));
         OnPropertyChanged(nameof(InspectorMaterialFlowText));
@@ -1231,7 +1261,14 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 OnPropertyChanged(nameof(SelectedMtrlSrcMaterialId));
             }
 
-            var status = $"Producing {materialId} at {formatted} units/second";
+            var granulesPerPacket = NormalizeMtrlSrcGranulesPerPacket(selected.MaterialGranulesPerPacket);
+            if (_selectedMtrlSrcGranulesPerPacket != granulesPerPacket)
+            {
+                _selectedMtrlSrcGranulesPerPacket = granulesPerPacket;
+                OnPropertyChanged(nameof(SelectedMtrlSrcGranulesPerPacket));
+            }
+
+            var status = FormatMtrlSrcStatus(materialId, selected.MaterialUnitsPerSecond, granulesPerPacket);
             if (!string.Equals(_selectedMtrlSrcRateStatusText, status, StringComparison.Ordinal))
             {
                 _selectedMtrlSrcRateStatusText = status;
@@ -1252,6 +1289,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             _selectedMtrlSrcMaterialId = SceneObject.DefaultMaterialId;
             OnPropertyChanged(nameof(SelectedMtrlSrcMaterialId));
+        }
+
+        if (_selectedMtrlSrcGranulesPerPacket != SceneObject.DefaultMaterialGranulesPerPacket)
+        {
+            _selectedMtrlSrcGranulesPerPacket = SceneObject.DefaultMaterialGranulesPerPacket;
+            OnPropertyChanged(nameof(SelectedMtrlSrcGranulesPerPacket));
         }
 
         if (!string.Equals(_selectedMtrlSrcRateStatusText, "Select MtrlSrc", StringComparison.Ordinal))
@@ -1355,7 +1398,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                     var targetCell = attachment.RouteCellIndex >= 0 && attachment.RouteCellIndex < route.Cells.Count
                         ? route.Cells[attachment.RouteCellIndex].ToString()
                         : "?";
-                    return $"  src {ShortId(attachment.ObjectId)} mat={MaterialCatalog.NormalizeId(attachment.MaterialId)} cell={attachment.RouteCellIndex} @ {targetCell} rate={attachment.UnitsPerSecond.ToString("0.##", CultureInfo.InvariantCulture)} state={FormatAttachmentStatus(attachment.LastStatus)}";
+                    return $"  src {ShortId(attachment.ObjectId)} mat={MaterialCatalog.NormalizeId(attachment.MaterialId)} cell={attachment.RouteCellIndex} @ {targetCell} rate={attachment.UnitsPerSecond.ToString("0.##", CultureInfo.InvariantCulture)} granules={attachment.GranulesPerPacket} state={FormatAttachmentStatus(attachment.LastStatus)}";
                 }));
         }
         else
@@ -1403,6 +1446,21 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         return Math.Max(0f, storedUnitsPerSecond);
     }
+
+    private static int ResolveMaterialGranulesPerPacket(string partId, int storedGranulesPerPacket)
+        => string.Equals(partId, "mtrlsrc", StringComparison.OrdinalIgnoreCase)
+            ? NormalizeMtrlSrcGranulesPerPacket(storedGranulesPerPacket)
+            : SceneObject.DefaultMaterialGranulesPerPacket;
+
+    private static int NormalizeMtrlSrcGranulesPerPacket(int granulesPerPacket)
+        => granulesPerPacket switch
+        {
+            1 or 5 or 10 or 50 or 100 => granulesPerPacket,
+            _ => SceneObject.DefaultMaterialGranulesPerPacket
+        };
+
+    private static string FormatMtrlSrcStatus(string materialId, float unitsPerSecond, int granulesPerPacket)
+        => $"Producing {materialId} at {FormatRate(unitsPerSecond)} units/second, {granulesPerPacket} granules/packet";
 
     private static string ResolveMaterialId(string partId, string? storedMaterialId)
     {

@@ -245,6 +245,15 @@
                                           ItemsSource="{Binding AvailableMtrlSrcMaterialIds}"
                                           SelectedItem="{Binding SelectedMtrlSrcMaterialId, Mode=TwoWay}" />
                             </Grid>
+                            <Grid ColumnDefinitions="92,*" RowDefinitions="Auto" ColumnSpacing="6">
+                               <TextBlock Grid.Column="0"
+                                          VerticalAlignment="Center"
+                                          Text="Granules"
+                                          Foreground="#AFC6E9" />
+                               <ComboBox Grid.Column="1"
+                                         ItemsSource="{Binding AvailableMtrlSrcGranuleCounts}"
+                                         SelectedItem="{Binding SelectedMtrlSrcGranulesPerPacket, Mode=TwoWay}" />
+                            </Grid>
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <Button Content="-0.5" Command="{Binding DecreaseSelectedMtrlSrcRateCommand}" />
                                 <TextBox Width="92"

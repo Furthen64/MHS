@@ -25,6 +25,7 @@ public sealed class RouteInputAttachmentRuntime
     public Guid ObjectId { get; init; }
     public int RouteCellIndex { get; init; }
     public float UnitsPerSecond { get; set; } = SceneObject.DefaultMaterialUnitsPerSecond;
+    public int GranulesPerPacket { get; set; } = SceneObject.DefaultMaterialGranulesPerPacket;
     public float Accumulator { get; set; }
     public string MaterialId { get; set; } = SceneObject.DefaultMaterialId;
     public RouteInputAttachmentStatus LastStatus { get; set; } = RouteInputAttachmentStatus.WaitingForRate;
@@ -155,7 +156,7 @@ public sealed class ConveyorRouteMaterialFlowSimulator
         route.Slots[attachment.RouteCellIndex] = new OrePacket
         {
             MaterialId = MaterialCatalog.NormalizeId(attachment.MaterialId),
-            UnitCount = 1
+            UnitCount = NormalizeGranulesPerPacket(attachment.GranulesPerPacket)
         };
         attachment.LastStatus = RouteInputAttachmentStatus.Injected;
         return true;
@@ -487,13 +488,13 @@ public sealed class ConveyorRouteMaterialFlowSimulator
             }
 
             var selected = contenders[selectedIndex];
-            var unitCount = Math.Max(1, (int)Math.Floor(selected.Accumulator));
+            var unitCount = NormalizeGranulesPerPacket(selected.GranulesPerPacket);
             route.Slots[cellIndex] = new OrePacket
             {
                 MaterialId = MaterialCatalog.NormalizeId(selected.MaterialId),
                 UnitCount = unitCount
             };
-            selected.Accumulator = Math.Max(0f, selected.Accumulator - unitCount);
+            selected.Accumulator = Math.Max(0f, selected.Accumulator - 1f);
             selected.LastStatus = RouteInputAttachmentStatus.Injected;
             route.NextInputAttachmentIndexByCell[cellIndex] = NormalizeTurnIndex(selectedIndex + 1, contenders.Length);
             injected++;
@@ -513,6 +514,13 @@ public sealed class ConveyorRouteMaterialFlowSimulator
     private static int NormalizeTurnIndex(int nextIndex, int count)
         => count <= 0 ? 0 : ((nextIndex % count) + count) % count;
 
+    private static int NormalizeGranulesPerPacket(int granulesPerPacket)
+        => granulesPerPacket switch
+        {
+            1 or 5 or 10 or 50 or 100 => granulesPerPacket,
+            _ => SceneObject.DefaultMaterialGranulesPerPacket
+        };
+
     private static List<RouteInputAttachmentRuntime> BuildInputAttachments(
         IReadOnlyList<RouteInputAttachmentDescriptor> inputAttachments,
         IReadOnlyDictionary<Guid, SceneObject> objectById)
@@ -530,6 +538,7 @@ public sealed class ConveyorRouteMaterialFlowSimulator
                 ObjectId = descriptor.SourceObjectId,
                 RouteCellIndex = descriptor.RouteCellIndex,
                 UnitsPerSecond = Math.Max(0f, sourceObject.MaterialUnitsPerSecond),
+                GranulesPerPacket = NormalizeGranulesPerPacket(sourceObject.MaterialGranulesPerPacket),
                 MaterialId = MaterialCatalog.NormalizeId(sourceObject.MaterialId)
             });
         }
@@ -555,6 +564,7 @@ public sealed class ConveyorRouteMaterialFlowSimulator
             if (existingByKey.TryGetValue((descriptor.SourceObjectId, descriptor.RouteCellIndex), out var existing))
             {
                 existing.UnitsPerSecond = Math.Max(0f, sourceObject.MaterialUnitsPerSecond);
+                existing.GranulesPerPacket = NormalizeGranulesPerPacket(sourceObject.MaterialGranulesPerPacket);
                 existing.MaterialId = MaterialCatalog.NormalizeId(sourceObject.MaterialId);
                 merged.Add(existing);
                 continue;
@@ -565,6 +575,7 @@ public sealed class ConveyorRouteMaterialFlowSimulator
                 ObjectId = descriptor.SourceObjectId,
                 RouteCellIndex = descriptor.RouteCellIndex,
                 UnitsPerSecond = Math.Max(0f, sourceObject.MaterialUnitsPerSecond),
+                GranulesPerPacket = NormalizeGranulesPerPacket(sourceObject.MaterialGranulesPerPacket),
                 MaterialId = MaterialCatalog.NormalizeId(sourceObject.MaterialId)
             });
         }
