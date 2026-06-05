@@ -337,7 +337,7 @@ public partial class MainWindow : Window
         return IsEditableInputVisual(focusedVisual);
     }
 
-    private void OnInspectorNameGotFocus(object? sender, GotFocusEventArgs e)
+    private void OnInspectorNameGotFocus(object? sender, RoutedEventArgs e)
     {
         if (sender is TextBox textBox)
         {
