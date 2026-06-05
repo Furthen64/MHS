@@ -95,11 +95,23 @@
                                      Background="Transparent"
                                      BorderThickness="0"
                                      Padding="0"
-                                     SelectionChanged="OnSceneTreeSelectionChanged">
+                                     SelectionChanged="OnSceneTreeSelectionChanged"
+                                     DoubleTapped="OnSceneTreeDoubleTapped">
                                 <ListBox.Styles>
                                     <Style Selector="ListBoxItem">
-                                        <Setter Property="Padding" Value="2,1" />
+                                        <Setter Property="Padding" Value="4,3" />
                                         <Setter Property="MinHeight" Value="0" />
+                                        <Setter Property="Margin" Value="0,1" />
+                                        <Setter Property="Background" Value="Transparent" />
+                                        <Setter Property="BorderBrush" Value="Transparent" />
+                                        <Setter Property="BorderThickness" Value="1" />
+                                    </Style>
+                                    <Style Selector="ListBoxItem:selected">
+                                        <Setter Property="Background" Value="#2B3E58" />
+                                        <Setter Property="BorderBrush" Value="#88B8FF" />
+                                    </Style>
+                                    <Style Selector="ListBoxItem:pointerover:not(:selected)">
+                                        <Setter Property="Background" Value="#1F2934" />
                                     </Style>
                                 </ListBox.Styles>
                                 <ListBox.ItemTemplate>
@@ -110,11 +122,12 @@
                                                        Foreground="#5E7A94"
                                                        FontSize="10"
                                                        FontWeight="SemiBold"
-                                                       Margin="0,5,0,1" />
-                                            <StackPanel IsVisible="{Binding !IsGroupHeader}" Spacing="1" Margin="4,1,0,1">
+                                                       Margin="{Binding ContentMargin}" />
+                                            <StackPanel IsVisible="{Binding !IsGroupHeader}" Spacing="1" Margin="{Binding ContentMargin}">
                                                 <TextBlock Text="{Binding Label}"
                                                            Foreground="#C8D8E8"
-                                                           FontSize="11"
+                                                           FontSize="11.5"
+                                                           FontWeight="SemiBold"
                                                            TextTrimming="CharacterEllipsis" />
                                                 <TextBlock Text="{Binding StatusText}"
                                                            IsVisible="{Binding HasStatus}"
@@ -158,14 +171,20 @@
                                 <RadioButton Content="Software" GroupName="RendererMode" IsChecked="{Binding IsSoftwareViewportMode}" Command="{Binding UseSoftwareViewportCommand}" />
                                 <RadioButton Content="OpenGL Spike" GroupName="RendererMode" IsChecked="{Binding IsOpenGlViewportMode}" Command="{Binding UseOpenGlViewportCommand}" />
                             </StackPanel>
+                            <CheckBox Content="Show Conveyor Debug"
+                                      IsChecked="{Binding ShowConveyorDebug, Mode=TwoWay}"
+                                      Foreground="#D8DEE9"
+                                      VerticalAlignment="Center" />
                             <TextBlock Text="{Binding AbsoluteZDisplayText}" Foreground="#D8DEE9" VerticalAlignment="Center" />
                         </StackPanel>
                     </Border>
                     <Grid>
-                        <viewport:SoftwareCubeViewport IsVisible="{Binding IsSoftwareViewportMode}"
-                                                       EditorState="{Binding EditorState}"
+                    <viewport:SoftwareCubeViewport x:Name="SoftwareViewport"
+                                                   IsVisible="{Binding IsSoftwareViewportMode}"
+                                                   EditorState="{Binding EditorState}"
                                                        InteractionPreset="{Binding InteractionPreset}" />
-                        <viewport:OpenGlViewportControl IsVisible="{Binding IsOpenGlViewportMode}"
+                    <viewport:OpenGlViewportControl x:Name="OpenGlViewport"
+                                                       IsVisible="{Binding IsOpenGlViewportMode}"
                                                         EditorState="{Binding EditorState}"
                                                         InteractionPreset="{Binding InteractionPreset}" />
 
@@ -215,6 +234,15 @@
                 <StackPanel Spacing="8">
                     <TextBlock Text="Inspector" FontWeight="Bold" Foreground="#ECEFF4" FontSize="14" />
                     <TextBlock Text="{Binding InspectorSelectedText}" Foreground="#D8DEE9" />
+                    <Grid ColumnDefinitions="52,*" ColumnSpacing="8">
+                        <TextBlock Grid.Column="0"
+                                   Text="Name"
+                                   VerticalAlignment="Center"
+                                   Foreground="#AFC6E9" />
+                        <TextBox Grid.Column="1"
+                                 IsEnabled="{Binding HasSelectedObject}"
+                                 Text="{Binding SelectedObjectName, Mode=TwoWay}" />
+                    </Grid>
                     <TextBlock Text="{Binding InspectorIdText}" Foreground="#D8DEE9" />
                     <TextBlock Text="{Binding InspectorPositionText}" Foreground="#D8DEE9" />
                     <TextBlock Text="{Binding InspectorSizeText}" Foreground="#D8DEE9" />

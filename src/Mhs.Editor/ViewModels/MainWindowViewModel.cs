@@ -8,9 +8,11 @@ using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
+using Avalonia;
 using Avalonia.Input;
 using Mhs.Editor.Editor;
 using Mhs.Editor.Settings;
+using Mhs.Editor.Viewport;
 
 namespace Mhs.Editor.ViewModels;
 
@@ -160,6 +162,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             SetTool(_selectTool);
         }
 
+        if (sceneObject is not null)
+        {
+            EditorState.ActiveFloor = WorldVerticalSettings.ToFloor(sceneObject.Position.Z);
+            EditorState.ActiveLayer = WorldVerticalSettings.ToLayer(sceneObject.Position.Z);
+        }
+
         EditorState.SelectedObject = sceneObject;
     }
 
@@ -235,7 +243,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public string InspectorSelectedText =>
         EditorState.SelectedObject is null
             ? "Selected: None"
-            : $"Selected: {EditorState.SelectedObject.PartType}";
+            : $"Selected: {EditorState.SelectedObject.DisplayName}";
 
     public string InspectorIdText =>
         EditorState.SelectedObject is null
@@ -275,7 +283,51 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public string InspectorExtraText =>
         EditorState.SelectedObject is null
             ? PreviewText()
-            : "Status: Placed";
+            : $"Type: {EditorState.SelectedObject.PartType}";
+
+    public bool HasSelectedObject => EditorState.SelectedObject is not null;
+
+    public string SelectedObjectName
+    {
+        get => EditorState.SelectedObject?.DisplayName ?? string.Empty;
+        set
+        {
+            if (EditorState.SelectedObject is not { } selected)
+            {
+                return;
+            }
+
+            var normalized = NormalizeDisplayName(selected, value);
+            var targets = GetObjectsSharingDisplayName(selected).ToList();
+            if (targets.Count > 0 && targets.All(target => string.Equals(target.DisplayName, normalized, StringComparison.Ordinal)))
+            {
+                return;
+            }
+
+            foreach (var target in targets)
+            {
+                target.DisplayName = normalized;
+            }
+
+            RebuildSceneTree();
+            RaiseComputed();
+        }
+    }
+
+    public bool ShowConveyorDebug
+    {
+        get => EditorState.ShowConveyorDebug;
+        set
+        {
+            if (EditorState.ShowConveyorDebug == value)
+            {
+                return;
+            }
+
+            EditorState.ShowConveyorDebug = value;
+            RaiseComputed();
+        }
+    }
 
     public bool SelectedMtrlSrcPanelVisible =>
         EditorState.SelectedObject is { } selected
@@ -416,7 +468,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
-    public bool FloatingDebugPanelVisible => _expertMode;
+    public bool FloatingDebugPanelVisible => _expertMode && ShowConveyorDebug;
     public bool ExpertInspectorVisible => _expertMode;
     public bool ExpertGpuLabelsVisible => _expertMode;
 
@@ -629,6 +681,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             objects.Add(new SceneFileObjectData
             {
                 PartId = resolvedPartId,
+                DisplayName = string.IsNullOrWhiteSpace(sceneObject.DisplayName) ? null : sceneObject.DisplayName.Trim(),
                 Position = sceneObject.Position,
                 RotationZDegrees = sceneObject.RotationZDegrees,
                 MaterialUnitsPerSecond = sceneObject.MaterialUnitsPerSecond,
@@ -671,6 +724,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             {
                 PartId = partDefinition.Id,
                 PartType = partDefinition.DisplayName,
+                DisplayName = objectData.DisplayName?.Trim() ?? string.Empty,
                 Position = objectData.Position,
                 BaseSize = baseSize,
                 RotationZDegrees = RotationHelper.NormalizeDegrees(objectData.RotationZDegrees),
@@ -1144,6 +1198,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private void OnSceneObjectsChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
         RefreshConveyorFlowTopology();
+        EnsureDisplayNames();
         RebuildSceneTree();
         SyncSelectedMtrlSrcEditor();
         RaiseComputed();
@@ -1185,6 +1240,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(InspectorContextText));
         OnPropertyChanged(nameof(InspectorRangeText));
         OnPropertyChanged(nameof(InspectorExtraText));
+        OnPropertyChanged(nameof(HasSelectedObject));
+        OnPropertyChanged(nameof(SelectedObjectName));
+        OnPropertyChanged(nameof(ShowConveyorDebug));
         OnPropertyChanged(nameof(SelectedMtrlSrcPanelVisible));
         OnPropertyChanged(nameof(AvailableMtrlSrcMaterialIds));
         OnPropertyChanged(nameof(AvailableMtrlSrcGranuleCounts));
@@ -1479,6 +1537,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         SceneTreeNodes.Clear();
         var routes = EditorState.Scene.ConveyorRouteFlow.Routes;
+        var conveyorRouteNodes = BuildConveyorRouteNodes(routes);
+        var routeNamesByObjectId = conveyorRouteNodes
+            .SelectMany(node => node.SceneObjectIds.Select(id => KeyValuePair.Create(id, node.DisplayName)))
+            .ToDictionary(pair => pair.Key, pair => pair.Value);
 
         for (var floor = 0; floor < WorldVerticalSettings.FloorCount; floor++)
         {
@@ -1494,86 +1556,74 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 continue;
             }
 
-            SceneTreeNodes.Add(new SceneTreeNodeViewModel($"Floor {floor}", string.Empty, isGroupHeader: true));
+            SceneTreeNodes.Add(new SceneTreeNodeViewModel($"Floor {floor}", string.Empty, isGroupHeader: true, indentLevel: 0));
 
-            AddTreeGroup("Conveyors", floorObjects.Where(o => o.IsConveyor), routes);
-            AddTreeGroup("Material Sources", floorObjects.Where(o => string.Equals(o.PartId, "mtrlsrc", StringComparison.OrdinalIgnoreCase)), routes);
-            AddTreeGroup("Material Receivers", floorObjects.Where(o => string.Equals(o.PartId, "mtrlrecv", StringComparison.OrdinalIgnoreCase)), routes);
-            AddTreeGroup("Equipment", floorObjects.Where(o =>
+            AddConveyorTreeGroup(conveyorRouteNodes.Where(node => node.Floor == floor));
+            AddTreeGroup("Material Sources", floorObjects.Where(o => string.Equals(o.PartId, "mtrlsrc", StringComparison.OrdinalIgnoreCase)), obj => CreateSourceTreeNode(obj, routes, routeNamesByObjectId));
+            AddTreeGroup("Material Receivers", floorObjects.Where(o => string.Equals(o.PartId, "mtrlrecv", StringComparison.OrdinalIgnoreCase)), obj => CreateReceiverTreeNode(obj, routes, routeNamesByObjectId));
+            AddTreeGroup("Equipment", floorObjects.Where(IsEquipmentObject), CreateEquipmentTreeNode);
+            AddTreeGroup("Other", floorObjects.Where(o =>
                 !o.IsConveyor
                 && !string.Equals(o.PartId, "mtrlsrc", StringComparison.OrdinalIgnoreCase)
-                && !string.Equals(o.PartId, "mtrlrecv", StringComparison.OrdinalIgnoreCase)), routes);
+                && !string.Equals(o.PartId, "mtrlrecv", StringComparison.OrdinalIgnoreCase)
+                && !IsEquipmentObject(o)), CreateEquipmentTreeNode);
         }
 
         SyncSceneTreeSelection();
     }
 
-    private void AddTreeGroup(string groupName, IEnumerable<SceneObject> objects, IReadOnlyList<ConveyorRouteRuntime> routes)
+    private void AddConveyorTreeGroup(IEnumerable<ConveyorRouteTreeNode> nodes)
     {
-        var list = objects.ToList();
+        var list = nodes.OrderBy(node => node.DisplayName, StringComparer.OrdinalIgnoreCase).ToList();
         if (list.Count == 0)
         {
             return;
         }
 
-        SceneTreeNodes.Add(new SceneTreeNodeViewModel($"  {groupName}", string.Empty, isGroupHeader: true));
-        foreach (var obj in list)
+        SceneTreeNodes.Add(new SceneTreeNodeViewModel("Conveyors", string.Empty, isGroupHeader: true, indentLevel: 1));
+        foreach (var node in list)
         {
-            SceneTreeNodes.Add(CreateTreeNode(obj, routes));
+            SceneTreeNodes.Add(new SceneTreeNodeViewModel(
+                $"{node.DisplayName} — {node.CellCount} {(node.CellCount == 1 ? "cell" : "cells")}",
+                string.Empty,
+                isGroupHeader: false,
+                indentLevel: 2,
+                sceneObject: node.RepresentativeObject,
+                relatedSceneObjectIds: node.SceneObjectIds,
+                focusWorldX: node.FocusWorldX,
+                focusWorldY: node.FocusWorldY,
+                focusWorldZ: node.FocusWorldZ));
         }
     }
 
-    private static SceneTreeNodeViewModel CreateTreeNode(SceneObject obj, IReadOnlyList<ConveyorRouteRuntime> routes)
+    private void AddTreeGroup(string groupName, IEnumerable<SceneObject> objects, Func<SceneObject, SceneTreeNodeViewModel> createNode)
     {
-        var shortId = ShortId(obj.Id);
-        var pos = $"{obj.Position.X},{obj.Position.Y},{obj.Position.Z}";
-        string label;
-        string status;
-
-        if (obj.IsConveyor)
+        var list = objects
+            .OrderBy(obj => obj.DisplayName, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(obj => obj.Position.Z)
+            .ThenBy(obj => obj.Position.Y)
+            .ThenBy(obj => obj.Position.X)
+            .ToList();
+        if (list.Count == 0)
         {
-            label = $"Conveyor {shortId} ({pos})";
-            var routeIndex = routes
-                .Select((r, i) => (r, i))
-                .FirstOrDefault(ri => ri.r.SegmentObjectIds.Contains(obj.Id));
-            status = routeIndex.r is not null ? $"R{routeIndex.i + 1}" : string.Empty;
-        }
-        else if (string.Equals(obj.PartId, "mtrlsrc", StringComparison.OrdinalIgnoreCase))
-        {
-            label = $"MtrlSrc {shortId} ({pos})";
-            var match = routes
-                .SelectMany((r, i) => r.InputAttachments.Select(a => (routeIndex: i, attachment: a)))
-                .FirstOrDefault(x => x.attachment.ObjectId == obj.Id);
-            status = match.attachment is not null
-                ? $"→ R{match.routeIndex + 1} cell {match.attachment.RouteCellIndex}"
-                : "disconnected";
-        }
-        else if (string.Equals(obj.PartId, "mtrlrecv", StringComparison.OrdinalIgnoreCase))
-        {
-            label = $"MtrlRecv {shortId} ({pos})";
-            var match = routes
-                .Select((r, i) => (r, i))
-                .FirstOrDefault(ri => ri.r.ReceiverObjectId == obj.Id);
-            status = match.r is not null ? $"← R{match.i + 1}" : "disconnected";
-        }
-        else
-        {
-            label = $"{obj.PartType} {shortId} ({pos})";
-            status = string.Empty;
+            return;
         }
 
-        return new SceneTreeNodeViewModel(label, status, isGroupHeader: false, sceneObject: obj);
+        SceneTreeNodes.Add(new SceneTreeNodeViewModel(groupName, string.Empty, isGroupHeader: true, indentLevel: 1));
+        foreach (var obj in list)
+        {
+            SceneTreeNodes.Add(createNode(obj));
+        }
     }
 
     private void SyncSceneTreeSelection()
     {
-        var selectedId = EditorState.SelectedObject?.Id;
         SceneTreeNodeViewModel? newNode = null;
-        if (selectedId.HasValue)
+        if (EditorState.SelectedObject is { } selected)
         {
             foreach (var node in SceneTreeNodes)
             {
-                if (node.SceneObject?.Id == selectedId.Value)
+                if (node.Matches(selected))
                 {
                     newNode = node;
                     break;
@@ -1589,6 +1639,361 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         _selectedSceneTreeNode = newNode;
         OnPropertyChanged(nameof(SelectedSceneTreeNode));
     }
+
+    public bool FocusSelectedObject(Rect viewportBounds)
+        => FocusSceneTreeNode(SelectedSceneTreeNode, viewportBounds)
+           || FocusObject(EditorState.SelectedObject, viewportBounds);
+
+    public bool FocusSceneTreeNode(SceneTreeNodeViewModel? node, Rect viewportBounds)
+    {
+        if (node?.SceneObject is null)
+        {
+            return false;
+        }
+
+        if (EditorState.ActiveTool is not SelectTool)
+        {
+            SetTool(_selectTool);
+        }
+
+        var sceneObject = node.SceneObject;
+        EditorState.ActiveFloor = WorldVerticalSettings.ToFloor(sceneObject.Position.Z);
+        EditorState.ActiveLayer = WorldVerticalSettings.ToLayer(sceneObject.Position.Z);
+        EditorState.SelectedObject = sceneObject;
+
+        var focusX = node.FocusWorldX ?? (sceneObject.Position.X + sceneObject.EffectiveSize.WidthX * 0.5);
+        var focusY = node.FocusWorldY ?? (sceneObject.Position.Y + sceneObject.EffectiveSize.DepthY * 0.5);
+        var focusZ = node.FocusWorldZ ?? (sceneObject.Position.Z + sceneObject.EffectiveSize.HeightZ * 0.5);
+        ViewportMath.CenterViewOn(EditorState, viewportBounds, focusX, focusY, focusZ);
+        RaiseComputed();
+        return true;
+    }
+
+    private bool FocusObject(SceneObject? sceneObject, Rect viewportBounds)
+    {
+        if (sceneObject is null)
+        {
+            return false;
+        }
+
+        var focusX = sceneObject.Position.X + sceneObject.EffectiveSize.WidthX * 0.5;
+        var focusY = sceneObject.Position.Y + sceneObject.EffectiveSize.DepthY * 0.5;
+        var focusZ = sceneObject.Position.Z + sceneObject.EffectiveSize.HeightZ * 0.5;
+        return FocusSceneTreeNode(new SceneTreeNodeViewModel(
+            sceneObject.DisplayName,
+            string.Empty,
+            isGroupHeader: false,
+            sceneObject: sceneObject,
+            focusWorldX: focusX,
+            focusWorldY: focusY,
+            focusWorldZ: focusZ), viewportBounds);
+    }
+
+    private void EnsureDisplayNames()
+    {
+        AssignConveyorDisplayNames();
+
+        foreach (var obj in EditorState.Scene.Objects.Where(obj => !obj.IsConveyor && string.IsNullOrWhiteSpace(obj.DisplayName)))
+        {
+            obj.DisplayName = CreateGeneratedDisplayName(obj);
+        }
+    }
+
+    private void AssignConveyorDisplayNames()
+    {
+        var groups = BuildConveyorDisplayGroups();
+        var usedIndices = new HashSet<int>();
+        foreach (var name in groups
+                     .Select(group => group.Select(obj => obj.DisplayName?.Trim()).FirstOrDefault(displayName => !string.IsNullOrWhiteSpace(displayName)))
+                     .Where(name => !string.IsNullOrWhiteSpace(name)))
+        {
+            if (name!.StartsWith("Conveyor R", StringComparison.OrdinalIgnoreCase)
+                && int.TryParse(name["Conveyor R".Length..], NumberStyles.Integer, CultureInfo.InvariantCulture, out var index)
+                && index > 0)
+            {
+                usedIndices.Add(index);
+            }
+        }
+
+        var nextIndex = 1;
+        foreach (var group in groups)
+        {
+            var existingName = group
+                .Select(obj => obj.DisplayName?.Trim())
+                .FirstOrDefault(name => !string.IsNullOrWhiteSpace(name));
+            if (string.IsNullOrWhiteSpace(existingName))
+            {
+                while (usedIndices.Contains(nextIndex))
+                {
+                    nextIndex++;
+                }
+
+                existingName = $"Conveyor R{nextIndex}";
+                usedIndices.Add(nextIndex);
+            }
+
+            foreach (var sceneObject in group)
+            {
+                sceneObject.DisplayName = existingName;
+            }
+        }
+    }
+
+    private List<List<SceneObject>> BuildConveyorDisplayGroups()
+    {
+        var objectsById = EditorState.Scene.Objects.ToDictionary(obj => obj.Id);
+        var groups = new List<List<SceneObject>>();
+        var groupedIds = new HashSet<Guid>();
+
+        foreach (var route in EditorState.Scene.ConveyorRouteFlow.Routes)
+        {
+            var group = route.SegmentObjectIds
+                .Where(id => objectsById.ContainsKey(id))
+                .Select(id => objectsById[id])
+                .ToList();
+            if (group.Count == 0)
+            {
+                continue;
+            }
+
+            groups.Add(group);
+            foreach (var sceneObject in group)
+            {
+                groupedIds.Add(sceneObject.Id);
+            }
+        }
+
+        foreach (var conveyor in EditorState.Scene.Objects.Where(obj => obj.IsConveyor && !groupedIds.Contains(obj.Id)))
+        {
+            groups.Add([conveyor]);
+        }
+
+        return groups;
+    }
+
+    private IEnumerable<SceneObject> GetObjectsSharingDisplayName(SceneObject selected)
+    {
+        if (!selected.IsConveyor)
+        {
+            return [selected];
+        }
+
+        var route = EditorState.Scene.ConveyorRouteFlow.Routes
+            .FirstOrDefault(candidate => candidate.SegmentObjectIds.Contains(selected.Id));
+        if (route is null)
+        {
+            return [selected];
+        }
+
+        var objectsById = EditorState.Scene.Objects.ToDictionary(obj => obj.Id);
+        return route.SegmentObjectIds
+            .Where(id => objectsById.ContainsKey(id))
+            .Select(id => objectsById[id])
+            .ToList();
+    }
+
+    private string NormalizeDisplayName(SceneObject sceneObject, string? value)
+        => string.IsNullOrWhiteSpace(value)
+            ? CreateGeneratedDisplayName(sceneObject)
+            : value.Trim();
+
+    private string CreateGeneratedDisplayName(SceneObject sceneObject)
+    {
+        if (sceneObject.IsConveyor)
+        {
+            var groups = BuildConveyorDisplayGroups();
+            for (var i = 0; i < groups.Count; i++)
+            {
+                if (groups[i].Any(candidate => candidate.Id == sceneObject.Id))
+                {
+                    return $"Conveyor R{i + 1}";
+                }
+            }
+
+            return "Conveyor R1";
+        }
+
+        if (string.Equals(sceneObject.PartId, "mtrlsrc", StringComparison.OrdinalIgnoreCase))
+        {
+            var index = 0;
+            foreach (var candidate in EditorState.Scene.Objects.Where(obj => string.Equals(obj.PartId, "mtrlsrc", StringComparison.OrdinalIgnoreCase)))
+            {
+                index++;
+                if (candidate.Id == sceneObject.Id)
+                {
+                    break;
+                }
+            }
+
+            return $"MtrlSrc S{Math.Max(index, 1)}";
+        }
+
+        if (string.Equals(sceneObject.PartId, "mtrlrecv", StringComparison.OrdinalIgnoreCase))
+        {
+            var index = 0;
+            foreach (var candidate in EditorState.Scene.Objects.Where(obj => string.Equals(obj.PartId, "mtrlrecv", StringComparison.OrdinalIgnoreCase)))
+            {
+                index++;
+                if (candidate.Id == sceneObject.Id)
+                {
+                    break;
+                }
+            }
+
+            return $"MtrlRecv Recv{Math.Max(index, 1)}";
+        }
+
+        var equipmentIndex = 0;
+        foreach (var candidate in EditorState.Scene.Objects.Where(obj =>
+                     !obj.IsConveyor
+                     && !string.Equals(obj.PartId, "mtrlsrc", StringComparison.OrdinalIgnoreCase)
+                     && !string.Equals(obj.PartId, "mtrlrecv", StringComparison.OrdinalIgnoreCase)
+                     && string.Equals(obj.PartType, sceneObject.PartType, StringComparison.OrdinalIgnoreCase)))
+        {
+            equipmentIndex++;
+            if (candidate.Id == sceneObject.Id)
+            {
+                break;
+            }
+        }
+
+        return $"{sceneObject.PartType} {Math.Max(equipmentIndex, 1)}";
+    }
+
+    private static bool IsEquipmentObject(SceneObject obj)
+        => obj.PartId is "hopper" or "bin" or "chute" or "tall_hopper";
+
+    private SceneTreeNodeViewModel CreateSourceTreeNode(
+        SceneObject obj,
+        IReadOnlyList<ConveyorRouteRuntime> routes,
+        IReadOnlyDictionary<Guid, string> routeNamesByObjectId)
+    {
+        var match = routes
+            .SelectMany(route => route.InputAttachments.Select(attachment => (route, attachment)))
+            .FirstOrDefault(x => x.attachment.ObjectId == obj.Id);
+        var routeName = match.route is not null
+            ? match.route.SegmentObjectIds.Select(id => routeNamesByObjectId.GetValueOrDefault(id)).FirstOrDefault(name => !string.IsNullOrWhiteSpace(name))
+            : null;
+        var routeRef = string.IsNullOrWhiteSpace(routeName) ? "disconnected" : $"{MaterialCatalog.NormalizeId(obj.MaterialId)} -> {ShortRouteName(routeName)} cell {match.attachment.RouteCellIndex}";
+        var label = string.IsNullOrWhiteSpace(routeName)
+            ? $"{obj.DisplayName} — disconnected"
+            : $"{obj.DisplayName} — {routeRef}";
+        return CreateObjectTreeNode(obj, label);
+    }
+
+    private SceneTreeNodeViewModel CreateReceiverTreeNode(
+        SceneObject obj,
+        IReadOnlyList<ConveyorRouteRuntime> routes,
+        IReadOnlyDictionary<Guid, string> routeNamesByObjectId)
+    {
+        var match = routes.FirstOrDefault(route => route.ReceiverObjectId == obj.Id);
+        var routeName = match is not null
+            ? match.SegmentObjectIds.Select(id => routeNamesByObjectId.GetValueOrDefault(id)).FirstOrDefault(name => !string.IsNullOrWhiteSpace(name))
+            : null;
+        var label = string.IsNullOrWhiteSpace(routeName)
+            ? $"{obj.DisplayName} — disconnected"
+            : $"{obj.DisplayName} — <- {ShortRouteName(routeName)}";
+        return CreateObjectTreeNode(obj, label);
+    }
+
+    private SceneTreeNodeViewModel CreateEquipmentTreeNode(SceneObject obj)
+        => CreateObjectTreeNode(obj, obj.DisplayName);
+
+    private SceneTreeNodeViewModel CreateObjectTreeNode(SceneObject obj, string label)
+    {
+        var focusX = obj.Position.X + obj.EffectiveSize.WidthX * 0.5;
+        var focusY = obj.Position.Y + obj.EffectiveSize.DepthY * 0.5;
+        var focusZ = obj.Position.Z + obj.EffectiveSize.HeightZ * 0.5;
+        return new SceneTreeNodeViewModel(
+            label,
+            string.Empty,
+            isGroupHeader: false,
+            indentLevel: 2,
+            sceneObject: obj,
+            focusWorldX: focusX,
+            focusWorldY: focusY,
+            focusWorldZ: focusZ);
+    }
+
+    private List<ConveyorRouteTreeNode> BuildConveyorRouteNodes(IReadOnlyList<ConveyorRouteRuntime> routes)
+    {
+        var objectsById = EditorState.Scene.Objects.ToDictionary(obj => obj.Id);
+        var cellsByObject = ConveyorRouteCellVisualization.BuildSceneObjectCells(EditorState.Scene.Objects);
+        var nodes = new List<ConveyorRouteTreeNode>();
+        var coveredIds = new HashSet<Guid>();
+
+        foreach (var route in routes)
+        {
+            var routeObjects = route.SegmentObjectIds
+                .Where(id => objectsById.ContainsKey(id))
+                .Select(id => objectsById[id])
+                .ToList();
+            if (routeObjects.Count == 0)
+            {
+                continue;
+            }
+
+            var representative = routeObjects[0];
+            var displayName = routeObjects
+                .Select(obj => obj.DisplayName)
+                .FirstOrDefault(name => !string.IsNullOrWhiteSpace(name))
+                ?? "Conveyor";
+            var minX = route.Cells.Min(cell => cell.X);
+            var maxX = route.Cells.Max(cell => cell.X);
+            var minY = route.Cells.Min(cell => cell.Y);
+            var maxY = route.Cells.Max(cell => cell.Y);
+            var minZ = route.Cells.Min(cell => cell.Z);
+            var maxZ = route.Cells.Max(cell => cell.Z);
+            nodes.Add(new ConveyorRouteTreeNode(
+                WorldVerticalSettings.ToFloor(minZ),
+                representative,
+                routeObjects.Select(obj => obj.Id).ToArray(),
+                displayName,
+                route.Cells.Count,
+                (minX + maxX + 1) * 0.5,
+                (minY + maxY + 1) * 0.5,
+                (minZ + maxZ + 1) * 0.5));
+            foreach (var sceneObject in routeObjects)
+            {
+                coveredIds.Add(sceneObject.Id);
+            }
+        }
+
+        foreach (var conveyor in EditorState.Scene.Objects.Where(obj => obj.IsConveyor && !coveredIds.Contains(obj.Id)))
+        {
+            cellsByObject.TryGetValue(conveyor.Id, out var cells);
+            var cellCount = cells?.Count ?? Math.Max(conveyor.EffectiveSize.WidthX, conveyor.EffectiveSize.DepthY);
+            var focusX = conveyor.Position.X + conveyor.EffectiveSize.WidthX * 0.5;
+            var focusY = conveyor.Position.Y + conveyor.EffectiveSize.DepthY * 0.5;
+            var focusZ = conveyor.Position.Z + conveyor.EffectiveSize.HeightZ * 0.5;
+            nodes.Add(new ConveyorRouteTreeNode(
+                WorldVerticalSettings.ToFloor(conveyor.Position.Z),
+                conveyor,
+                [conveyor.Id],
+                conveyor.DisplayName,
+                cellCount,
+                focusX,
+                focusY,
+                focusZ));
+        }
+
+        return nodes;
+    }
+
+    private static string ShortRouteName(string displayName)
+        => displayName.StartsWith("Conveyor ", StringComparison.OrdinalIgnoreCase)
+            ? displayName["Conveyor ".Length..]
+            : displayName;
+
+    private sealed record ConveyorRouteTreeNode(
+        int Floor,
+        SceneObject RepresentativeObject,
+        IReadOnlyList<Guid> SceneObjectIds,
+        string DisplayName,
+        int CellCount,
+        double FocusWorldX,
+        double FocusWorldY,
+        double FocusWorldZ);
 
     private sealed class RelayCommand : ICommand
     {

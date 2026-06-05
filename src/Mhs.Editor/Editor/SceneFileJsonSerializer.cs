@@ -23,6 +23,10 @@ public sealed class SceneFileData
 public sealed class SceneFileObjectData
 {
     public string PartId { get; init; } = string.Empty;
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? DisplayName { get; init; }
+
     public VoxelCoord Position { get; init; }
     public int RotationZDegrees { get; init; }
     public float MaterialUnitsPerSecond { get; init; }
