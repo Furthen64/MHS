@@ -1146,12 +1146,36 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
 
         var packetX = cell.Position.X + 0.5;
         var packetY = cell.Position.Y + 0.5;
+        var clumpUnits = Math.Max(1, packet.UnitCount);
+        var clumpScale = Math.Min(1.85, 1.0 + (Math.Sqrt(clumpUnits) - 1.0) * 0.38);
+        var clumpHeightScale = Math.Min(2.1, 1.0 + (clumpUnits - 1) * 0.14);
 
-        var packetHalfLength = Math.Abs(flowX) > 0.5 ? 0.12 : 0.09;
-        var packetHalfWidth = Math.Abs(flowX) > 0.5 ? 0.09 : 0.12;
+        var packetHalfLength = (Math.Abs(flowX) > 0.5 ? 0.12 : 0.09) * clumpScale;
+        var packetHalfWidth = (Math.Abs(flowX) > 0.5 ? 0.09 : 0.12) * clumpScale;
         var z0 = cell.Position.Z + 0.145;
-        var z1 = z0 + 0.08;
         var material = MaterialCatalog.Resolve(packet.MaterialId);
+        var particleOpacity = Math.Min(opacity + 0.05, 1.0);
+        if (TryResolveGranuleProfile(material.Id, clumpUnits, out var granuleCount, out var minGranuleSize, out var maxGranuleSize, out var granuleHeightScale))
+        {
+            DrawConveyorRouteGranules(
+                cell,
+                packet,
+                material,
+                particleOpacity,
+                state,
+                packetX - packetHalfLength,
+                packetX + packetHalfLength,
+                packetY - packetHalfWidth,
+                packetY + packetHalfWidth,
+                z0,
+                granuleCount,
+                minGranuleSize,
+                maxGranuleSize,
+                granuleHeightScale);
+            return;
+        }
+
+        var z1 = z0 + 0.08 * clumpHeightScale;
         DrawConveyorBar(
             packetX - packetHalfLength,
             packetX + packetHalfLength,
@@ -1162,8 +1186,58 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
             material.TopColor,
             material.RightColor,
             material.FrontColor,
-            Math.Min(opacity + 0.05, 1.0),
+            particleOpacity,
             state);
+    }
+
+    private void DrawConveyorRouteGranules(
+        ConveyorVisualCell cell,
+        OrePacket packet,
+        MaterialDefinition material,
+        double opacity,
+        EditorState state,
+        double minX,
+        double maxX,
+        double minY,
+        double maxY,
+        double baseZ,
+        int granuleCount,
+        double minGranuleSize,
+        double maxGranuleSize,
+        double granuleHeightScale)
+    {
+        for (var i = 0; i < granuleCount; i++)
+        {
+            var sizeSeed = HashPacketGranuleSeed(cell.Position, packet.UnitCount, i, material.Id, 11);
+            var posSeedX = HashPacketGranuleSeed(cell.Position, packet.UnitCount, i, material.Id, 23);
+            var posSeedY = HashPacketGranuleSeed(cell.Position, packet.UnitCount, i, material.Id, 37);
+            var zSeed = HashPacketGranuleSeed(cell.Position, packet.UnitCount, i, material.Id, 53);
+            var tintSeed = HashPacketGranuleSeed(cell.Position, packet.UnitCount, i, material.Id, 71);
+
+            var size = Lerp(minGranuleSize, maxGranuleSize, HashToUnit(posSeedX ^ sizeSeed));
+            var halfSize = size * 0.5;
+            var centerX = Lerp(minX + halfSize, maxX - halfSize, HashToUnit(posSeedX));
+            var centerY = Lerp(minY + halfSize, maxY - halfSize, HashToUnit(posSeedY));
+            var z0 = baseZ + 0.004 + HashToUnit(zSeed) * 0.022;
+            var z1 = z0 + size * granuleHeightScale;
+
+            var topColor = TintColor(Color.FromRgb(250, 250, 250), material.TopColor, 0.05 + HashToUnit(tintSeed) * 0.12);
+            var rightColor = TintColor(Color.FromRgb(20, 20, 20), material.RightColor, 0.06 + HashToUnit(tintSeed ^ 0x3D4E5F71u) * 0.16);
+            var frontColor = TintColor(Color.FromRgb(20, 20, 20), material.FrontColor, 0.06 + HashToUnit(tintSeed ^ 0x9B7AA321u) * 0.16);
+
+            DrawConveyorBar(
+                centerX - halfSize,
+                centerX + halfSize,
+                centerY - halfSize,
+                centerY + halfSize,
+                z0,
+                z1,
+                topColor,
+                rightColor,
+                frontColor,
+                opacity,
+                state);
+        }
     }
 
     private void DrawConveyorInputMarkers(ConveyorVisualCell cell, double opacity, EditorState state)
@@ -1313,6 +1387,61 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
         PortDirection.NegativeY => (0, -1),
         _ => (0, 0)
     };
+
+    private static bool TryResolveGranuleProfile(
+        string materialId,
+        int clumpUnits,
+        out int granuleCount,
+        out double minGranuleSize,
+        out double maxGranuleSize,
+        out double granuleHeightScale)
+    {
+        if (string.Equals(materialId, "Coal", StringComparison.OrdinalIgnoreCase))
+        {
+            granuleCount = Math.Min(Math.Max(clumpUnits * 3, 3), 24);
+            minGranuleSize = 0.048;
+            maxGranuleSize = 0.098;
+            granuleHeightScale = 0.82;
+            return true;
+        }
+
+        if (string.Equals(materialId, "Sand", StringComparison.OrdinalIgnoreCase))
+        {
+            granuleCount = Math.Min(Math.Max(clumpUnits * 8, 8), 56);
+            minGranuleSize = 0.018;
+            maxGranuleSize = 0.042;
+            granuleHeightScale = 0.56;
+            return true;
+        }
+
+        granuleCount = 0;
+        minGranuleSize = 0;
+        maxGranuleSize = 0;
+        granuleHeightScale = 0;
+        return false;
+    }
+
+    private static uint HashPacketGranuleSeed(VoxelCoord cell, int unitCount, int granuleIndex, string materialId, uint salt)
+    {
+        unchecked
+        {
+            var hash = 2166136261u;
+            hash = (hash ^ (uint)(cell.X * 73856093)) * 16777619u;
+            hash = (hash ^ (uint)(cell.Y * 19349663)) * 16777619u;
+            hash = (hash ^ (uint)(cell.Z * 83492791)) * 16777619u;
+            hash = (hash ^ (uint)unitCount) * 16777619u;
+            hash = (hash ^ (uint)granuleIndex) * 16777619u;
+            foreach (var ch in materialId)
+            {
+                hash = (hash ^ ch) * 16777619u;
+            }
+
+            return (hash ^ salt) * 16777619u;
+        }
+    }
+
+    private static double HashToUnit(uint hash)
+        => (hash & 0x00FFFFFFu) / 16777215.0;
 
     private static double Lerp(double a, double b, double t) => a + ((b - a) * t);
 

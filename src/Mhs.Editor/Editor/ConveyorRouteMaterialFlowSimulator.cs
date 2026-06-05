@@ -9,6 +9,7 @@ namespace Mhs.Editor.Editor;
 public sealed class OrePacket
 {
     public string MaterialId { get; set; } = SceneObject.DefaultMaterialId;
+    public int UnitCount { get; set; } = 1;
 }
 
 public enum RouteInputAttachmentStatus
@@ -153,7 +154,8 @@ public sealed class ConveyorRouteMaterialFlowSimulator
 
         route.Slots[attachment.RouteCellIndex] = new OrePacket
         {
-            MaterialId = MaterialCatalog.NormalizeId(attachment.MaterialId)
+            MaterialId = MaterialCatalog.NormalizeId(attachment.MaterialId),
+            UnitCount = 1
         };
         attachment.LastStatus = RouteInputAttachmentStatus.Injected;
         return true;
@@ -440,7 +442,7 @@ public sealed class ConveyorRouteMaterialFlowSimulator
                 foreach (var contender in contenders)
                 {
                     contender.LastStatus = RouteInputAttachmentStatus.WaitingForSlot;
-                    ClampWaitingAccumulator(contender);
+                    ClampAccumulator(contender);
                 }
 
                 continue;
@@ -465,7 +467,7 @@ public sealed class ConveyorRouteMaterialFlowSimulator
                 foreach (var contender in contenders)
                 {
                     contender.LastStatus = RouteInputAttachmentStatus.WaitingForRate;
-                    ClampWaitingAccumulator(contender);
+                    ClampAccumulator(contender);
                 }
 
                 continue;
@@ -481,15 +483,17 @@ public sealed class ConveyorRouteMaterialFlowSimulator
                 contenders[i].LastStatus = contenders[i].Accumulator >= 1f
                     ? RouteInputAttachmentStatus.WaitingForTurn
                     : RouteInputAttachmentStatus.WaitingForRate;
-                ClampWaitingAccumulator(contenders[i]);
+                ClampAccumulator(contenders[i]);
             }
 
             var selected = contenders[selectedIndex];
+            var unitCount = Math.Max(1, (int)Math.Floor(selected.Accumulator));
             route.Slots[cellIndex] = new OrePacket
             {
-                MaterialId = MaterialCatalog.NormalizeId(selected.MaterialId)
+                MaterialId = MaterialCatalog.NormalizeId(selected.MaterialId),
+                UnitCount = unitCount
             };
-            selected.Accumulator = Math.Max(0f, selected.Accumulator - 1f);
+            selected.Accumulator = Math.Max(0f, selected.Accumulator - unitCount);
             selected.LastStatus = RouteInputAttachmentStatus.Injected;
             route.NextInputAttachmentIndexByCell[cellIndex] = NormalizeTurnIndex(selectedIndex + 1, contenders.Length);
             injected++;
@@ -498,11 +502,11 @@ public sealed class ConveyorRouteMaterialFlowSimulator
         return injected;
     }
 
-    private static void ClampWaitingAccumulator(RouteInputAttachmentRuntime input)
+    private static void ClampAccumulator(RouteInputAttachmentRuntime input)
     {
-        if (input.Accumulator > 1f)
+        if (input.Accumulator > 16f)
         {
-            input.Accumulator = 1f;
+            input.Accumulator = 16f;
         }
     }
 
