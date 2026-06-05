@@ -24,17 +24,17 @@
             <Setter Property="Padding" Value="8,6" />
         </Style>
         <Style Selector="Button.part-tile">
-            <Setter Property="Background" Value="#1C2430" />
-            <Setter Property="BorderBrush" Value="#2D394A" />
+            <Setter Property="Background" Value="#141B24" />
+            <Setter Property="BorderBrush" Value="#33465C" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="CornerRadius" Value="4" />
-            <Setter Property="Padding" Value="6" />
-            <Setter Property="Margin" Value="0" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Padding" Value="4" />
+            <Setter Property="Margin" Value="2" />
             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
         </Style>
         <Style Selector="Button.part-tile:pointerover">
-            <Setter Property="Background" Value="#223043" />
-            <Setter Property="BorderBrush" Value="#4F6E98" />
+            <Setter Property="Background" Value="#1A2430" />
+            <Setter Property="BorderBrush" Value="#5C80B2" />
         </Style>
     </Window.Styles>
     <DockPanel>
@@ -90,7 +90,7 @@
         <Grid ColumnDefinitions="320,*,300" Background="#1B1D23">
             <DockPanel Grid.Column="0" Margin="8" LastChildFill="True">
                 <Border DockPanel.Dock="Top" Padding="10" Background="#1A202B" CornerRadius="4" Margin="0,0,0,6">
-                    <StackPanel Spacing="10">
+                    <StackPanel Spacing="8">
                         <TextBlock Text="Parts Browser" FontWeight="Bold" Foreground="#ECEFF4" FontSize="14" />
                         <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="6">
                             <Button Grid.Column="0" Classes="catalog-tool" Content="Select" Command="{Binding SelectToolCommand}" />
@@ -107,7 +107,7 @@
                             <ItemsControl ItemsSource="{Binding PartCatalogSections}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="vm:PartCatalogSectionViewModel">
-                                        <StackPanel Spacing="6" Margin="0,8,0,0">
+                                        <StackPanel Spacing="4" Margin="0,6,0,0">
                                             <TextBlock Text="{Binding Name}"
                                                        Foreground="#8EA1B5"
                                                        FontSize="12"
@@ -121,15 +121,16 @@
                                                 <ItemsControl.ItemTemplate>
                                                     <DataTemplate x:DataType="vm:PartCatalogItemViewModel">
                                                         <Button Classes="part-tile" Command="{Binding ActivateCommand}">
-                                                            <StackPanel Spacing="4" HorizontalAlignment="Center">
-                                                                <Image Source="{Binding Thumbnail}" Width="56" Height="56" Stretch="Uniform" />
+                                                            <StackPanel Spacing="3" HorizontalAlignment="Center">
+                                                                <Image Source="{Binding Thumbnail}" Width="52" Height="52" Stretch="Uniform" />
                                                                 <TextBlock Text="{Binding DisplayName}"
                                                                            Foreground="#DEE6F0"
-                                                                           FontSize="11"
+                                                                           FontSize="10"
                                                                            TextWrapping="Wrap"
                                                                            HorizontalAlignment="Center"
                                                                            TextAlignment="Center"
-                                                                           MaxWidth="88" />
+                                                                           MaxWidth="82"
+                                                                           MaxHeight="28" />
                                                             </StackPanel>
                                                         </Button>
                                                     </DataTemplate>

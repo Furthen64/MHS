@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96">
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#e7f8ec" stop-opacity="0.18"/><stop offset="0%" stop-color="#2d6970"/><stop offset="100%" stop-color="#111822"/></linearGradient>
+</defs>
+<rect x="10" y="10" width="76" height="76" fill="url(#bg)" stroke="#badac3" stroke-width="2" rx="16" ry="16"/>
+<rect x="12" y="12" width="72" height="72" fill="none" stroke="#ffffff20" stroke-width="1" rx="14" ry="14"/>
+<path d="M 16 28 A 28 14 0 0 1 80 24" fill="none" stroke="#ffffff55" stroke-width="2" stroke-linecap="round"/>
+<rect x="18" y="72" width="60" height="4" fill="#ffffff10" rx="2" ry="2"/>
+<rect x="24" y="34" width="34" height="24" fill="(82, 132, 137)" rx="10" ry="10"/>
+<rect x="58" y="40" width="14" height="12" fill="#badac3" rx="2" ry="2"/>
+<polyline points="30.0,40.0 50.0,40.0" fill="none" stroke="(62, 99, 104)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<polyline points="30.0,46.0 50.0,46.0" fill="none" stroke="(62, 99, 104)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<polyline points="30.0,52.0 50.0,52.0" fill="none" stroke="(62, 99, 104)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="18" cy="46" r="6" fill="#1f242d" stroke="#badac3" stroke-width="3"/>
+<circle cx="72" cy="46" r="5" fill="#e7f8ec"/>
+</svg>

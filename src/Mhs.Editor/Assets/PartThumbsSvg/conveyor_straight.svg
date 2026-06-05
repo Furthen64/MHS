@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96">
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#f8e3ef" stop-opacity="0.18"/><stop offset="0%" stop-color="#2f6f2f"/><stop offset="100%" stop-color="#111822"/></linearGradient>
+</defs>
+<rect x="10" y="10" width="76" height="76" fill="url(#bg)" stroke="#e0bfd7" stroke-width="2" rx="16" ry="16"/>
+<rect x="12" y="12" width="72" height="72" fill="none" stroke="#ffffff20" stroke-width="1" rx="14" ry="14"/>
+<path d="M 16 28 A 28 14 0 0 1 80 24" fill="none" stroke="#ffffff55" stroke-width="2" stroke-linecap="round"/>
+<rect x="18" y="72" width="60" height="4" fill="#ffffff10" rx="2" ry="2"/>
+<rect x="18" y="35" width="58" height="18" fill="#242830" stroke="#e0bfd7" stroke-width="2" rx="9" ry="9"/>
+<circle cx="26" cy="44" r="3" fill="#bac1c8"/>
+<circle cx="36" cy="44" r="3" fill="#bac1c8"/>
+<circle cx="46" cy="44" r="3" fill="#bac1c8"/>
+<circle cx="56" cy="44" r="3" fill="#bac1c8"/>
+<circle cx="66" cy="44" r="3" fill="#bac1c8"/>
+<polygon points="70.0,44.0 61.0,49.9 61.0,38.1" fill="#e0bfd7"/>
+<rect x="16" y="53" width="8" height="8" fill="(63, 122, 63)" rx="3" ry="3"/>
+<rect x="70" y="53" width="8" height="8" fill="(63, 122, 63)" rx="3" ry="3"/>
+</svg>

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96">
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#f4f8df" stop-opacity="0.18"/><stop offset="0%" stop-color="#2f645f"/><stop offset="100%" stop-color="#111822"/></linearGradient>
+</defs>
+<rect x="10" y="10" width="76" height="76" fill="url(#bg)" stroke="#dce9b6" stroke-width="2" rx="16" ry="16"/>
+<rect x="12" y="12" width="72" height="72" fill="none" stroke="#ffffff20" stroke-width="1" rx="14" ry="14"/>
+<path d="M 16 28 A 28 14 0 0 1 80 24" fill="none" stroke="#ffffff55" stroke-width="2" stroke-linecap="round"/>
+<rect x="18" y="72" width="60" height="4" fill="#ffffff10" rx="2" ry="2"/>
+<path d="M 20.0 48.1 A 27.0 27.0 0 0 1 47.0 22.0" fill="none" stroke="#242830" stroke-width="16" stroke-linecap="round"/>
+<path d="M 20.0 48.1 A 27.0 27.0 0 0 1 47.0 22.0" fill="none" stroke="#dce9b6" stroke-width="2" stroke-linecap="round"/>
+<circle cx="28" cy="64" r="3" fill="#bec3c6"/>
+<circle cx="28" cy="52" r="3" fill="#bec3c6"/>
+<circle cx="33" cy="42" r="3" fill="#bec3c6"/>
+<circle cx="43" cy="33" r="3" fill="#bec3c6"/>
+<circle cx="54" cy="28" r="3" fill="#bec3c6"/>
+<polygon points="60.0,28.0 55.2,36.2 50.5,26.9" fill="#dce9b6"/>
+</svg>

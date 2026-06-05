@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96">
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#eef3f7" stop-opacity="0.18"/><stop offset="0%" stop-color="#55616e"/><stop offset="100%" stop-color="#111822"/></linearGradient>
+</defs>
+<rect x="10" y="10" width="76" height="76" fill="url(#bg)" stroke="#c5ced7" stroke-width="2" rx="16" ry="16"/>
+<rect x="12" y="12" width="72" height="72" fill="none" stroke="#ffffff20" stroke-width="1" rx="14" ry="14"/>
+<path d="M 16 28 A 28 14 0 0 1 80 24" fill="none" stroke="#ffffff55" stroke-width="2" stroke-linecap="round"/>
+<rect x="18" y="72" width="60" height="4" fill="#ffffff10" rx="2" ry="2"/>
+<polygon points="24.0,26.0 70.0,26.0 62.0,58.0 32.0,58.0" fill="(125, 134, 144)"/>
+<polygon points="24.0,26.0 32.0,58.0 24.0,52.0 18.0,30.0" fill="(70, 80, 92)"/>
+<polygon points="70.0,26.0 76.0,30.0 68.0,52.0 62.0,58.0" fill="(78, 89, 102)"/>
+<polyline points="24.0,26.0 70.0,26.0" fill="none" stroke="#c5ced7" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="38" cy="41" r="3" fill="#eef3f7"/>
+<circle cx="48" cy="41" r="3" fill="#eef3f7"/>
+<circle cx="58" cy="41" r="3" fill="#eef3f7"/>
+</svg>

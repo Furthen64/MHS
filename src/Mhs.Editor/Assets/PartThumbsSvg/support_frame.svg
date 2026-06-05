@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96">
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#eef8f1" stop-opacity="0.18"/><stop offset="0%" stop-color="#7d3b6c"/><stop offset="100%" stop-color="#111822"/></linearGradient>
+</defs>
+<rect x="10" y="10" width="76" height="76" fill="url(#bg)" stroke="#cde1d1" stroke-width="2" rx="16" ry="16"/>
+<rect x="12" y="12" width="72" height="72" fill="none" stroke="#ffffff20" stroke-width="1" rx="14" ry="14"/>
+<path d="M 16 28 A 28 14 0 0 1 80 24" fill="none" stroke="#ffffff55" stroke-width="2" stroke-linecap="round"/>
+<rect x="18" y="72" width="60" height="4" fill="#ffffff10" rx="2" ry="2"/>
+<polyline points="24.0,68.0 40.0,24.0 56.0,68.0" fill="none" stroke="(148, 94, 134)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+<polyline points="40.0,24.0 72.0,24.0" fill="none" stroke="(148, 94, 134)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+<polyline points="28.0,50.0 51.0,50.0" fill="none" stroke="#cde1d1" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+<polyline points="22.0,68.0 74.0,68.0" fill="none" stroke="#cde1d1" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96">
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#f0e5fb" stop-opacity="0.18"/><stop offset="0%" stop-color="#705286"/><stop offset="100%" stop-color="#111822"/></linearGradient>
+</defs>
+<rect x="10" y="10" width="76" height="76" fill="url(#bg)" stroke="#dac4e9" stroke-width="2" rx="16" ry="16"/>
+<rect x="12" y="12" width="72" height="72" fill="none" stroke="#ffffff20" stroke-width="1" rx="14" ry="14"/>
+<path d="M 16 28 A 28 14 0 0 1 80 24" fill="none" stroke="#ffffff55" stroke-width="2" stroke-linecap="round"/>
+<rect x="18" y="72" width="60" height="4" fill="#ffffff10" rx="2" ry="2"/>
+<polyline points="20.0,28.0 42.0,46.0" fill="none" stroke="#242830" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+<polyline points="20.0,28.0 42.0,46.0" fill="none" stroke="#dac4e9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<polyline points="20.0,64.0 42.0,46.0" fill="none" stroke="#242830" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+<polyline points="20.0,64.0 42.0,46.0" fill="none" stroke="#dac4e9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<polyline points="42.0,46.0 74.0,46.0" fill="none" stroke="#242830" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+<polyline points="42.0,46.0 74.0,46.0" fill="none" stroke="#dac4e9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="20" cy="28" r="3" fill="#bcc1c7"/>
+<circle cx="20" cy="64" r="3" fill="#bcc1c7"/>
+<circle cx="42" cy="46" r="3" fill="#bcc1c7"/>
+<circle cx="56" cy="46" r="3" fill="#bcc1c7"/>
+<circle cx="70" cy="46" r="3" fill="#bcc1c7"/>
+<polygon points="76.0,46.0 68.0,51.2 68.0,40.8" fill="#dac4e9"/>
+</svg>
