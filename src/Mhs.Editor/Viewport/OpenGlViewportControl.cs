@@ -144,8 +144,15 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
             return;
         }
 
-        DrawFloorOutlines(state.ActiveFloor);
-        DrawGrid(state.ActiveAbsoluteZ);
+        if (state.ShowBounds)
+        {
+            DrawFloorOutlines(state.ActiveFloor);
+        }
+
+        if (state.ShowGrid)
+        {
+            DrawGrid(state.ActiveAbsoluteZ);
+        }
 
         var conveyorCellsByObject = ConveyorRouteCellVisualization.BuildSceneObjectCells(state.Scene.Objects);
         foreach (var renderable in SceneRenderOrder.GetVisibleBackToFront(state, Bounds))
@@ -237,8 +244,12 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
         }
 
         DrawPortDebug(state);
-        DrawSelectedConveyorRouteOverlay(state);
-        DrawMaterialTokens(state);
+        if (state.ShowFlow)
+        {
+            DrawSelectedConveyorRouteOverlay(state);
+            DrawMaterialTokens(state);
+        }
+
         DrawRotationAxisGuide(state);
 
         _renderer.RenderFrame();
@@ -1218,7 +1229,7 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
         }
 
         DrawConveyorBeltMotion(cell, opacity, state, isPreview, previewIsValid);
-        if (!isPreview && state.Scene.ConveyorRouteFlow.TryGetPacketAtCell(cell.Position, out var packet))
+        if (state.ShowFlow && !isPreview && state.Scene.ConveyorRouteFlow.TryGetPacketAtCell(cell.Position, out var packet))
         {
             DrawConveyorRoutePacket(cell, packet!, opacity, state);
         }
@@ -1238,9 +1249,15 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
                 ? Color.FromRgb(232, 224, 150)
                 : Color.FromRgb(226, 226, 226);
         var boundaryBoost = !isPreview && (isSelected || isHovered) ? 0.20 : 0.12;
-        DrawConveyorCellTopBoundary(topA, topB, topC, topD, boundaryColor, Math.Min(opacity + boundaryBoost, 1.0));
+        if (state.ShowBounds)
+        {
+            DrawConveyorCellTopBoundary(topA, topB, topC, topD, boundaryColor, Math.Min(opacity + boundaryBoost, 1.0));
+        }
 
-        DrawConveyorCellFlow(cell, opacity, state, isPreview, previewIsValid);
+        if (state.ShowFlow)
+        {
+            DrawConveyorCellFlow(cell, opacity, state, isPreview, previewIsValid);
+        }
     }
 
     private void DrawConveyorBar(double x0, double x1, double y0, double y1, double z0, double z1,

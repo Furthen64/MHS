@@ -407,6 +407,51 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
+    public bool ShowGrid
+    {
+        get => EditorState.ShowGrid;
+        set
+        {
+            if (EditorState.ShowGrid == value)
+            {
+                return;
+            }
+
+            EditorState.ShowGrid = value;
+            RaiseComputed();
+        }
+    }
+
+    public bool ShowBounds
+    {
+        get => EditorState.ShowBounds;
+        set
+        {
+            if (EditorState.ShowBounds == value)
+            {
+                return;
+            }
+
+            EditorState.ShowBounds = value;
+            RaiseComputed();
+        }
+    }
+
+    public bool ShowFlow
+    {
+        get => EditorState.ShowFlow;
+        set
+        {
+            if (EditorState.ShowFlow == value)
+            {
+                return;
+            }
+
+            EditorState.ShowFlow = value;
+            RaiseComputed();
+        }
+    }
+
     public bool SelectedMtrlSrcPanelVisible =>
         EditorState.SelectedObject is { } selected
         && string.Equals(selected.PartId, "mtrlsrc", StringComparison.OrdinalIgnoreCase);
@@ -1527,6 +1572,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(SelectedObjectThumbnailImage));
         OnPropertyChanged(nameof(SelectedObjectName));
         OnPropertyChanged(nameof(ShowConveyorDebug));
+        OnPropertyChanged(nameof(ShowGrid));
+        OnPropertyChanged(nameof(ShowBounds));
+        OnPropertyChanged(nameof(ShowFlow));
         OnPropertyChanged(nameof(SelectedMtrlSrcPanelVisible));
         OnPropertyChanged(nameof(AvailableMtrlSrcMaterialIds));
         OnPropertyChanged(nameof(AvailableMtrlSrcGranuleCounts));
