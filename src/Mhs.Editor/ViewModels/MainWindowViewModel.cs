@@ -58,6 +58,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             EditorState.StatusMessage = "Test runner is not wired yet.";
             RaiseComputed();
         });
+        LoadDemoFactorySceneCommand = new RelayCommand(LoadDemoFactoryScene);
         BrowseMorePartsCommand = new RelayCommand(() =>
         {
             EditorState.StatusMessage = "Browse More Parts is not wired yet.";
@@ -122,6 +123,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand UndoCommand { get; }
     public ICommand RedoCommand { get; }
     public ICommand RunTestCommand { get; }
+    public ICommand LoadDemoFactorySceneCommand { get; }
     public ICommand BrowseMorePartsCommand { get; }
     public ICommand HopperToolCommand { get; }
     public ICommand BinToolCommand { get; }
@@ -720,6 +722,61 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         RaiseComputed();
     }
 
+
+    public void LoadDemoFactoryScene()
+    {
+        var z = WorldVerticalSettings.ToAbsoluteZ(1, 0);
+        var objects = new List<SceneFileObjectData>
+        {
+            DemoObject("mtrlsrc", "ROM Feed Source", -11, -4, z, rotationZDegrees: 0, materialId: "Coal", unitsPerSecond: 2.5f, granulesPerPacket: 10),
+            DemoObject("mtrlrecv", "Screen House Receiver", 0, 8, z, rotationZDegrees: 90),
+
+            DemoRouteSegment("Highlighted Conveyor Route", -10, -4, z, 6, -4),
+            DemoRouteSegment("Highlighted Conveyor Route", 7, -4, z, 7, 4),
+            DemoRouteSegment("Highlighted Conveyor Route", 6, 4, z, -7, 4),
+            DemoRouteSegment("Highlighted Conveyor Route", -8, 4, z, -8, -1),
+            DemoRouteSegment("Highlighted Conveyor Route", -7, -1, z, 0, -1),
+            DemoRouteSegment("Highlighted Conveyor Route", 0, 0, z, 0, 7),
+
+            DemoObject("support_frame", "Route Support A", -8, -4, 0),
+            DemoObject("support_frame", "Route Support B", -2, -4, 0),
+            DemoObject("support_frame", "Route Support C", 7, -3, 0),
+            DemoObject("support_frame", "Route Support D", 6, 4, 0),
+            DemoObject("support_frame", "Route Support E", -8, 3, 0),
+            DemoObject("support_frame", "Route Support F", 0, 4, 0),
+            DemoObject("beam", "Elevated Conveyor Cross Beam", -5, -5, 2, sizeOverride: new VoxelSize(8, 1, 1)),
+            DemoObject("platform", "Maintenance Platform", 5, 1, 2),
+            DemoObject("ladder", "Access Ladder", 4, 4, 0),
+
+            DemoObject("hopper", "Primary Hopper", -11, 2, 5),
+            DemoObject("hopper", "Secondary Hopper", 3, 5, 5),
+            DemoObject("drop_chute", "Hopper Drop Chute", -10, 3, 2),
+            DemoObject("chute", "Discharge Chute", 1, 6, 5, rotationZDegrees: 90),
+            DemoObject("bin", "Coarse Ore Stockpile", -4, -9, 0),
+            DemoObject("bin", "Fine Ore Stockpile", 5, -9, 0),
+            DemoObject("bin", "Finished Product Bin", 8, 6, 0),
+
+            DemoObject("lift_elevator", "Bucket Elevator", 10, -2, 0),
+            DemoObject("conveyor_curve", "Loop Corner Visual", 6, -6, z, rotationZDegrees: 90),
+            DemoObject("conveyor_split", "Sampling Splitter", -3, 6, z, rotationZDegrees: 180),
+            DemoObject("conveyor_merge", "Return Merge", -11, -1, z),
+            DemoObject("motor", "Route Drive Motor", 1, -3, z),
+            DemoObject("sensor", "Flow Sensor", -4, 3, z),
+            DemoObject("control_box", "Line Control Panel", 9, 1, 0)
+        };
+
+        LoadSceneFileData(new SceneFileData
+        {
+            ActiveFloor = 1,
+            ActiveLayer = 0,
+            RendererMode = _useOpenGlViewport ? "opengl" : "software",
+            Objects = objects
+        });
+
+        EditorState.StatusMessage = "Loaded demo factory scene";
+        RaiseComputed();
+    }
+
     public SceneFileData CreateSceneFileData()
     {
         var objects = new List<SceneFileObjectData>(EditorState.Scene.Objects.Count);
@@ -1189,6 +1246,51 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         partId = string.Empty;
         return null;
+    }
+
+
+    private static SceneFileObjectData DemoObject(
+        string partId,
+        string displayName,
+        int x,
+        int y,
+        int z,
+        int rotationZDegrees = 0,
+        string? materialId = null,
+        float unitsPerSecond = 0f,
+        int granulesPerPacket = 0,
+        VoxelSize? sizeOverride = null)
+        => new()
+        {
+            PartId = partId,
+            DisplayName = displayName,
+            Position = new VoxelCoord(x, y, z),
+            RotationZDegrees = rotationZDegrees,
+            MaterialId = materialId,
+            MaterialUnitsPerSecond = unitsPerSecond,
+            MaterialGranulesPerPacket = granulesPerPacket,
+            SizeOverride = sizeOverride
+        };
+
+    private static SceneFileObjectData DemoRouteSegment(string displayName, int startX, int startY, int z, int endX, int endY)
+    {
+        var minX = Math.Min(startX, endX);
+        var minY = Math.Min(startY, endY);
+        var width = Math.Abs(endX - startX) + 1;
+        var depth = Math.Abs(endY - startY) + 1;
+
+        return new SceneFileObjectData
+        {
+            PartId = "conveyor",
+            DisplayName = displayName,
+            Position = new VoxelCoord(minX, minY, z),
+            SizeOverride = new VoxelSize(width, depth, 1),
+            RotationZDegrees = startX == endX
+                ? (endY > startY ? 90 : 270)
+                : (endX > startX ? 0 : 180),
+            RouteStartCell = new VoxelCoord(startX, startY, z),
+            RouteEndCell = new VoxelCoord(endX, endY, z)
+        };
     }
 
     private void RotateAction()

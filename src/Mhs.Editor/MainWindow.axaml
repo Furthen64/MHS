@@ -134,13 +134,18 @@
                             </StackPanel>
                         </Border>
                         <Border Classes="ribbon-group">
-                            <Button Classes="ribbon-button accent" Content="▶ Test (F5)" Command="{Binding RunTestCommand}" />
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <Button Classes="ribbon-button accent" Content="▶ Test (F5)" Command="{Binding RunTestCommand}" />
+                                <Button Classes="ribbon-button" Content="Demo Factory" Command="{Binding LoadDemoFactorySceneCommand}" ToolTip.Tip="Load a representative material-handling demo scene" />
+                            </StackPanel>
                         </Border>
                     </WrapPanel>
 
                     <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" Margin="10,0" VerticalAlignment="Center">
                         <Menu Background="Transparent" Foreground="#DDE7F3">
                             <MenuItem Header="☰">
+                                <MenuItem Header="_Demo Factory Scene" Command="{Binding LoadDemoFactorySceneCommand}" />
+                                <Separator />
                                 <MenuItem Header="_Settings">
                                     <MenuItem Header="_Application Settings..." Click="OnSettingsClick" />
                                     <Separator />
