@@ -94,8 +94,15 @@ public sealed class SoftwareCubeViewport : Control
             return;
         }
 
-        DrawFloorOutlines(context, state.ActiveFloor);
-        DrawGrid(context, state.ActiveAbsoluteZ);
+        if (state.ShowBounds)
+        {
+            DrawFloorOutlines(context, state.ActiveFloor);
+        }
+
+        if (state.ShowGrid)
+        {
+            DrawGrid(context, state.ActiveAbsoluteZ);
+        }
         var conveyorCellsByObject = ConveyorRouteCellVisualization.BuildSceneObjectCells(state.Scene.Objects);
 
         foreach (var renderable in SceneRenderOrder.GetVisibleBackToFront(state, Bounds))
@@ -189,8 +196,12 @@ public sealed class SoftwareCubeViewport : Control
             DrawOutline(context, outlinePosition, outlineSize, Color.FromRgb(88, 196, 255), selected.IsConveyor ? 2.6 : 3.0, state);
         }
 
-        DrawSelectedConveyorRouteOverlay(context, state);
-        DrawMaterialTokens(context, state);
+        if (state.ShowFlow)
+        {
+            DrawSelectedConveyorRouteOverlay(context, state);
+            DrawMaterialTokens(context, state);
+        }
+
         DrawRotationAxisGuide(context, state);
     }
 
@@ -771,13 +782,19 @@ public sealed class SoftwareCubeViewport : Control
         var boundaryOpacity = isSelected || isHovered
             ? Math.Min(opacity + 0.20, 1.0)
             : Math.Min(opacity + 0.12, 1.0);
-        var boundaryPen = new Pen(new SolidColorBrush(WithOpacity(boundaryColor, boundaryOpacity)), 1);
-        context.DrawLine(boundaryPen, topA, topB);
-        context.DrawLine(boundaryPen, topB, topC);
-        context.DrawLine(boundaryPen, topC, topD);
-        context.DrawLine(boundaryPen, topD, topA);
+        if (state.ShowBounds)
+        {
+            var boundaryPen = new Pen(new SolidColorBrush(WithOpacity(boundaryColor, boundaryOpacity)), 1);
+            context.DrawLine(boundaryPen, topA, topB);
+            context.DrawLine(boundaryPen, topB, topC);
+            context.DrawLine(boundaryPen, topC, topD);
+            context.DrawLine(boundaryPen, topD, topA);
+        }
 
-        DrawConveyorCellFlowSw(context, cell, opacity, state);
+        if (state.ShowFlow)
+        {
+            DrawConveyorCellFlowSw(context, cell, opacity, state);
+        }
     }
 
     private void DrawConveyorBarSw(DrawingContext context, double x0, double x1, double y0, double y1,

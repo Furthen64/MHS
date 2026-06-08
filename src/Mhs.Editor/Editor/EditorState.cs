@@ -38,6 +38,9 @@ public sealed class EditorState : INotifyPropertyChanged
     private string _statusMessage = "Ready";
     private ConveyorRouteDraft? _activeConveyorRoute;
     private bool _showConveyorDebug = true;
+    private bool _showGrid = true;
+    private bool _showBounds = true;
+    private bool _showFlow = true;
 
     public EditorState()
     {
@@ -266,6 +269,24 @@ public sealed class EditorState : INotifyPropertyChanged
     {
         get => _showConveyorDebug;
         set => SetField(ref _showConveyorDebug, value);
+    }
+
+    public bool ShowGrid
+    {
+        get => _showGrid;
+        set => SetField(ref _showGrid, value);
+    }
+
+    public bool ShowBounds
+    {
+        get => _showBounds;
+        set => SetField(ref _showBounds, value);
+    }
+
+    public bool ShowFlow
+    {
+        get => _showFlow;
+        set => SetField(ref _showFlow, value);
     }
 
     public int ActiveAbsoluteZ => WorldVerticalSettings.ToAbsoluteZ(ActiveFloor, ActiveLayer);
