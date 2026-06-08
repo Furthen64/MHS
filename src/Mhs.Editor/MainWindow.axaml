@@ -466,121 +466,253 @@
             <Border Grid.Column="2"
                     IsVisible="{Binding ExpertInspectorVisible}"
                     Margin="8"
-                    Padding="10"
+                    Padding="0"
                     Background="#232833"
                     CornerRadius="4">
-                <StackPanel Spacing="8">
-                    <TextBlock Text="Inspector" FontWeight="Bold" Foreground="#ECEFF4" FontSize="14" />
-                    <TextBlock Text="{Binding InspectorSelectedText}" Foreground="#D8DEE9" />
-                    <Grid ColumnDefinitions="52,*" ColumnSpacing="8">
-                        <TextBlock Grid.Column="0"
-                                   Text="Name"
-                                   VerticalAlignment="Center"
-                                   Foreground="#AFC6E9" />
-                        <TextBox x:Name="InspectorNameTextBox"
-                                 Grid.Column="1"
-                                 IsEnabled="{Binding HasSelectedObject}"
-                                 Text="{Binding SelectedObjectName, Mode=TwoWay}"
-                                 GotFocus="OnInspectorNameGotFocus"
-                                 KeyDown="OnInspectorNameKeyDown" />
-                    </Grid>
-                    <TextBlock Text="{Binding InspectorIdText}" Foreground="#D8DEE9" />
-                    <TextBlock Text="{Binding InspectorPositionText}" Foreground="#D8DEE9" />
-                    <TextBlock Text="{Binding InspectorSizeText}" Foreground="#D8DEE9" />
-                    <TextBlock Text="{Binding InspectorRotationText}" Foreground="#D8DEE9" />
-                    <TextBlock Text="{Binding InspectorStatusText}" Foreground="#D8DEE9" />
-                    <TextBlock Text="{Binding InspectorContextText}" Foreground="#D8DEE9" />
-                    <TextBlock Text="{Binding InspectorRangeText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
-                    <TextBlock Text="{Binding InspectorExtraText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
-                    <TextBlock Text="{Binding InspectorPortText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
+                <TabControl>
+                    <TabItem Header="Inspector">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <StackPanel Spacing="10" Margin="10">
+                                <Grid ColumnDefinitions="86,*" ColumnSpacing="10">
+                                    <Border Grid.Column="0"
+                                            Width="78"
+                                            Height="78"
+                                            Background="#111820"
+                                            BorderBrush="#3B4C61"
+                                            BorderThickness="1"
+                                            CornerRadius="8"
+                                            Padding="8">
+                                        <Grid>
+                                            <Image Source="{Binding SelectedObjectThumbnailImage}"
+                                                   Stretch="Uniform"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center" />
+                                            <TextBlock Text="PART"
+                                                       Foreground="#465569"
+                                                       FontSize="10"
+                                                       FontWeight="Bold"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Bottom" />
+                                        </Grid>
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Spacing="6" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding InspectorSelectedText}"
+                                                   Foreground="#EEF4FB"
+                                                   FontWeight="SemiBold"
+                                                   TextWrapping="Wrap" />
+                                        <Grid ColumnDefinitions="52,*" ColumnSpacing="8">
+                                            <TextBlock Grid.Column="0"
+                                                       Text="Name"
+                                                       VerticalAlignment="Center"
+                                                       Foreground="#AFC6E9" />
+                                            <TextBox x:Name="InspectorNameTextBox"
+                                                     Grid.Column="1"
+                                                     IsEnabled="{Binding HasSelectedObject}"
+                                                     Text="{Binding SelectedObjectName, Mode=TwoWay}"
+                                                     GotFocus="OnInspectorNameGotFocus"
+                                                     KeyDown="OnInspectorNameKeyDown" />
+                                        </Grid>
+                                        <Grid ColumnDefinitions="52,*" ColumnSpacing="8">
+                                            <TextBlock Grid.Column="0" Text="ID" Foreground="#AFC6E9" />
+                                            <TextBlock Grid.Column="1" Text="{Binding InspectorIdText}" Foreground="#D8DEE9" TextTrimming="CharacterEllipsis" />
+                                        </Grid>
+                                    </StackPanel>
+                                </Grid>
 
-                    <Border IsVisible="{Binding SelectedMtrlSrcPanelVisible}"
-                            Background="#1C212A"
-                            BorderBrush="#6C8F59"
-                            BorderThickness="1"
-                            CornerRadius="4"
-                            Padding="8">
-                        <StackPanel Spacing="8">
-                            <TextBlock Text="MtrlSrc Settings" FontWeight="SemiBold" Foreground="#ECEFF4" />
-                            <TextBlock Text="Choose how many units/second this source produces when connected to a conveyor route."
-                                       Foreground="#C8D2DE"
-                                       TextWrapping="Wrap" />
-                            <Grid ColumnDefinitions="92,*" RowDefinitions="Auto" ColumnSpacing="6">
-                                <TextBlock Grid.Column="0"
-                                           VerticalAlignment="Center"
-                                           Text="Material"
-                                           Foreground="#AFC6E9" />
-                                <ComboBox Grid.Column="1"
-                                          ItemsSource="{Binding AvailableMtrlSrcMaterialIds}"
-                                          SelectedItem="{Binding SelectedMtrlSrcMaterialId, Mode=TwoWay}" />
-                            </Grid>
-                            <Grid ColumnDefinitions="92,*" RowDefinitions="Auto" ColumnSpacing="6">
-                               <TextBlock Grid.Column="0"
-                                          VerticalAlignment="Center"
-                                          Text="Granules"
-                                          Foreground="#AFC6E9" />
-                               <ComboBox Grid.Column="1"
-                                         ItemsSource="{Binding AvailableMtrlSrcGranuleCounts}"
-                                         SelectedItem="{Binding SelectedMtrlSrcGranulesPerPacket, Mode=TwoWay}" />
-                            </Grid>
-                            <StackPanel Orientation="Horizontal" Spacing="6">
-                                <Button Content="-0.5" Command="{Binding DecreaseSelectedMtrlSrcRateCommand}" />
-                                <TextBox Width="92"
-                                         Text="{Binding SelectedMtrlSrcUnitsPerSecondText, Mode=TwoWay}" />
-                                <Button Content="+0.5" Command="{Binding IncreaseSelectedMtrlSrcRateCommand}" />
-                                <Button Content="Apply" Command="{Binding ApplySelectedMtrlSrcRateCommand}" />
+                                <Border Background="#1C212A"
+                                        BorderBrush="#3B4252"
+                                        BorderThickness="1"
+                                        CornerRadius="4"
+                                        Padding="8">
+                                    <StackPanel Spacing="7">
+                                        <TextBlock Text="TRANSFORM"
+                                                   Foreground="#8EA2BA"
+                                                   FontSize="10"
+                                                   FontWeight="Bold" />
+                                        <Grid ColumnDefinitions="82,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="5">
+                                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Position" Foreground="#AFC6E9" />
+                                            <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding InspectorPositionText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
+                                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Base" Foreground="#AFC6E9" />
+                                            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding InspectorSizeText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
+                                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Effective" Foreground="#AFC6E9" />
+                                            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding InspectorRotationText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
+                                            <TextBlock Grid.Row="3" Grid.Column="0" Text="Rotation" Foreground="#AFC6E9" />
+                                            <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding InspectorStatusText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
+                                            <TextBlock Grid.Row="4" Grid.Column="0" Text="Z Span" Foreground="#AFC6E9" />
+                                            <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding InspectorContextText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+
+                                <Border Background="#1C212A"
+                                        BorderBrush="#3B4252"
+                                        BorderThickness="1"
+                                        CornerRadius="4"
+                                        Padding="8">
+                                    <StackPanel Spacing="7">
+                                        <TextBlock Text="CONVEYOR"
+                                                   Foreground="#8EA2BA"
+                                                   FontSize="10"
+                                                   FontWeight="Bold" />
+                                        <Grid ColumnDefinitions="82,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="5">
+                                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Ports" Foreground="#AFC6E9" />
+                                            <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding InspectorPortText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
+                                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Range" Foreground="#AFC6E9" />
+                                            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding InspectorRangeText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
+                                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Flow" Foreground="#AFC6E9" />
+                                            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding InspectorMaterialFlowText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
+                                        </Grid>
+
+                                        <Border IsVisible="{Binding SelectedMtrlSrcPanelVisible}"
+                                                Background="#172217"
+                                                BorderBrush="#6C8F59"
+                                                BorderThickness="1"
+                                                CornerRadius="4"
+                                                Padding="8">
+                                            <StackPanel Spacing="8">
+                                                <TextBlock Text="MATERIAL SOURCE"
+                                                           FontSize="10"
+                                                           FontWeight="Bold"
+                                                           Foreground="#A7D397" />
+                                                <TextBlock Text="Choose how many units/second this source produces when connected to a conveyor route."
+                                                           Foreground="#C8D2DE"
+                                                           TextWrapping="Wrap" />
+                                                <Grid ColumnDefinitions="80,*" RowDefinitions="Auto" ColumnSpacing="6">
+                                                    <TextBlock Grid.Column="0"
+                                                               VerticalAlignment="Center"
+                                                               Text="Material"
+                                                               Foreground="#AFC6E9" />
+                                                    <ComboBox Grid.Column="1"
+                                                              ItemsSource="{Binding AvailableMtrlSrcMaterialIds}"
+                                                              SelectedItem="{Binding SelectedMtrlSrcMaterialId, Mode=TwoWay}" />
+                                                </Grid>
+                                                <Grid ColumnDefinitions="80,*" RowDefinitions="Auto" ColumnSpacing="6">
+                                                   <TextBlock Grid.Column="0"
+                                                              VerticalAlignment="Center"
+                                                              Text="Granules"
+                                                              Foreground="#AFC6E9" />
+                                                   <ComboBox Grid.Column="1"
+                                                             ItemsSource="{Binding AvailableMtrlSrcGranuleCounts}"
+                                                             SelectedItem="{Binding SelectedMtrlSrcGranulesPerPacket, Mode=TwoWay}" />
+                                                </Grid>
+                                                <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="6">
+                                                    <Button Grid.Column="0" Content="-0.5" Command="{Binding DecreaseSelectedMtrlSrcRateCommand}" />
+                                                    <TextBox Grid.Column="1"
+                                                             MinWidth="68"
+                                                             Text="{Binding SelectedMtrlSrcUnitsPerSecondText, Mode=TwoWay}" />
+                                                    <Button Grid.Column="2" Content="+0.5" Command="{Binding IncreaseSelectedMtrlSrcRateCommand}" />
+                                                    <Button Grid.Column="3" Content="Apply" Command="{Binding ApplySelectedMtrlSrcRateCommand}" />
+                                                </Grid>
+                                                <TextBlock Text="{Binding SelectedMtrlSrcRateStatusText}" Foreground="#A7D397" TextWrapping="Wrap" />
+                                            </StackPanel>
+                                        </Border>
+
+                                        <Border IsVisible="{Binding ConveyorRoutePanelVisible}"
+                                                Background="#151B23"
+                                                BorderBrush="#3B4252"
+                                                BorderThickness="1"
+                                                CornerRadius="4"
+                                                Padding="8">
+                                            <StackPanel Spacing="6">
+                                                <TextBlock Text="ROUTE PREVIEW" FontSize="10" FontWeight="Bold" Foreground="#8EA2BA" />
+                                                <Grid ColumnDefinitions="88,*" RowDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="6" RowSpacing="4">
+                                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Anchors" Foreground="#AFC6E9" />
+                                                    <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding ConveyorRouteAnchorsValue}" Foreground="#D8DEE9" FontFamily="Consolas" />
+                                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Z Layer" Foreground="#AFC6E9" />
+                                                    <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding ConveyorRouteZValue}" Foreground="#D8DEE9" FontFamily="Consolas" />
+                                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Preview" Foreground="#AFC6E9" />
+                                                    <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding ConveyorRoutePreviewValue}" Foreground="#D8DEE9" FontFamily="Consolas" />
+                                                    <TextBlock Grid.Row="3" Grid.Column="0" Text="Block" Foreground="#AFC6E9" />
+                                                    <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding ConveyorRouteBlockedReasonValue}" Foreground="#D8DEE9" TextWrapping="Wrap" FontFamily="Consolas" />
+                                                </Grid>
+                                            </StackPanel>
+                                        </Border>
+                                    </StackPanel>
+                                </Border>
+
+                                <Border Background="#1C212A"
+                                        BorderBrush="#3B4252"
+                                        BorderThickness="1"
+                                        CornerRadius="4"
+                                        Padding="8">
+                                    <StackPanel Spacing="7">
+                                        <TextBlock Text="VISUAL"
+                                                   Foreground="#8EA2BA"
+                                                   FontSize="10"
+                                                   FontWeight="Bold" />
+                                        <Grid ColumnDefinitions="82,*" RowDefinitions="Auto,Auto" ColumnSpacing="8" RowSpacing="5">
+                                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Type" Foreground="#AFC6E9" />
+                                            <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding InspectorExtraText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
+                                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Object" Foreground="#AFC6E9" />
+                                            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding InspectorSelectedText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+
+                                <Expander Header="Advanced diagnostics" IsExpanded="False">
+                                    <Border Background="#151B23"
+                                            BorderBrush="#3B4252"
+                                            BorderThickness="1"
+                                            CornerRadius="4"
+                                            Padding="8">
+                                        <StackPanel Spacing="6">
+                                            <TextBlock Text="{Binding InspectorIdText}" Foreground="#D8DEE9" />
+                                            <TextBlock Text="{Binding InspectorPositionText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
+                                            <TextBlock Text="{Binding InspectorSizeText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
+                                            <TextBlock Text="{Binding InspectorRotationText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
+                                            <TextBlock Text="{Binding InspectorStatusText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
+                                            <TextBlock Text="{Binding InspectorContextText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
+                                            <TextBlock Text="{Binding InspectorRangeText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
+                                            <TextBlock Text="{Binding InspectorExtraText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
+                                            <TextBlock Text="{Binding InspectorPortText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
+                                        </StackPanel>
+                                    </Border>
+                                </Expander>
                             </StackPanel>
-                            <TextBlock Text="{Binding SelectedMtrlSrcRateStatusText}" Foreground="#A7D397" />
-                        </StackPanel>
-                    </Border>
-
-                    <Border IsVisible="{Binding ConveyorRoutePanelVisible}"
-                            Background="#1C212A"
-                            BorderBrush="#3B4252"
-                            BorderThickness="1"
-                            CornerRadius="4"
-                            Padding="8">
-                        <StackPanel Spacing="6">
-                            <TextBlock Text="Conveyor Route" FontWeight="SemiBold" Foreground="#ECEFF4" />
-                            <Grid ColumnDefinitions="130,*" RowDefinitions="Auto,Auto,Auto,Auto">
-                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Anchors" Foreground="#AFC6E9" FontFamily="Consolas" />
-                                <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding ConveyorRouteAnchorsValue}" Foreground="#D8DEE9" FontFamily="Consolas" />
-
-                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Z Layer" Foreground="#AFC6E9" FontFamily="Consolas" />
-                                <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding ConveyorRouteZValue}" Foreground="#D8DEE9" FontFamily="Consolas" />
-
-                                <TextBlock Grid.Row="2" Grid.Column="0" Text="Preview" Foreground="#AFC6E9" FontFamily="Consolas" />
-                                <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding ConveyorRoutePreviewValue}" Foreground="#D8DEE9" FontFamily="Consolas" />
-
-                                <TextBlock Grid.Row="3" Grid.Column="0" Text="Block Reason" Foreground="#AFC6E9" FontFamily="Consolas" />
-                                <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding ConveyorRouteBlockedReasonValue}" Foreground="#D8DEE9" TextWrapping="Wrap" FontFamily="Consolas" />
-                            </Grid>
-                        </StackPanel>
-                    </Border>
-
-                    <Separator Margin="0,6,0,6" />
-                    <TextBlock Text="Floor / Layer" FontWeight="SemiBold" Foreground="#ECEFF4" />
-                    <Border Background="{Binding Floor2StackBackground}" BorderBrush="{Binding Floor2StackBorder}" BorderThickness="1" CornerRadius="4" Padding="6,4">
-                        <Button Background="Transparent" BorderThickness="0" HorizontalContentAlignment="Left" Command="{Binding Floor2Command}">
-                            <TextBlock Text="{Binding Floor2StackText}" Foreground="#D8DEE9" />
-                        </Button>
-                    </Border>
-                    <Border Background="{Binding Floor1StackBackground}" BorderBrush="{Binding Floor1StackBorder}" BorderThickness="1" CornerRadius="4" Padding="6,4">
-                        <Button Background="Transparent" BorderThickness="0" HorizontalContentAlignment="Left" Command="{Binding Floor1Command}">
-                            <TextBlock Text="{Binding Floor1StackText}" Foreground="#D8DEE9" />
-                        </Button>
-                    </Border>
-                    <Border Background="{Binding Floor0StackBackground}" BorderBrush="{Binding Floor0StackBorder}" BorderThickness="1" CornerRadius="4" Padding="6,4">
-                        <Button Background="Transparent" BorderThickness="0" HorizontalContentAlignment="Left" Command="{Binding Floor0Command}">
-                            <TextBlock Text="{Binding Floor0StackText}" Foreground="#D8DEE9" />
-                        </Button>
-                    </Border>
-                    <TextBlock Text="{Binding ActiveFloorSummaryText}" Foreground="#D8DEE9" Margin="0,6,0,0" />
-                    <TextBlock Text="{Binding ActiveLayerSummaryText}" Foreground="#D8DEE9" />
-                    <TextBlock Text="{Binding ActiveAbsoluteZSummaryText}" Foreground="#D8DEE9" />
-                    <TextBlock IsVisible="{Binding ExpertGpuLabelsVisible}" Text="{Binding PreferredOpenGlGpuSummaryText}" Foreground="#AFC6E9" TextWrapping="Wrap" />
-                    <TextBlock IsVisible="{Binding ExpertGpuLabelsVisible}" Text="{Binding OpenGlBackendSummaryText}" Foreground="#AFC6E9" TextWrapping="Wrap" />
-                </StackPanel>
+                        </ScrollViewer>
+                    </TabItem>
+                    <TabItem Header="Scene">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <StackPanel Spacing="8" Margin="10">
+                                <TextBlock Text="FLOOR / LAYER"
+                                           Foreground="#8EA2BA"
+                                           FontSize="10"
+                                           FontWeight="Bold" />
+                                <Border Background="{Binding Floor2StackBackground}" BorderBrush="{Binding Floor2StackBorder}" BorderThickness="1" CornerRadius="4" Padding="6,4">
+                                    <Button Background="Transparent" BorderThickness="0" HorizontalContentAlignment="Left" Command="{Binding Floor2Command}">
+                                        <TextBlock Text="{Binding Floor2StackText}" Foreground="#D8DEE9" />
+                                    </Button>
+                                </Border>
+                                <Border Background="{Binding Floor1StackBackground}" BorderBrush="{Binding Floor1StackBorder}" BorderThickness="1" CornerRadius="4" Padding="6,4">
+                                    <Button Background="Transparent" BorderThickness="0" HorizontalContentAlignment="Left" Command="{Binding Floor1Command}">
+                                        <TextBlock Text="{Binding Floor1StackText}" Foreground="#D8DEE9" />
+                                    </Button>
+                                </Border>
+                                <Border Background="{Binding Floor0StackBackground}" BorderBrush="{Binding Floor0StackBorder}" BorderThickness="1" CornerRadius="4" Padding="6,4">
+                                    <Button Background="Transparent" BorderThickness="0" HorizontalContentAlignment="Left" Command="{Binding Floor0Command}">
+                                        <TextBlock Text="{Binding Floor0StackText}" Foreground="#D8DEE9" />
+                                    </Button>
+                                </Border>
+                                <Grid ColumnDefinitions="94,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="5" Margin="0,6,0,0">
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Active floor" Foreground="#AFC6E9" />
+                                    <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding ActiveFloorSummaryText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Active layer" Foreground="#AFC6E9" />
+                                    <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding ActiveLayerSummaryText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Absolute Z" Foreground="#AFC6E9" />
+                                    <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding ActiveAbsoluteZSummaryText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
+                                </Grid>
+                                <Expander Header="Advanced renderer diagnostics"
+                                          IsExpanded="False"
+                                          IsVisible="{Binding ExpertGpuLabelsVisible}">
+                                    <StackPanel Spacing="6">
+                                        <TextBlock Text="{Binding PreferredOpenGlGpuSummaryText}" Foreground="#AFC6E9" TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding OpenGlBackendSummaryText}" Foreground="#AFC6E9" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </Expander>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </TabItem>
+                </TabControl>
             </Border>
         </Grid>
     </DockPanel>

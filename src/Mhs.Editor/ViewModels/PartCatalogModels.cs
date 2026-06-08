@@ -20,12 +20,14 @@ public sealed class PartCatalogItemViewModel
     public string Category { get; init; } = string.Empty;
     public IReadOnlyList<string> Tags { get; init; } = [];
     public string Thumbnail { get; init; } = string.Empty;
-    public Bitmap? ThumbnailImage => string.IsNullOrWhiteSpace(Thumbnail)
-        ? null
-        : ThumbnailCache.GetOrAdd(Thumbnail, LoadThumbnail);
+    public Bitmap? ThumbnailImage => GetThumbnailImage(Thumbnail);
     public string ToolType { get; init; } = "place";
     public bool IsPlaceable { get; init; }
     public required ICommand ActivateCommand { get; init; }
+
+    internal static Bitmap? GetThumbnailImage(string thumbnail) => string.IsNullOrWhiteSpace(thumbnail)
+        ? null
+        : ThumbnailCache.GetOrAdd(thumbnail, LoadThumbnail);
 
     private static Bitmap? LoadThumbnail(string thumbnail)
     {
