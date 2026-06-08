@@ -38,6 +38,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private string _selectedMtrlSrcRateStatusText = "Select MtrlSrc";
     private SceneTreeNodeViewModel? _selectedSceneTreeNode;
     private string _partSearchText = string.Empty;
+    private string _activeViewMode = "Iso";
 
     public MainWindowViewModel()
     {
@@ -50,6 +51,13 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         MoveSelectionCommand = new RelayCommand(StartMoveSelection);
         RotateSelectionCommand = new RelayCommand(RotateAction);
         DeleteSelectionCommand = new RelayCommand(DeleteSelection);
+        UndoCommand = new RelayCommand(() => { }, canExecute: () => false);
+        RedoCommand = new RelayCommand(() => { }, canExecute: () => false);
+        RunTestCommand = new RelayCommand(() =>
+        {
+            EditorState.StatusMessage = "Test runner is not wired yet.";
+            RaiseComputed();
+        });
         BrowseMorePartsCommand = new RelayCommand(() =>
         {
             EditorState.StatusMessage = "Browse More Parts is not wired yet.";
@@ -84,6 +92,16 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         TallHopperToolCommand = ResolvePlacePartToolCommand("tall_hopper");
         MtrlSrcToolCommand = ResolvePlacePartToolCommand("mtrlsrc");
         MtrlRecvToolCommand = ResolvePlacePartToolCommand("mtrlrecv");
+        SplitterToolCommand = ResolvePlacePartToolCommand("conveyor_split");
+        LiftToolCommand = ResolvePlacePartToolCommand("lift_elevator");
+        TurnToolCommand = ResolvePlacePartToolCommand("conveyor_curve");
+        MergeToolCommand = ResolvePlacePartToolCommand("conveyor_merge");
+        SupportToolCommand = ResolvePlacePartToolCommand("support_frame");
+        OtherPartsCommand = BrowseMorePartsCommand;
+        IsoViewCommand = new RelayCommand(() => SetActiveViewMode("Iso"));
+        TopViewCommand = new RelayCommand(() => SetActiveViewMode("Top"));
+        FrontViewCommand = new RelayCommand(() => SetActiveViewMode("Front"));
+        RightViewCommand = new RelayCommand(() => SetActiveViewMode("Right"));
 
         _partCatalogEntries = PartCatalogLoader.LoadCatalog();
         RebuildPartCatalogSections();
@@ -101,6 +119,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand MoveSelectionCommand { get; }
     public ICommand RotateSelectionCommand { get; }
     public ICommand DeleteSelectionCommand { get; }
+    public ICommand UndoCommand { get; }
+    public ICommand RedoCommand { get; }
+    public ICommand RunTestCommand { get; }
     public ICommand BrowseMorePartsCommand { get; }
     public ICommand HopperToolCommand { get; }
     public ICommand BinToolCommand { get; }
@@ -108,6 +129,16 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand TallHopperToolCommand { get; }
     public ICommand MtrlSrcToolCommand { get; }
     public ICommand MtrlRecvToolCommand { get; }
+    public ICommand SplitterToolCommand { get; }
+    public ICommand LiftToolCommand { get; }
+    public ICommand TurnToolCommand { get; }
+    public ICommand MergeToolCommand { get; }
+    public ICommand SupportToolCommand { get; }
+    public ICommand OtherPartsCommand { get; }
+    public ICommand IsoViewCommand { get; }
+    public ICommand TopViewCommand { get; }
+    public ICommand FrontViewCommand { get; }
+    public ICommand RightViewCommand { get; }
     public ICommand Floor0Command { get; }
     public ICommand Floor1Command { get; }
     public ICommand Floor2Command { get; }
@@ -181,6 +212,15 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public bool IsTallHopperActive => EditorState.ActiveTool.Name == "Tall Hopper";
     public bool IsMtrlSrcActive => EditorState.ActiveTool.Name == "MtrlSrc";
     public bool IsMtrlRecvActive => EditorState.ActiveTool.Name == "MtrlRecv";
+    public bool IsSplitterActive => EditorState.ActiveTool.Name == "Conveyor (Split)";
+    public bool IsLiftActive => EditorState.ActiveTool.Name == "Lift / Elevator";
+    public bool IsTurnActive => EditorState.ActiveTool.Name == "Conveyor (Curve)";
+    public bool IsMergeActive => EditorState.ActiveTool.Name == "Conveyor (Merge)";
+    public bool IsSupportActive => EditorState.ActiveTool.Name == "Support Frame";
+    public bool IsIsoViewActive => string.Equals(_activeViewMode, "Iso", StringComparison.Ordinal);
+    public bool IsTopViewActive => string.Equals(_activeViewMode, "Top", StringComparison.Ordinal);
+    public bool IsFrontViewActive => string.Equals(_activeViewMode, "Front", StringComparison.Ordinal);
+    public bool IsRightViewActive => string.Equals(_activeViewMode, "Right", StringComparison.Ordinal);
     public bool IsFloor0Active => EditorState.ActiveFloor == 0;
     public bool IsFloor1Active => EditorState.ActiveFloor == 1;
     public bool IsFloor2Active => EditorState.ActiveFloor == 2;
@@ -213,8 +253,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             OnPropertyChanged();
         }
     }
-    public string LayerDisplayText => $"Layer: {EditorState.ActiveLayer} of {WorldVerticalSettings.LayersPerFloor - 1}";
-    public string AbsoluteZDisplayText => $"Absolute Z: {EditorState.ActiveAbsoluteZ}";
+    public string LayerDisplayText => $"Layer {EditorState.ActiveLayer}/{WorldVerticalSettings.LayersPerFloor - 1}";
+    public string AbsoluteZDisplayText => $"Z {EditorState.ActiveAbsoluteZ}";
+    public string ViewportSummaryText => $"{_activeViewMode} · Snap Grid · Floor {EditorState.ActiveFloor} · Layer {EditorState.ActiveLayer}";
 
     public string StatusText
     {
@@ -1064,6 +1105,18 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         RaiseComputed();
     }
 
+    private void SetActiveViewMode(string viewMode)
+    {
+        if (string.Equals(_activeViewMode, viewMode, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        _activeViewMode = viewMode;
+        EditorState.StatusMessage = $"{viewMode} view selected.";
+        RaiseComputed();
+    }
+
     private void SetActiveFloor(int floor)
     {
         EditorState.ActiveFloor = floor;
@@ -1315,6 +1368,15 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(IsTallHopperActive));
         OnPropertyChanged(nameof(IsMtrlSrcActive));
         OnPropertyChanged(nameof(IsMtrlRecvActive));
+        OnPropertyChanged(nameof(IsSplitterActive));
+        OnPropertyChanged(nameof(IsLiftActive));
+        OnPropertyChanged(nameof(IsTurnActive));
+        OnPropertyChanged(nameof(IsMergeActive));
+        OnPropertyChanged(nameof(IsSupportActive));
+        OnPropertyChanged(nameof(IsIsoViewActive));
+        OnPropertyChanged(nameof(IsTopViewActive));
+        OnPropertyChanged(nameof(IsFrontViewActive));
+        OnPropertyChanged(nameof(IsRightViewActive));
         OnPropertyChanged(nameof(IsFloor0Active));
         OnPropertyChanged(nameof(IsFloor1Active));
         OnPropertyChanged(nameof(IsFloor2Active));
@@ -1331,6 +1393,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(SceneViewportColumnSpan));
         OnPropertyChanged(nameof(LayerDisplayText));
         OnPropertyChanged(nameof(AbsoluteZDisplayText));
+        OnPropertyChanged(nameof(ViewportSummaryText));
         OnPropertyChanged(nameof(StatusText));
         OnPropertyChanged(nameof(InspectorSelectedText));
         OnPropertyChanged(nameof(InspectorIdText));
@@ -2099,13 +2162,15 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private sealed class RelayCommand : ICommand
     {
         private readonly Action _execute;
+        private readonly Func<bool> _canExecute;
 
-        public RelayCommand(Action execute)
+        public RelayCommand(Action execute, Func<bool>? canExecute = null)
         {
             _execute = execute;
+            _canExecute = canExecute ?? (() => true);
         }
 
-        public bool CanExecute(object? parameter) => true;
+        public bool CanExecute(object? parameter) => _canExecute();
 
         public event EventHandler? CanExecuteChanged;
 

@@ -38,55 +38,185 @@
             <Setter Property="Background" Value="#202A35" />
             <Setter Property="BorderBrush" Value="#5B83B6" />
         </Style>
+        <Style Selector="Button.ribbon-button">
+            <Setter Property="Background" Value="#222831" />
+            <Setter Property="Foreground" Value="#E6ECF4" />
+            <Setter Property="BorderBrush" Value="#323C48" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="4" />
+            <Setter Property="Padding" Value="10,6" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="MinHeight" Value="34" />
+        </Style>
+        <Style Selector="Button.ribbon-button:pointerover">
+            <Setter Property="Background" Value="#2D3744" />
+            <Setter Property="BorderBrush" Value="#4F6F96" />
+        </Style>
+        <Style Selector="Button.ribbon-button.accent">
+            <Setter Property="Background" Value="#274C7A" />
+            <Setter Property="BorderBrush" Value="#5CA8FF" />
+            <Setter Property="Foreground" Value="#FFFFFF" />
+        </Style>
+        <Style Selector="Button.ribbon-button:disabled">
+            <Setter Property="Opacity" Value="0.45" />
+        </Style>
+        <Style Selector="Button.ribbon-icon">
+            <Setter Property="Background" Value="#1B2129" />
+            <Setter Property="Foreground" Value="#DDE7F3" />
+            <Setter Property="BorderBrush" Value="#303946" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="4" />
+            <Setter Property="Padding" Value="8,5" />
+            <Setter Property="FontSize" Value="16" />
+            <Setter Property="MinWidth" Value="42" />
+            <Setter Property="MinHeight" Value="34" />
+        </Style>
+        <Style Selector="TextBlock.ribbon-label">
+            <Setter Property="Foreground" Value="#7E8EA2" />
+            <Setter Property="FontSize" Value="10" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+        <Style Selector="Border.ribbon-group">
+            <Setter Property="BorderBrush" Value="#313946" />
+            <Setter Property="BorderThickness" Value="0,0,1,0" />
+            <Setter Property="Padding" Value="8,0" />
+        </Style>
+
     </Window.Styles>
     <DockPanel>
-        <Menu DockPanel.Dock="Top">
-            <MenuItem Header="☰">
-                <MenuItem Header="_Settings">
-                    <MenuItem Header="_Application Settings..." Click="OnSettingsClick" />
-                    <Separator />
-                    <MenuItem Header="I want _Blender like settings"
-                              IsChecked="{Binding IsBlenderLikeSettingsActive}"
-                              Command="{Binding BlenderLikeSettingsCommand}" />
-                    <MenuItem Header="I want _AutoCAD like settings"
-                              IsChecked="{Binding IsAutoCadLikeSettingsActive}"
-                              Command="{Binding AutoCadLikeSettingsCommand}" />
-                    <Separator />
-                    <MenuItem Header="OpenGL _GPU Setup..." Click="OnOpenGlGpuSetupClick" />
-                </MenuItem>
-            </MenuItem>
-            <MenuItem Header="_File">
-                <MenuItem Header="_New" Click="OnNewSceneClick" />
-                <MenuItem Header="_Open..." Click="OnOpenSceneClick" />
-                <MenuItem Header="_Save" Click="OnSaveSceneClick" />
-                <MenuItem Header="Save _As..." Click="OnSaveSceneAsClick" />
-                <Separator />
-                <MenuItem Header="E_xit" Click="OnExitClick" />
-            </MenuItem>
-        </Menu>
+        <Border DockPanel.Dock="Top"
+                Background="#171C22"
+                BorderBrush="#2D343F"
+                BorderThickness="0,0,0,1">
+            <Grid RowDefinitions="48,54">
+                <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Background="#151A20">
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="12" Margin="10,0" VerticalAlignment="Center">
+                        <Border Width="32" Height="32" CornerRadius="6" Background="#213247" BorderBrush="#3F6C99" BorderThickness="1">
+                            <TextBlock Text="M" Foreground="#FFD15A" FontWeight="Bold" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <StackPanel Spacing="1" VerticalAlignment="Center">
+                            <TextBlock Text="Material Handling System Editor" Foreground="#F0F4FA" FontWeight="SemiBold" FontSize="14" />
+                            <TextBlock Text="Command Workspace" Foreground="#738398" FontSize="10" />
+                        </StackPanel>
+                    </StackPanel>
 
-        <Border DockPanel.Dock="Top" Background="#2A2E36" Padding="8">
-            <DockPanel LastChildFill="False">
-                <TextBlock DockPanel.Dock="Left"
-                           Foreground="#E5E9F0"
-                           FontWeight="SemiBold"
-                           VerticalAlignment="Center"
-                           Text="Material Handling System Editor - PoC 3" />
-                <Button DockPanel.Dock="Right"
-                        Padding="10,4"
-                        Background="#3A4250"
-                        Foreground="#F3F6FB"
-                        BorderBrush="#5C6B7F"
-                        BorderThickness="1"
-                        CornerRadius="6"
-                        Click="OnSettingsClick">
-                    <TextBlock Text="⚙️" FontSize="16" />
-                </Button>
-            </DockPanel>
+                    <WrapPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Center">
+                        <Border Classes="ribbon-group">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <Button Classes="ribbon-button" Content="New" Click="OnNewSceneClick" />
+                                <Button Classes="ribbon-button" Content="Open" Click="OnOpenSceneClick" />
+                                <Button Classes="ribbon-button" Content="Save" Click="OnSaveSceneClick" />
+                                <Button Classes="ribbon-button" Content="Save As" Click="OnSaveSceneAsClick" />
+                            </StackPanel>
+                        </Border>
+                        <Border Classes="ribbon-group">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <Button Classes="ribbon-button" Content="Undo" Command="{Binding UndoCommand}" />
+                                <Button Classes="ribbon-button" Content="Redo" Command="{Binding RedoCommand}" />
+                            </StackPanel>
+                        </Border>
+                        <Border Classes="ribbon-group">
+                            <Button Classes="ribbon-button accent" Content="▶ Test (F5)" Command="{Binding RunTestCommand}" />
+                        </Border>
+                    </WrapPanel>
+
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" Margin="10,0" VerticalAlignment="Center">
+                        <Menu Background="Transparent" Foreground="#DDE7F3">
+                            <MenuItem Header="☰">
+                                <MenuItem Header="_Settings">
+                                    <MenuItem Header="_Application Settings..." Click="OnSettingsClick" />
+                                    <Separator />
+                                    <MenuItem Header="I want _Blender like settings"
+                                              IsChecked="{Binding IsBlenderLikeSettingsActive}"
+                                              Command="{Binding BlenderLikeSettingsCommand}" />
+                                    <MenuItem Header="I want _AutoCAD like settings"
+                                              IsChecked="{Binding IsAutoCadLikeSettingsActive}"
+                                              Command="{Binding AutoCadLikeSettingsCommand}" />
+                                    <Separator />
+                                    <MenuItem Header="OpenGL _GPU Setup..." Click="OnOpenGlGpuSetupClick" />
+                                </MenuItem>
+                                <MenuItem Header="E_xit" Click="OnExitClick" />
+                            </MenuItem>
+                        </Menu>
+                        <Button Classes="ribbon-icon" Click="OnSettingsClick" ToolTip.Tip="Settings">
+                            <TextBlock Text="⚙" />
+                        </Button>
+                    </StackPanel>
+                </Grid>
+
+                <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto,Auto" Background="#20262E">
+                    <Border Grid.Column="0" Classes="ribbon-group">
+                        <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                            <Button Classes="ribbon-button" Classes.accent="{Binding IsSelectActive}" Content="Select" Command="{Binding SelectToolCommand}" />
+                            <Button Classes="ribbon-button" Classes.accent="{Binding IsMoveActionActive}" Content="Move" Command="{Binding MoveSelectionCommand}" />
+                            <Button Classes="ribbon-button" Classes.accent="{Binding IsRotateActionActive}" Content="Rotate" Command="{Binding RotateSelectionCommand}" />
+                            <Button Classes="ribbon-button" Content="Delete" Command="{Binding DeleteSelectionCommand}" />
+                        </StackPanel>
+                    </Border>
+                    <ScrollViewer Grid.Column="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                        <StackPanel Orientation="Horizontal" Spacing="6" Margin="8,0" VerticalAlignment="Center">
+                            <Button Classes="ribbon-button" Classes.accent="{Binding IsConveyorRouteActive}" Content="Conveyor" Command="{Binding ConveyorRouteToolCommand}" />
+                            <Button Classes="ribbon-button" Classes.accent="{Binding IsHopperActive}" Content="Hopper" Command="{Binding HopperToolCommand}" />
+                            <Button Classes="ribbon-button" Classes.accent="{Binding IsChuteActive}" Content="Chute" Command="{Binding ChuteToolCommand}" />
+                            <Button Classes="ribbon-button" Classes.accent="{Binding IsBinActive}" Content="Bin" Command="{Binding BinToolCommand}" />
+                            <Button Classes="ribbon-button" Classes.accent="{Binding IsSplitterActive}" Content="Splitter" Command="{Binding SplitterToolCommand}" />
+                            <Button Classes="ribbon-button" Classes.accent="{Binding IsLiftActive}" Content="Lift" Command="{Binding LiftToolCommand}" />
+                            <Button Classes="ribbon-button" Classes.accent="{Binding IsTurnActive}" Content="Turn" Command="{Binding TurnToolCommand}" />
+                            <Button Classes="ribbon-button" Classes.accent="{Binding IsMergeActive}" Content="Merge" Command="{Binding MergeToolCommand}" />
+                            <Button Classes="ribbon-button" Classes.accent="{Binding IsSupportActive}" Content="Support" Command="{Binding SupportToolCommand}" />
+                            <Button Classes="ribbon-button" Content="Other" Command="{Binding OtherPartsCommand}" />
+                        </StackPanel>
+                    </ScrollViewer>
+                    <Border Grid.Column="2" Classes="ribbon-group">
+                        <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                            <Button Classes="ribbon-button" Classes.accent="{Binding IsIsoViewActive}" Content="Iso" Command="{Binding IsoViewCommand}" />
+                            <Button Classes="ribbon-button" Classes.accent="{Binding IsTopViewActive}" Content="Top" Command="{Binding TopViewCommand}" />
+                            <Button Classes="ribbon-button" Classes.accent="{Binding IsFrontViewActive}" Content="Front" Command="{Binding FrontViewCommand}" />
+                            <Button Classes="ribbon-button" Classes.accent="{Binding IsRightViewActive}" Content="Right" Command="{Binding RightViewCommand}" />
+                        </StackPanel>
+                    </Border>
+                    <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="8" Margin="8,0,10,0" VerticalAlignment="Center">
+                        <TextBlock Classes="ribbon-label" Text="Snap" VerticalAlignment="Center" />
+                        <Border Background="#151A20" BorderBrush="#354152" BorderThickness="1" CornerRadius="4" Padding="12,7" MinWidth="92">
+                            <DockPanel LastChildFill="False">
+                                <TextBlock DockPanel.Dock="Left" Text="Grid" Foreground="#E4ECF6" />
+                                <TextBlock DockPanel.Dock="Right" Text="⌄" Foreground="#8DA0B7" Margin="12,0,0,0" />
+                            </DockPanel>
+                        </Border>
+                    </StackPanel>
+                </Grid>
+            </Grid>
         </Border>
 
-        <Border DockPanel.Dock="Bottom" Background="#20232A" Padding="8,6">
-            <TextBlock Foreground="#D8DEE9" Text="{Binding StatusText}" />
+        <Border DockPanel.Dock="Bottom" Background="#1D2229" BorderBrush="#303844" BorderThickness="0,1,0,0" Padding="8,6">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                <TextBlock Grid.Column="0" Foreground="#D8DEE9" Text="{Binding StatusText}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                <WrapPanel Grid.Column="1" VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,0,10,0">
+                        <TextBlock Text="Floor" Foreground="#8EA2BA" FontSize="11" VerticalAlignment="Center" />
+                        <RadioButton Content="0" GroupName="FloorSelect" IsChecked="{Binding IsFloor0Active}" Command="{Binding Floor0Command}" />
+                        <RadioButton Content="1" GroupName="FloorSelect" IsChecked="{Binding IsFloor1Active}" Command="{Binding Floor1Command}" />
+                        <RadioButton Content="2" GroupName="FloorSelect" IsChecked="{Binding IsFloor2Active}" Command="{Binding Floor2Command}" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,0,10,0">
+                        <TextBlock Text="{Binding LayerDisplayText}" Foreground="#8EA2BA" FontSize="11" VerticalAlignment="Center" />
+                        <RadioButton Content="0" GroupName="LayerSelect" IsChecked="{Binding IsLayer0Active}" Command="{Binding Layer0Command}" />
+                        <RadioButton Content="1" GroupName="LayerSelect" IsChecked="{Binding IsLayer1Active}" Command="{Binding Layer1Command}" />
+                        <RadioButton Content="2" GroupName="LayerSelect" IsChecked="{Binding IsLayer2Active}" Command="{Binding Layer2Command}" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,0,10,0">
+                        <TextBlock Text="Renderer" Foreground="#8EA2BA" FontSize="11" VerticalAlignment="Center" />
+                        <RadioButton Content="Software" GroupName="RendererMode" IsChecked="{Binding IsSoftwareViewportMode}" Command="{Binding UseSoftwareViewportCommand}" />
+                        <RadioButton Content="OpenGL" GroupName="RendererMode" IsChecked="{Binding IsOpenGlViewportMode}" Command="{Binding UseOpenGlViewportCommand}" />
+                    </StackPanel>
+                    <CheckBox Content="Show Conveyor Debug"
+                              IsChecked="{Binding ShowConveyorDebug, Mode=TwoWay}"
+                              Foreground="#C7D1DD"
+                              VerticalAlignment="Center"
+                              Margin="0,0,10,0" />
+                    <TextBlock Text="{Binding AbsoluteZDisplayText}" Foreground="#8EA2BA" FontSize="11" VerticalAlignment="Center" />
+                </WrapPanel>
+            </Grid>
         </Border>
 
         <Grid ColumnDefinitions="280,*,300" Background="#1B1D23">
@@ -250,31 +380,19 @@
                     BorderThickness="1"
                     BorderBrush="#3B4252">
                 <DockPanel>
-                    <Border DockPanel.Dock="Top" Background="#1A1F27" Padding="8">
-                        <StackPanel Orientation="Horizontal" Spacing="10">
-                            <StackPanel Orientation="Horizontal" Spacing="4">
-                                <TextBlock Text="Floor:" Foreground="#E5E9F0" VerticalAlignment="Center" />
-                                <RadioButton Content="0" GroupName="FloorSelect" IsChecked="{Binding IsFloor0Active}" Command="{Binding Floor0Command}" />
-                                <RadioButton Content="1" GroupName="FloorSelect" IsChecked="{Binding IsFloor1Active}" Command="{Binding Floor1Command}" />
-                                <RadioButton Content="2" GroupName="FloorSelect" IsChecked="{Binding IsFloor2Active}" Command="{Binding Floor2Command}" />
-                            </StackPanel>
-                            <StackPanel Orientation="Horizontal" Spacing="4">
-                                <TextBlock Text="{Binding LayerDisplayText}" Foreground="#E5E9F0" VerticalAlignment="Center" />
-                                <RadioButton Content="0" GroupName="LayerSelect" IsChecked="{Binding IsLayer0Active}" Command="{Binding Layer0Command}" />
-                                <RadioButton Content="1" GroupName="LayerSelect" IsChecked="{Binding IsLayer1Active}" Command="{Binding Layer1Command}" />
-                                <RadioButton Content="2" GroupName="LayerSelect" IsChecked="{Binding IsLayer2Active}" Command="{Binding Layer2Command}" />
-                            </StackPanel>
-                            <StackPanel Orientation="Horizontal" Spacing="4">
-                                <TextBlock Text="Renderer:" Foreground="#E5E9F0" VerticalAlignment="Center" />
-                                <RadioButton Content="Software" GroupName="RendererMode" IsChecked="{Binding IsSoftwareViewportMode}" Command="{Binding UseSoftwareViewportCommand}" />
-                                <RadioButton Content="OpenGL Spike" GroupName="RendererMode" IsChecked="{Binding IsOpenGlViewportMode}" Command="{Binding UseOpenGlViewportCommand}" />
-                            </StackPanel>
-                            <CheckBox Content="Show Conveyor Debug"
-                                      IsChecked="{Binding ShowConveyorDebug, Mode=TwoWay}"
-                                      Foreground="#D8DEE9"
-                                      VerticalAlignment="Center" />
-                            <TextBlock Text="{Binding AbsoluteZDisplayText}" Foreground="#D8DEE9" VerticalAlignment="Center" />
-                        </StackPanel>
+                    <Border DockPanel.Dock="Top" Background="#171C22" BorderBrush="#2D343F" BorderThickness="0,0,0,1" Padding="10,7">
+                        <DockPanel LastChildFill="False">
+                            <TextBlock DockPanel.Dock="Left"
+                                       Text="Factory View"
+                                       Foreground="#EEF4FB"
+                                       FontWeight="SemiBold"
+                                       VerticalAlignment="Center" />
+                            <TextBlock DockPanel.Dock="Right"
+                                       Text="{Binding ViewportSummaryText}"
+                                       Foreground="#8EA2BA"
+                                       FontSize="11"
+                                       VerticalAlignment="Center" />
+                        </DockPanel>
                     </Border>
                     <Grid>
                     <viewport:SoftwareCubeViewport x:Name="SoftwareViewport"
