@@ -1,24 +1,44 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Windows.Input;
+using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 
 namespace Mhs.Editor.ViewModels;
 
 public sealed class PartCatalogItemViewModel
 {
+    private static readonly ConcurrentDictionary<string, Bitmap?> ThumbnailCache = new(StringComparer.OrdinalIgnoreCase);
+
     public string Id { get; init; } = string.Empty;
     public string DisplayName { get; init; } = string.Empty;
     public string Category { get; init; } = string.Empty;
     public IReadOnlyList<string> Tags { get; init; } = [];
     public string Thumbnail { get; init; } = string.Empty;
+    public Bitmap? ThumbnailImage => string.IsNullOrWhiteSpace(Thumbnail)
+        ? null
+        : ThumbnailCache.GetOrAdd(Thumbnail, LoadThumbnail);
     public string ToolType { get; init; } = "place";
     public bool IsPlaceable { get; init; }
     public required ICommand ActivateCommand { get; init; }
+
+    private static Bitmap? LoadThumbnail(string thumbnail)
+    {
+        try
+        {
+            using var stream = AssetLoader.Open(new Uri(thumbnail));
+            return new Bitmap(stream);
+        }
+        catch
+        {
+            return null;
+        }
+    }
 }
 
 public sealed class PartCatalogSectionViewModel

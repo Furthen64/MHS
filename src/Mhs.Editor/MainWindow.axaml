@@ -29,8 +29,9 @@
             <Setter Property="BorderBrush" Value="#2E3946" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="CornerRadius" Value="7" />
-            <Setter Property="Padding" Value="6" />
-            <Setter Property="Margin" Value="0,2" />
+            <Setter Property="Padding" Value="8" />
+            <Setter Property="Margin" Value="0,3" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
         </Style>
         <Style Selector="Button.part-tile:pointerover">
@@ -104,11 +105,16 @@
                                  Background="#131922"
                                  BorderBrush="#3B4C61"
                                  Foreground="#E5E9F0" />
-                        <ScrollViewer MaxHeight="620">
-                            <ItemsControl ItemsSource="{Binding PartCatalogSections}">
+                        <ScrollViewer MaxHeight="620" HorizontalScrollBarVisibility="Disabled">
+                            <ItemsControl ItemsSource="{Binding PartCatalogSections}" HorizontalAlignment="Stretch">
+                                <ItemsControl.Styles>
+                                    <Style Selector="ContentPresenter">
+                                        <Setter Property="HorizontalAlignment" Value="Stretch" />
+                                    </Style>
+                                </ItemsControl.Styles>
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="vm:PartCatalogSectionViewModel">
-                                        <StackPanel Spacing="5" Margin="0,8,0,0">
+                                        <StackPanel Spacing="5" Margin="0,8,0,0" HorizontalAlignment="Stretch">
                                             <Border Background="#18212B"
                                                     BorderBrush="#2E3B49"
                                                     BorderThickness="0,0,0,1"
@@ -118,21 +124,26 @@
                                                            FontSize="10"
                                                            FontWeight="Bold" />
                                             </Border>
-                                            <ItemsControl ItemsSource="{Binding Items}">
+                                            <ItemsControl ItemsSource="{Binding Items}" HorizontalAlignment="Stretch">
+                                                <ItemsControl.Styles>
+                                                    <Style Selector="ContentPresenter">
+                                                        <Setter Property="HorizontalAlignment" Value="Stretch" />
+                                                    </Style>
+                                                </ItemsControl.Styles>
                                                 <ItemsControl.ItemTemplate>
                                                     <DataTemplate x:DataType="vm:PartCatalogItemViewModel">
                                                         <Button Classes="part-tile" Command="{Binding ActivateCommand}">
-                                                            <Grid ColumnDefinitions="52,*" ColumnSpacing="8" MinHeight="50">
+                                                            <Grid ColumnDefinitions="48,*" ColumnSpacing="10" MinHeight="48" HorizontalAlignment="Stretch">
                                                                 <Border Grid.Column="0"
-                                                                        Width="50"
-                                                                        Height="50"
+                                                                        Width="46"
+                                                                        Height="46"
                                                                         Background="#10161D"
                                                                         BorderBrush="#33404D"
                                                                         BorderThickness="1"
                                                                         CornerRadius="6">
-                                                                    <Image Source="{Binding Thumbnail}"
-                                                                           Width="42"
-                                                                           Height="42"
+                                                                    <Image Source="{Binding ThumbnailImage}"
+                                                                           Width="40"
+                                                                           Height="40"
                                                                            Stretch="Uniform"
                                                                            HorizontalAlignment="Center"
                                                                            VerticalAlignment="Center" />
@@ -140,7 +151,7 @@
                                                                 <TextBlock Grid.Column="1"
                                                                            Text="{Binding DisplayName}"
                                                                            Foreground="#DEE6F0"
-                                                                           FontSize="11"
+                                                                           FontSize="10.5"
                                                                            FontWeight="SemiBold"
                                                                            TextWrapping="Wrap"
                                                                            TextTrimming="CharacterEllipsis"
