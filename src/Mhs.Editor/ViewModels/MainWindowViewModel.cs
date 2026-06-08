@@ -10,6 +10,7 @@ using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using Avalonia;
 using Avalonia.Input;
+using Avalonia.Media.Imaging;
 using Mhs.Editor.Editor;
 using Mhs.Editor.Settings;
 using Mhs.Editor.Viewport;
@@ -347,6 +348,22 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             : $"Type: {EditorState.SelectedObject.PartType}";
 
     public bool HasSelectedObject => EditorState.SelectedObject is not null;
+
+    public Bitmap? SelectedObjectThumbnailImage
+    {
+        get
+        {
+            if (EditorState.SelectedObject is not { } selected)
+            {
+                return null;
+            }
+
+            var entry = _partCatalogEntries.FirstOrDefault(catalogEntry =>
+                string.Equals(catalogEntry.Id, selected.PartId, StringComparison.OrdinalIgnoreCase));
+
+            return entry is null ? null : PartCatalogItemViewModel.GetThumbnailImage(entry.Thumbnail);
+        }
+    }
 
     public string SelectedObjectName
     {
@@ -1507,6 +1524,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(InspectorRangeText));
         OnPropertyChanged(nameof(InspectorExtraText));
         OnPropertyChanged(nameof(HasSelectedObject));
+        OnPropertyChanged(nameof(SelectedObjectThumbnailImage));
         OnPropertyChanged(nameof(SelectedObjectName));
         OnPropertyChanged(nameof(ShowConveyorDebug));
         OnPropertyChanged(nameof(SelectedMtrlSrcPanelVisible));
