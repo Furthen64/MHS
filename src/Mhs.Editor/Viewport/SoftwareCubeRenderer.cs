@@ -49,6 +49,8 @@ public sealed class SoftwareCubeRenderer : IViewportRenderer
         {
             context.DrawLine(edgePen, points[a], points[b]);
         }
+
+        DrawConceptDetailOverlay(context, points);
     }
 
     private static void DrawGrid(DrawingContext context, Rect bounds)
@@ -66,6 +68,30 @@ public sealed class SoftwareCubeRenderer : IViewportRenderer
             context.DrawLine(gridPen, new Point(bounds.X, y), new Point(bounds.Right, y));
         }
     }
+
+
+    private static void DrawConceptDetailOverlay(DrawingContext context, Point[] points)
+    {
+        var beltPen = new Pen(new SolidColorBrush(Color.FromRgb(32, 35, 42)), 4);
+        var safetyPen = new Pen(new SolidColorBrush(Color.FromRgb(255, 211, 55)), 2);
+        var railPen = new Pen(new SolidColorBrush(Color.FromRgb(150, 160, 174)), 2);
+
+        var topFrontLeft = Interpolate(points[4], points[7], 0.28);
+        var topFrontRight = Interpolate(points[5], points[6], 0.28);
+        var topBackLeft = Interpolate(points[4], points[7], 0.72);
+        var topBackRight = Interpolate(points[5], points[6], 0.72);
+
+        context.DrawLine(railPen, points[4], points[5]);
+        context.DrawLine(railPen, points[7], points[6]);
+        context.DrawLine(beltPen, topFrontLeft, topFrontRight);
+        context.DrawLine(beltPen, topBackLeft, topBackRight);
+        context.DrawLine(safetyPen, Interpolate(points[4], points[5], 0.08), Interpolate(points[7], points[6], 0.08));
+    }
+
+    private static Point Interpolate(Point start, Point end, double t)
+        => new(
+            start.X + ((end.X - start.X) * t),
+            start.Y + ((end.Y - start.Y) * t));
 
     private Vector3[] GetTransformedVertices()
     {

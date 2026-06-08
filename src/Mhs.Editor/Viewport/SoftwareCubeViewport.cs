@@ -127,13 +127,13 @@ public sealed class SoftwareCubeViewport : Control
 
             var renderInfo = PartRenderCatalog.Resolve(sceneObject.PartType);
             var color = renderInfo.BaseColor.ToAvaloniaColor();
-            if (string.Equals(sceneObject.PartType, "Conveyor", StringComparison.OrdinalIgnoreCase))
+            if (sceneObject.IsConveyor)
             {
                 DrawConveyorCellsSw(context, sceneObject, drawPosition, drawSize, drawRotation, color, renderInfo, opacity, state, conveyorCellsByObject);
             }
             else
             {
-                DrawIsoBox(context, drawPosition, drawSize, color, opacity, drawOutline: false, state);
+                DrawPartShape(context, drawPosition, drawSize, drawRotation, color, renderInfo, opacity, drawOutline: false, state);
                 DrawFacingMarker(context, drawPosition, drawSize, drawRotation, renderInfo, opacity, state);
                 if (string.Equals(sceneObject.PartId, "mtrlsrc", StringComparison.OrdinalIgnoreCase))
                 {
@@ -147,8 +147,9 @@ public sealed class SoftwareCubeViewport : Control
             var moveColor = state.MovePreviewIsValid
                 ? PartRenderCatalog.Resolve(moving.PartType).BaseColor.ToAvaloniaColor()
                 : Color.FromRgb(230, 90, 90);
-            DrawIsoBox(context, target, moving.EffectiveSize, moveColor, 0.45, drawOutline: true, state);
-            DrawFacingMarker(context, target, moving.EffectiveSize, moving.RotationZDegrees, PartRenderCatalog.Resolve(moving.PartType), 0.45, state);
+            var movingRenderInfo = PartRenderCatalog.Resolve(moving.PartType);
+            DrawPartShape(context, target, moving.EffectiveSize, moving.RotationZDegrees, moveColor, movingRenderInfo, 0.45, drawOutline: true, state);
+            DrawFacingMarker(context, target, moving.EffectiveSize, moving.RotationZDegrees, movingRenderInfo, 0.45, state);
         }
 
         if (state.GhostPreview is { } ghost)
@@ -158,8 +159,9 @@ public sealed class SoftwareCubeViewport : Control
                 var ghostColor = ghost.IsValid
                     ? ghost.Part.Color
                     : Color.FromRgb(230, 90, 90);
-                DrawIsoBox(context, ghost.Position, ghost.EffectiveSize, ghostColor, 0.4, drawOutline: true, state);
-                DrawFacingMarker(context, ghost.Position, ghost.EffectiveSize, ghost.RotationZDegrees, PartRenderCatalog.Resolve(ghost.Part.Id), 0.4, state);
+                var ghostRenderInfo = PartRenderCatalog.Resolve(ghost.Part.Id);
+                DrawPartShape(context, ghost.Position, ghost.EffectiveSize, ghost.RotationZDegrees, ghostColor, ghostRenderInfo, 0.4, drawOutline: true, state);
+                DrawFacingMarker(context, ghost.Position, ghost.EffectiveSize, ghost.RotationZDegrees, ghostRenderInfo, 0.4, state);
             }
         }
 
@@ -1184,6 +1186,122 @@ public sealed class SoftwareCubeViewport : Control
             context.DrawLine(pen, c, d);
             context.DrawLine(pen, d, a);
         }
+    }
+
+
+    private void DrawPartShape(DrawingContext context, VoxelCoord position, VoxelSize size, int rotationZDegrees, Color color,
+        PartRenderInfo renderInfo, double opacity, bool drawOutline, EditorState state)
+    {
+        switch (renderInfo.RenderStyle)
+        {
+            case PartRenderStyle.ConveyorStraight:
+                DrawConceptConveyorStraight(context, position, size, rotationZDegrees, opacity, drawOutline, state);
+                break;
+            case PartRenderStyle.ConveyorCurve:
+                DrawConceptConveyorCurve(context, position, size, opacity, drawOutline, state);
+                break;
+            case PartRenderStyle.OpenContainer:
+                DrawOpenTopContainer(context, position, size, color, renderInfo.DetailColor.ToAvaloniaColor(), opacity, drawOutline, state);
+                break;
+            case PartRenderStyle.SupportFrame:
+                DrawSupportFrame(context, position, size, color, opacity, drawOutline, state);
+                break;
+            case PartRenderStyle.VerticalLift:
+                DrawVerticalLift(context, position, size, color, opacity, drawOutline, state, spiral: false);
+                break;
+            case PartRenderStyle.SpiralLift:
+                DrawVerticalLift(context, position, size, color, opacity, drawOutline, state, spiral: true);
+                break;
+            default:
+                DrawIsoBox(context, position, size, color, opacity, drawOutline, state);
+                break;
+        }
+    }
+
+    private void DrawConceptConveyorStraight(DrawingContext context, VoxelCoord position, VoxelSize size, int rotationZDegrees, double opacity, bool drawOutline, EditorState state)
+    {
+        var rail = Math.Min(0.12, Math.Min(size.WidthX, size.DepthY) * 0.18);
+        var height = Math.Min(0.30, size.HeightZ);
+        var x0 = position.X; var x1 = position.X + size.WidthX; var y0 = position.Y; var y1 = position.Y + size.DepthY; var z0 = position.Z;
+        var isX = RotationHelper.NormalizeDegrees(rotationZDegrees) is 0 or 180;
+        var beltTop = Color.FromRgb(30, 32, 38); var beltRight = Color.FromRgb(24, 26, 31); var beltFront = Color.FromRgb(20, 22, 27);
+        var railTop = Color.FromRgb(160, 168, 178); var railRight = Color.FromRgb(108, 117, 128); var railFront = Color.FromRgb(96, 103, 114);
+        var safety = Color.FromRgb(255, 211, 55);
+        if (isX)
+        {
+            DrawConveyorBarSw(context, x0, x1, y0 + rail, y1 - rail, z0, z0 + height * 0.56, beltTop, beltRight, beltFront, opacity, state);
+            DrawConveyorBarSw(context, x0, x1, y0, y0 + rail, z0, z0 + height, railTop, railRight, railFront, opacity, state);
+            DrawConveyorBarSw(context, x0, x1, y1 - rail, y1, z0, z0 + height, railTop, railRight, railFront, opacity, state);
+            DrawConveyorTopQuadSw(context, x0, x1, y0 + rail, y0 + rail * 1.42, z0 + height + 0.006, safety, opacity, state);
+            DrawConveyorTopQuadSw(context, x0, x1, y1 - rail * 1.42, y1 - rail, z0 + height + 0.006, safety, opacity, state);
+            for (var i = 1; i <= Math.Max(2, size.WidthX); i++) { var x = x0 + i * size.WidthX / (Math.Max(2, size.WidthX) + 1.0); DrawConveyorTopQuadSw(context, x - 0.025, x + 0.025, y0 + rail * 1.6, y1 - rail * 1.6, z0 + height * 0.58, Color.FromRgb(92, 98, 108), opacity * 0.85, state); }
+        }
+        else
+        {
+            DrawConveyorBarSw(context, x0 + rail, x1 - rail, y0, y1, z0, z0 + height * 0.56, beltTop, beltRight, beltFront, opacity, state);
+            DrawConveyorBarSw(context, x0, x0 + rail, y0, y1, z0, z0 + height, railTop, railRight, railFront, opacity, state);
+            DrawConveyorBarSw(context, x1 - rail, x1, y0, y1, z0, z0 + height, railTop, railRight, railFront, opacity, state);
+            DrawConveyorTopQuadSw(context, x0 + rail, x0 + rail * 1.42, y0, y1, z0 + height + 0.006, safety, opacity, state);
+            DrawConveyorTopQuadSw(context, x1 - rail * 1.42, x1 - rail, y0, y1, z0 + height + 0.006, safety, opacity, state);
+            for (var i = 1; i <= Math.Max(2, size.DepthY); i++) { var y = y0 + i * size.DepthY / (Math.Max(2, size.DepthY) + 1.0); DrawConveyorTopQuadSw(context, x0 + rail * 1.6, x1 - rail * 1.6, y - 0.025, y + 0.025, z0 + height * 0.58, Color.FromRgb(92, 98, 108), opacity * 0.85, state); }
+        }
+        DrawConveyorMarker(context, position, size, rotationZDegrees, PartRenderCatalog.Resolve("conveyor_straight"), opacity, state);
+        if (drawOutline) DrawOutline(context, position, size, Color.FromRgb(230, 230, 230), 1.2, state);
+    }
+
+    private void DrawConceptConveyorCurve(DrawingContext context, VoxelCoord position, VoxelSize size, double opacity, bool drawOutline, EditorState state)
+    {
+        var height = Math.Min(0.30, size.HeightZ);
+        var x0 = position.X; var x1 = position.X + size.WidthX; var y0 = position.Y; var y1 = position.Y + size.DepthY; var z = position.Z + height;
+        DrawConveyorBarSw(context, x0, x1, y0, y1, position.Z, position.Z + height * 0.55, Color.FromRgb(31, 33, 39), Color.FromRgb(23, 25, 30), Color.FromRgb(20, 22, 27), opacity, state);
+        var fill = new SolidColorBrush(WithOpacity(Color.FromRgb(38, 41, 48), opacity));
+        var edgePen = new Pen(new SolidColorBrush(WithOpacity(Color.FromRgb(255, 211, 55), Math.Min(opacity + 0.18, 1))), 1.5);
+        const int steps = 6;
+        Point? previousOuter = null;
+        for (var i = 0; i < steps; i++)
+        {
+            var t0 = i / (double)steps; var t1 = (i + 1) / (double)steps;
+            Point P(double t, double inset) { var a = Math.PI * 0.5 * t; return Project(x0 + inset * size.WidthX + Math.Cos(a) * size.WidthX * (1 - inset * 1.25), y0 + inset * size.DepthY + Math.Sin(a) * size.DepthY * (1 - inset * 1.25), z + 0.012, state); }
+            var o0 = P(t0, 0); var o1 = P(t1, 0); var i1 = P(t1, 0.34); var i0 = P(t0, 0.34);
+            context.DrawGeometry(fill, null, Polygon(o0, o1, i1, i0));
+            if (previousOuter is { } po) context.DrawLine(edgePen, po, o0);
+            context.DrawLine(edgePen, o0, o1); previousOuter = o1;
+        }
+        var boundaryPen = new Pen(new SolidColorBrush(WithOpacity(Color.FromRgb(145, 153, 164), opacity * 0.8)), 1);
+        var a0 = Project(x0, y0, z, state); var b = Project(x1, y0, z, state); var c = Project(x1, y1, z, state); var d = Project(x0, y1, z, state);
+        context.DrawLine(boundaryPen, a0, b); context.DrawLine(boundaryPen, b, c); context.DrawLine(boundaryPen, c, d); context.DrawLine(boundaryPen, d, a0);
+        if (drawOutline) DrawOutline(context, position, size, Color.FromRgb(230, 230, 230), 1.2, state);
+    }
+
+    private void DrawOpenTopContainer(DrawingContext context, VoxelCoord position, VoxelSize size, Color color, Color fillColor, double opacity, bool drawOutline, EditorState state)
+    {
+        DrawIsoBox(context, position, size, color, opacity * 0.82, drawOutline, state);
+        var z = position.Z + size.HeightZ + 0.012; var insetX = Math.Min(0.18, size.WidthX * 0.22); var insetY = Math.Min(0.18, size.DepthY * 0.22);
+        DrawConveyorTopQuadSw(context, position.X + insetX, position.X + size.WidthX - insetX, position.Y + insetY, position.Y + size.DepthY - insetY, z, fillColor, Math.Min(opacity + 0.06, 1), state);
+        var rimPen = new Pen(new SolidColorBrush(WithOpacity(Color.FromRgb(232, 232, 218), Math.Min(opacity + 0.16, 1))), 1.4);
+        var a = Project(position.X, position.Y, z, state); var b = Project(position.X + size.WidthX, position.Y, z, state); var c = Project(position.X + size.WidthX, position.Y + size.DepthY, z, state); var d = Project(position.X, position.Y + size.DepthY, z, state);
+        context.DrawLine(rimPen, a, b); context.DrawLine(rimPen, b, c); context.DrawLine(rimPen, c, d); context.DrawLine(rimPen, d, a);
+    }
+
+    private void DrawSupportFrame(DrawingContext context, VoxelCoord position, VoxelSize size, Color color, double opacity, bool drawOutline, EditorState state)
+    {
+        var w = Math.Min(0.12, Math.Min(size.WidthX, size.DepthY) * 0.22); var z0 = position.Z; var z1 = position.Z + size.HeightZ;
+        foreach (var (x, y) in new[] { (position.X, position.Y), (position.X + size.WidthX - w, position.Y), (position.X, position.Y + size.DepthY - w), (position.X + size.WidthX - w, position.Y + size.DepthY - w) }) DrawConveyorBarSw(context, x, x + w, y, y + w, z0, z1, color, Darken(color, 0.74), Darken(color, 0.60), opacity, state);
+        DrawConveyorBarSw(context, position.X, position.X + size.WidthX, position.Y, position.Y + w, z1 - w, z1, color, Darken(color, 0.74), Darken(color, 0.60), opacity, state);
+        DrawConveyorBarSw(context, position.X, position.X + size.WidthX, position.Y + size.DepthY - w, position.Y + size.DepthY, z1 - w, z1, color, Darken(color, 0.74), Darken(color, 0.60), opacity, state);
+        DrawConveyorBarSw(context, position.X, position.X + w, position.Y, position.Y + size.DepthY, z1 - w, z1, color, Darken(color, 0.74), Darken(color, 0.60), opacity, state);
+        DrawConveyorBarSw(context, position.X + size.WidthX - w, position.X + size.WidthX, position.Y, position.Y + size.DepthY, z1 - w, z1, color, Darken(color, 0.74), Darken(color, 0.60), opacity, state);
+        if (drawOutline) DrawOutline(context, position, size, Color.FromRgb(230, 230, 230), 1.2, state);
+    }
+
+    private void DrawVerticalLift(DrawingContext context, VoxelCoord position, VoxelSize size, Color color, double opacity, bool drawOutline, EditorState state, bool spiral)
+    {
+        var visualHeight = Math.Max(size.HeightZ, Math.Min(4, size.HeightZ + 1)); var cx = position.X + size.WidthX * 0.5; var cy = position.Y + size.DepthY * 0.5; var half = Math.Min(size.WidthX, size.DepthY) * 0.22;
+        DrawConveyorBarSw(context, cx - half, cx + half, cy - half, cy + half, position.Z, position.Z + visualHeight, color, Darken(color, 0.78), Darken(color, 0.62), opacity, state);
+        var railColor = Color.FromRgb(210, 218, 226);
+        foreach (var (x, y) in new[] { (cx - half * 1.7, cy - half * 1.7), (cx + half * 1.5, cy - half * 1.7), (cx - half * 1.7, cy + half * 1.5), (cx + half * 1.5, cy + half * 1.5) }) DrawConveyorBarSw(context, x, x + half * 0.20, y, y + half * 0.20, position.Z, position.Z + visualHeight, railColor, Darken(railColor, 0.72), Darken(railColor, 0.60), opacity, state);
+        if (spiral) { var pen = new Pen(new SolidColorBrush(WithOpacity(Color.FromRgb(255, 211, 80), Math.Min(opacity + 0.10, 1))), 1.5); Point? prev = null; for (var i = 0; i <= 16; i++) { var t = i / 16.0; var a = t * Math.PI * 4.5; var r = half * 1.55; var pt = Project(cx + Math.Cos(a) * r, cy + Math.Sin(a) * r, position.Z + visualHeight * t, state); if (prev is { } pp) context.DrawLine(pen, pp, pt); prev = pt; } }
+        if (drawOutline) DrawOutline(context, position, new VoxelSize(size.WidthX, size.DepthY, (int)Math.Ceiling(visualHeight)), Color.FromRgb(230, 230, 230), 1.2, state);
     }
 
     private void DrawIsoBox(DrawingContext context, VoxelCoord position, VoxelSize size, Color color, double opacity, bool drawOutline, EditorState state)
