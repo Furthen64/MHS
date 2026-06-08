@@ -25,17 +25,17 @@
             <Setter Property="FontSize" Value="10.5" />
         </Style>
         <Style Selector="Button.part-tile">
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="Background" Value="#1A2028" />
+            <Setter Property="BorderBrush" Value="#2E3946" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="CornerRadius" Value="6" />
-            <Setter Property="Padding" Value="4,5" />
-            <Setter Property="Margin" Value="0,1" />
+            <Setter Property="CornerRadius" Value="7" />
+            <Setter Property="Padding" Value="6" />
+            <Setter Property="Margin" Value="0,2" />
             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
         </Style>
         <Style Selector="Button.part-tile:pointerover">
-            <Setter Property="Background" Value="#20262E" />
-            <Setter Property="BorderBrush" Value="#4A5463" />
+            <Setter Property="Background" Value="#202A35" />
+            <Setter Property="BorderBrush" Value="#5B83B6" />
         </Style>
     </Window.Styles>
     <DockPanel>
@@ -88,7 +88,7 @@
             <TextBlock Foreground="#D8DEE9" Text="{Binding StatusText}" />
         </Border>
 
-        <Grid ColumnDefinitions="236,*,300" Background="#1B1D23">
+        <Grid ColumnDefinitions="280,*,300" Background="#1B1D23">
             <DockPanel Grid.Column="0" Margin="8" LastChildFill="True">
                 <Border DockPanel.Dock="Top" Padding="10" Background="#20252C" CornerRadius="4" Margin="0,0,0,6">
                     <StackPanel Spacing="8">
@@ -108,31 +108,45 @@
                             <ItemsControl ItemsSource="{Binding PartCatalogSections}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="vm:PartCatalogSectionViewModel">
-                                        <StackPanel Spacing="3" Margin="0,6,0,0">
-                                            <TextBlock Text="{Binding Name}"
-                                                       Foreground="#8F98A4"
-                                                       FontSize="10"
-                                                       FontWeight="Bold" />
+                                        <StackPanel Spacing="5" Margin="0,8,0,0">
+                                            <Border Background="#18212B"
+                                                    BorderBrush="#2E3B49"
+                                                    BorderThickness="0,0,0,1"
+                                                    Padding="0,0,0,4">
+                                                <TextBlock Text="{Binding Name}"
+                                                           Foreground="#9EACBA"
+                                                           FontSize="10"
+                                                           FontWeight="Bold" />
+                                            </Border>
                                             <ItemsControl ItemsSource="{Binding Items}">
-                                                <ItemsControl.ItemsPanel>
-                                                    <ItemsPanelTemplate>
-                                                       <UniformGrid Columns="2" />
-                                                    </ItemsPanelTemplate>
-                                                </ItemsControl.ItemsPanel>
                                                 <ItemsControl.ItemTemplate>
                                                     <DataTemplate x:DataType="vm:PartCatalogItemViewModel">
                                                         <Button Classes="part-tile" Command="{Binding ActivateCommand}">
-                                                            <StackPanel Spacing="3" HorizontalAlignment="Center">
-                                                               <Image Source="{Binding Thumbnail}" Width="44" Height="44" Stretch="Uniform" />
-                                                                <TextBlock Text="{Binding DisplayName}"
-                                                                           Foreground="#DEE6F0"
-                                                                           FontSize="10"
-                                                                           TextWrapping="Wrap"
+                                                            <Grid ColumnDefinitions="52,*" ColumnSpacing="8" MinHeight="50">
+                                                                <Border Grid.Column="0"
+                                                                        Width="50"
+                                                                        Height="50"
+                                                                        Background="#10161D"
+                                                                        BorderBrush="#33404D"
+                                                                        BorderThickness="1"
+                                                                        CornerRadius="6">
+                                                                    <Image Source="{Binding Thumbnail}"
+                                                                           Width="42"
+                                                                           Height="42"
+                                                                           Stretch="Uniform"
                                                                            HorizontalAlignment="Center"
-                                                                           TextAlignment="Center"
-                                                                           MaxWidth="92"
-                                                                           MaxHeight="28" />
-                                                            </StackPanel>
+                                                                           VerticalAlignment="Center" />
+                                                                </Border>
+                                                                <TextBlock Grid.Column="1"
+                                                                           Text="{Binding DisplayName}"
+                                                                           Foreground="#DEE6F0"
+                                                                           FontSize="11"
+                                                                           FontWeight="SemiBold"
+                                                                           TextWrapping="Wrap"
+                                                                           TextTrimming="CharacterEllipsis"
+                                                                           MaxLines="2"
+                                                                           VerticalAlignment="Center" />
+                                                            </Grid>
                                                         </Button>
                                                     </DataTemplate>
                                                 </ItemsControl.ItemTemplate>
