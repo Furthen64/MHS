@@ -224,12 +224,6 @@
                 <Border DockPanel.Dock="Top" Padding="10" Background="#20252C" CornerRadius="4" Margin="0,0,0,6">
                     <StackPanel Spacing="8">
                         <TextBlock Text="Material Handling" FontWeight="SemiBold" Foreground="#ECEFF4" FontSize="13" />
-                        <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="6">
-                            <Button Grid.Column="0" Classes="catalog-tool" Content="Select" Command="{Binding SelectToolCommand}" />
-                            <Button Grid.Column="1" Classes="catalog-tool" Content="Move" Command="{Binding MoveSelectionCommand}" />
-                            <Button Grid.Column="2" Classes="catalog-tool" Content="Rotate" Command="{Binding RotateSelectionCommand}" />
-                            <Button Grid.Column="3" Classes="catalog-tool" Content="Delete" Command="{Binding DeleteSelectionCommand}" />
-                        </Grid>
                         <TextBox PlaceholderText="Search parts..."
                                  Text="{Binding PartSearchText, Mode=TwoWay}"
                                  Background="#131922"
