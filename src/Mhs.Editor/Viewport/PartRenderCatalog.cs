@@ -12,6 +12,19 @@ public sealed class PartRenderInfo
     public bool ShowFacingMarker { get; init; }
     public Rgba FacingMarkerColor { get; init; }
     public FlowMarkerKind FlowMarkerKind { get; init; } = FlowMarkerKind.Outgoing;
+    public PartRenderStyle RenderStyle { get; init; } = PartRenderStyle.SimpleBox;
+    public Rgba DetailColor { get; init; } = new(0.94f, 0.94f, 0.94f, 1f);
+}
+
+public enum PartRenderStyle
+{
+    SimpleBox,
+    ConveyorStraight,
+    ConveyorCurve,
+    OpenContainer,
+    SupportFrame,
+    VerticalLift,
+    SpiralLift
 }
 
 public enum FlowMarkerKind
@@ -48,6 +61,8 @@ public static class PartRenderCatalog
             PartId = "hopper",
             DisplayName = "Hopper",
             BaseColor = new Rgba(0.94f, 0.78f, 0.35f, 1f),
+            RenderStyle = PartRenderStyle.OpenContainer,
+            DetailColor = new Rgba(0.56f, 0.38f, 0.18f, 1f),
             ShowFacingMarker = true,
             FacingMarkerColor = new Rgba(1f, 0.43f, 0.16f, 1f)
         },
@@ -56,6 +71,8 @@ public static class PartRenderCatalog
             PartId = "tall_hopper",
             DisplayName = "Tall Hopper",
             BaseColor = new Rgba(0.84f, 0.52f, 0.26f, 1f),
+            RenderStyle = PartRenderStyle.OpenContainer,
+            DetailColor = new Rgba(0.50f, 0.31f, 0.16f, 1f),
             ShowFacingMarker = true,
             FacingMarkerColor = new Rgba(1f, 0.43f, 0.16f, 1f)
         },
@@ -64,6 +81,8 @@ public static class PartRenderCatalog
             PartId = "bin",
             DisplayName = "Bin",
             BaseColor = new Rgba(0.35f, 0.59f, 0.94f, 1f),
+            RenderStyle = PartRenderStyle.OpenContainer,
+            DetailColor = new Rgba(0.36f, 0.28f, 0.16f, 1f),
             ShowFacingMarker = false,
             FacingMarkerColor = new Rgba(0.94f, 0.94f, 0.94f, 1f)
         },
@@ -80,6 +99,7 @@ public static class PartRenderCatalog
             PartId = "conveyor_straight",
             DisplayName = "Conveyor (Straight)",
             BaseColor = new Rgba(0.35f, 0.39f, 0.44f, 1f),
+            RenderStyle = PartRenderStyle.ConveyorStraight,
             ShowFacingMarker = true,
             FacingMarkerColor = new Rgba(1f, 0.90f, 0.24f, 1f)
         },
@@ -96,6 +116,7 @@ public static class PartRenderCatalog
             PartId = "conveyor_curve",
             DisplayName = "Conveyor (Curve)",
             BaseColor = new Rgba(0.43f, 0.41f, 0.37f, 1f),
+            RenderStyle = PartRenderStyle.ConveyorCurve,
             ShowFacingMarker = true,
             FacingMarkerColor = new Rgba(1f, 0.90f, 0.24f, 1f)
         },
@@ -153,6 +174,7 @@ public static class PartRenderCatalog
             PartId = "lift_elevator",
             DisplayName = "Lift / Elevator",
             BaseColor = new Rgba(0.65f, 0.65f, 0.67f, 1f),
+            RenderStyle = PartRenderStyle.VerticalLift,
             ShowFacingMarker = true,
             FacingMarkerColor = new Rgba(0.74f, 0.89f, 1f, 1f)
         },
@@ -169,6 +191,7 @@ public static class PartRenderCatalog
             PartId = "spiral_lift",
             DisplayName = "Spiral Lift",
             BaseColor = new Rgba(0.71f, 0.57f, 0.32f, 1f),
+            RenderStyle = PartRenderStyle.SpiralLift,
             ShowFacingMarker = true,
             FacingMarkerColor = new Rgba(1f, 0.9f, 0.24f, 1f)
         },
@@ -177,6 +200,7 @@ public static class PartRenderCatalog
             PartId = "support_frame",
             DisplayName = "Support Frame",
             BaseColor = new Rgba(0.42f, 0.46f, 0.51f, 1f),
+            RenderStyle = PartRenderStyle.SupportFrame,
             ShowFacingMarker = false,
             FacingMarkerColor = new Rgba(0.94f, 0.94f, 0.94f, 1f)
         },
