@@ -227,6 +227,15 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public bool IsTurnActive => EditorState.ActiveTool.Name == "Conveyor (Curve)";
     public bool IsMergeActive => EditorState.ActiveTool.Name == "Conveyor (Merge)";
     public bool IsSupportActive => EditorState.ActiveTool.Name == "Support Frame";
+    public string ActiveToolName => EditorState.ActiveTool.Name;
+    public string ActiveToolBadgeText => $"Tool: {ActiveToolName}";
+    public string ActiveToolAccessibilityText => $"Current active tool is {ActiveToolName}.";
+    public string ConveyorToolAccessibilityText => BuildToolAccessibilityText("Conveyor route", IsConveyorRouteActive);
+    public string HopperToolAccessibilityText => BuildToolAccessibilityText("Hopper", IsHopperActive);
+    public string ChuteToolAccessibilityText => BuildToolAccessibilityText("Chute", IsChuteActive);
+    public string BinToolAccessibilityText => BuildToolAccessibilityText("Bin", IsBinActive);
+    public string SplitterToolAccessibilityText => BuildToolAccessibilityText("Splitter", IsSplitterActive);
+    public string LiftToolAccessibilityText => BuildToolAccessibilityText("Lift", IsLiftActive);
     public bool IsIsoViewActive => string.Equals(_activeViewMode, "Iso", StringComparison.Ordinal);
     public bool IsTopViewActive => string.Equals(_activeViewMode, "Top", StringComparison.Ordinal);
     public bool IsFrontViewActive => string.Equals(_activeViewMode, "Front", StringComparison.Ordinal);
@@ -1579,6 +1588,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
+    private static string BuildToolAccessibilityText(string displayName, bool isActive)
+        => isActive ? $"{displayName} tool, active." : $"Activate {displayName} tool.";
+
     private void ActivatePartCatalogEntry(PartCatalogMetadataEntry entry)
     {
         if (entry.ToolType.Equals("route", StringComparison.OrdinalIgnoreCase))
@@ -1944,6 +1956,15 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(IsTurnActive));
         OnPropertyChanged(nameof(IsMergeActive));
         OnPropertyChanged(nameof(IsSupportActive));
+        OnPropertyChanged(nameof(ActiveToolName));
+        OnPropertyChanged(nameof(ActiveToolBadgeText));
+        OnPropertyChanged(nameof(ActiveToolAccessibilityText));
+        OnPropertyChanged(nameof(ConveyorToolAccessibilityText));
+        OnPropertyChanged(nameof(HopperToolAccessibilityText));
+        OnPropertyChanged(nameof(ChuteToolAccessibilityText));
+        OnPropertyChanged(nameof(BinToolAccessibilityText));
+        OnPropertyChanged(nameof(SplitterToolAccessibilityText));
+        OnPropertyChanged(nameof(LiftToolAccessibilityText));
         OnPropertyChanged(nameof(IsIsoViewActive));
         OnPropertyChanged(nameof(IsTopViewActive));
         OnPropertyChanged(nameof(IsFrontViewActive));
