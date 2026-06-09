@@ -81,8 +81,6 @@ public sealed class SoftwareCubeViewport : Control
     {
         base.Render(context);
 
-        context.FillRectangle(new SolidColorBrush(Color.FromRgb(25, 30, 35)), Bounds);
-
         if (Bounds.Width < 2 || Bounds.Height < 2)
         {
             return;
@@ -91,7 +89,15 @@ public sealed class SoftwareCubeViewport : Control
         var state = EditorState;
         if (state is null)
         {
+            context.FillRectangle(new SolidColorBrush(Color.FromRgb(25, 30, 35)), Bounds);
             return;
+        }
+
+        context.FillRectangle(new SolidColorBrush(GetViewportBackgroundColor(state)), Bounds);
+
+        if (state.ViewportVisualMode == ViewportVisualMode.Presentation)
+        {
+            DrawPresentationFloor(context, state.ActiveAbsoluteZ);
         }
 
         if (state.ShowBounds)
@@ -528,6 +534,48 @@ public sealed class SoftwareCubeViewport : Control
         return ViewportMath.TryMapPointToVoxel(point, Bounds, state, absoluteZ);
     }
 
+
+    private static Color GetViewportBackgroundColor(EditorState state)
+        => state.ViewportVisualMode == ViewportVisualMode.Presentation
+            ? Color.FromRgb(236, 229, 216)
+            : Color.FromRgb(25, 30, 35);
+
+    private void DrawPresentationFloor(DrawingContext context, int absoluteZ)
+    {
+        if (EditorState is not { } state)
+        {
+            return;
+        }
+
+        var floorBrush = new SolidColorBrush(Color.FromRgb(219, 211, 196));
+        var alternateFloorBrush = new SolidColorBrush(Color.FromRgb(224, 217, 203));
+
+        for (var x = WorldGridSettings.MinCoord; x < WorldGridSettings.MaxCoord; x++)
+        {
+            for (var y = WorldGridSettings.MinCoord; y < WorldGridSettings.MaxCoord; y++)
+            {
+                var points = new[]
+                {
+                    Project(x, y, absoluteZ, state),
+                    Project(x + 1, y, absoluteZ, state),
+                    Project(x + 1, y + 1, absoluteZ, state),
+                    Project(x, y + 1, absoluteZ, state)
+                };
+                var geometry = new StreamGeometry();
+                using (var geometryContext = geometry.Open())
+                {
+                    geometryContext.BeginFigure(points[0], isFilled: true);
+                    geometryContext.LineTo(points[1]);
+                    geometryContext.LineTo(points[2]);
+                    geometryContext.LineTo(points[3]);
+                    geometryContext.EndFigure(isClosed: true);
+                }
+
+                context.DrawGeometry(((x + y) & 1) == 0 ? floorBrush : alternateFloorBrush, null, geometry);
+            }
+        }
+    }
+
     private void DrawFloorOutlines(DrawingContext context, int activeFloor)
     {
         if (EditorState is not { } state)
@@ -539,9 +587,10 @@ public sealed class SoftwareCubeViewport : Control
         {
             var z = floor * WorldVerticalSettings.LayersPerFloor;
             var isActive = floor == activeFloor;
-            var pen = new Pen(
-                new SolidColorBrush(isActive ? Color.FromArgb(200, 150, 190, 255) : Color.FromArgb(70, 130, 140, 160)),
-                isActive ? 2 : 1);
+            var color = state.ViewportVisualMode == ViewportVisualMode.Presentation
+                ? (isActive ? Color.FromArgb(170, 126, 116, 96) : Color.FromArgb(60, 126, 116, 96))
+                : (isActive ? Color.FromArgb(200, 150, 190, 255) : Color.FromArgb(70, 130, 140, 160));
+            var pen = new Pen(new SolidColorBrush(color), isActive ? 2 : 1);
 
             var a = Project(WorldGridSettings.MinCoord, WorldGridSettings.MinCoord, z, state);
             var b = Project(WorldGridSettings.MaxCoord, WorldGridSettings.MinCoord, z, state);
@@ -562,7 +611,10 @@ public sealed class SoftwareCubeViewport : Control
             return;
         }
 
-        var gridPen = new Pen(new SolidColorBrush(Color.FromArgb(125, 160, 190, 220)), 1.2);
+        var gridColor = state.ViewportVisualMode == ViewportVisualMode.Presentation
+            ? Color.FromArgb(72, 120, 111, 96)
+            : Color.FromArgb(125, 160, 190, 220);
+        var gridPen = new Pen(new SolidColorBrush(gridColor), 1.2);
 
         for (var x = WorldGridSettings.MinCoord; x <= WorldGridSettings.MaxCoord; x++)
         {

@@ -41,6 +41,7 @@ public sealed class EditorState : INotifyPropertyChanged
     private bool _showGrid = true;
     private bool _showBounds = true;
     private bool _showFlow = true;
+    private ViewportVisualMode _viewportVisualMode = ViewportVisualMode.Presentation;
 
     public EditorState()
     {
@@ -281,6 +282,12 @@ public sealed class EditorState : INotifyPropertyChanged
     {
         get => _showBounds;
         set => SetField(ref _showBounds, value);
+    }
+
+    public ViewportVisualMode ViewportVisualMode
+    {
+        get => _viewportVisualMode;
+        set => SetField(ref _viewportVisualMode, value);
     }
 
     public bool ShowFlow

@@ -148,13 +148,16 @@ public sealed class GlRenderer : IDisposable
     public string Version => _gl.GetStringS(StringName.Version) ?? "Unknown";
 
     public void BeginFrame(int framebuffer, Size bounds)
+        => BeginFrame(framebuffer, bounds, Color.FromRgb(25, 30, 35));
+
+    public void BeginFrame(int framebuffer, Size bounds, Color clearColor)
     {
         _width = Math.Max(bounds.Width, 1);
         _height = Math.Max(bounds.Height, 1);
 
         _gl.BindFramebuffer(FramebufferTarget.Framebuffer, (uint)framebuffer);
         _gl.Viewport(0, 0, (uint)Math.Round(_width), (uint)Math.Round(_height));
-        _gl.ClearColor(25f / 255f, 30f / 255f, 35f / 255f, 1f);
+        _gl.ClearColor(clearColor.R / 255f, clearColor.G / 255f, clearColor.B / 255f, clearColor.A / 255f);
         _gl.Clear((uint)(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit));
 
         _triangles.Clear();

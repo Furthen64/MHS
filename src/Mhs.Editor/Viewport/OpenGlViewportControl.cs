@@ -136,12 +136,17 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
             return;
         }
 
-        _renderer.BeginFrame(fb, Bounds.Size);
+        _renderer.BeginFrame(fb, Bounds.Size, GetViewportBackgroundColor(state));
 
         if (!string.IsNullOrWhiteSpace(_initError))
         {
             _renderer.RenderFrame();
             return;
+        }
+
+        if (state.ViewportVisualMode == ViewportVisualMode.Presentation)
+        {
+            DrawPresentationFloor(state.ActiveAbsoluteZ);
         }
 
         if (state.ShowBounds)
@@ -535,6 +540,36 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
         return ViewportMath.TryMapPointToVoxel(point, Bounds, state, absoluteZ);
     }
 
+
+    private static Color GetViewportBackgroundColor(EditorState state)
+        => state.ViewportVisualMode == ViewportVisualMode.Presentation
+            ? Color.FromRgb(236, 229, 216)
+            : Color.FromRgb(25, 30, 35);
+
+    private void DrawPresentationFloor(int absoluteZ)
+    {
+        if (EditorState is not { } state || _renderer is null)
+        {
+            return;
+        }
+
+        var floorColor = Color.FromRgb(219, 211, 196);
+        var alternateFloorColor = Color.FromRgb(224, 217, 203);
+
+        for (var x = WorldGridSettings.MinCoord; x < WorldGridSettings.MaxCoord; x++)
+        {
+            for (var y = WorldGridSettings.MinCoord; y < WorldGridSettings.MaxCoord; y++)
+            {
+                var a = Project(x, y, absoluteZ, state);
+                var b = Project(x + 1, y, absoluteZ, state);
+                var c = Project(x + 1, y + 1, absoluteZ, state);
+                var d = Project(x, y + 1, absoluteZ, state);
+                var tileColor = ((x + y) & 1) == 0 ? floorColor : alternateFloorColor;
+                _renderer.AddFilledQuad(a, b, c, d, tileColor, 0.78);
+            }
+        }
+    }
+
     private void DrawFloorOutlines(int activeFloor)
     {
         if (EditorState is not { } state || _renderer is null)
@@ -546,7 +581,9 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
         {
             var z = floor * WorldVerticalSettings.LayersPerFloor;
             var isActive = floor == activeFloor;
-            var color = isActive ? Color.FromArgb(200, 150, 190, 255) : Color.FromArgb(70, 130, 140, 160);
+            var color = state.ViewportVisualMode == ViewportVisualMode.Presentation
+                ? (isActive ? Color.FromArgb(170, 126, 116, 96) : Color.FromArgb(60, 126, 116, 96))
+                : (isActive ? Color.FromArgb(200, 150, 190, 255) : Color.FromArgb(70, 130, 140, 160));
 
             var a = Project(WorldGridSettings.MinCoord, WorldGridSettings.MinCoord, z, state);
             var b = Project(WorldGridSettings.MaxCoord, WorldGridSettings.MinCoord, z, state);
@@ -567,7 +604,9 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
             return;
         }
 
-        var color = Color.FromArgb(125, 160, 190, 220);
+        var color = state.ViewportVisualMode == ViewportVisualMode.Presentation
+            ? Color.FromArgb(72, 120, 111, 96)
+            : Color.FromArgb(125, 160, 190, 220);
 
         for (var x = WorldGridSettings.MinCoord; x <= WorldGridSettings.MaxCoord; x++)
         {
