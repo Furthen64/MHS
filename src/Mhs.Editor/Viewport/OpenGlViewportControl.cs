@@ -967,6 +967,24 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
             case PartRenderStyle.OpenContainer:
                 DrawOpenTopContainer(position, size, color, renderInfo.DetailColor.ToAvaloniaColor(), opacity, drawOutline, state);
                 break;
+            case PartRenderStyle.Hopper:
+                DrawHopper(position, size, color, renderInfo.DetailColor.ToAvaloniaColor(), opacity, drawOutline, state);
+                break;
+            case PartRenderStyle.Chute:
+                DrawChute(position, size, rotationZDegrees, color, renderInfo.DetailColor.ToAvaloniaColor(), opacity, drawOutline, state);
+                break;
+            case PartRenderStyle.MaterialSource:
+                DrawMaterialEndpoint(position, size, color, renderInfo.DetailColor.ToAvaloniaColor(), opacity, drawOutline, state, isSource: true);
+                break;
+            case PartRenderStyle.MaterialReceiver:
+                DrawMaterialEndpoint(position, size, color, renderInfo.DetailColor.ToAvaloniaColor(), opacity, drawOutline, state, isSource: false);
+                break;
+            case PartRenderStyle.Platform:
+                DrawPlatform(position, size, color, renderInfo.DetailColor.ToAvaloniaColor(), opacity, drawOutline, state);
+                break;
+            case PartRenderStyle.Fence:
+                DrawFence(position, size, color, renderInfo.DetailColor.ToAvaloniaColor(), opacity, drawOutline, state);
+                break;
             case PartRenderStyle.SupportFrame:
                 DrawSupportFrame(position, size, color, opacity, drawOutline, state);
                 break;
@@ -1071,14 +1089,125 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
 
     private void DrawOpenTopContainer(VoxelCoord position, VoxelSize size, Color color, Color fillColor, double opacity, bool drawOutline, EditorState state)
     {
-        DrawIsoBox(position, size, color, opacity * 0.82, drawOutline, state);
-        var z = position.Z + size.HeightZ + 0.012;
-        var insetX = Math.Min(0.18, size.WidthX * 0.22);
-        var insetY = Math.Min(0.18, size.DepthY * 0.22);
-        DrawConveyorTopQuad(position.X + insetX, position.X + size.WidthX - insetX, position.Y + insetY, position.Y + size.DepthY - insetY, z, fillColor, Math.Min(opacity + 0.06, 1), state);
+        if (_renderer is null)
+        {
+            return;
+        }
+
+        var wall = Math.Min(0.16, Math.Min(size.WidthX, size.DepthY) * 0.16);
+        var z0 = position.Z;
+        var z1 = position.Z + size.HeightZ;
+        var x0 = position.X;
+        var x1 = position.X + size.WidthX;
+        var y0 = position.Y;
+        var y1 = position.Y + size.DepthY;
+        var side = Darken(color, 0.72);
+        var front = Darken(color, 0.58);
+
+        DrawConveyorBar(x0, x1, y0, y0 + wall, z0, z1, color, side, front, opacity, state);
+        DrawConveyorBar(x0, x1, y1 - wall, y1, z0, z1, color, side, front, opacity, state);
+        DrawConveyorBar(x0, x0 + wall, y0 + wall, y1 - wall, z0, z1, color, side, front, opacity, state);
+        DrawConveyorBar(x1 - wall, x1, y0 + wall, y1 - wall, z0, z1, color, side, front, opacity, state);
+        DrawMaterialFillSurface(x0 + wall * 1.25, x1 - wall * 1.25, y0 + wall * 1.25, y1 - wall * 1.25, z1 - size.HeightZ * 0.18, fillColor, opacity, state);
+
         var rim = Color.FromRgb(232, 232, 218);
-        DrawConveyorCellTopBoundary(Project(position.X, position.Y, z, state), Project(position.X + size.WidthX, position.Y, z, state), Project(position.X + size.WidthX, position.Y + size.DepthY, z, state), Project(position.X, position.Y + size.DepthY, z, state), rim, Math.Min(opacity + 0.16, 1));
-        DrawConveyorCellTopBoundary(Project(position.X + insetX, position.Y + insetY, z, state), Project(position.X + size.WidthX - insetX, position.Y + insetY, z, state), Project(position.X + size.WidthX - insetX, position.Y + size.DepthY - insetY, z, state), Project(position.X + insetX, position.Y + size.DepthY - insetY, z, state), Darken(fillColor, 0.70), Math.Min(opacity + 0.10, 1));
+        DrawConveyorCellTopBoundary(Project(x0, y0, z1 + 0.01, state), Project(x1, y0, z1 + 0.01, state), Project(x1, y1, z1 + 0.01, state), Project(x0, y1, z1 + 0.01, state), rim, Math.Min(opacity + 0.16, 1));
+        DrawConveyorCellTopBoundary(Project(x0 + wall, y0 + wall, z1 + 0.012, state), Project(x1 - wall, y0 + wall, z1 + 0.012, state), Project(x1 - wall, y1 - wall, z1 + 0.012, state), Project(x0 + wall, y1 - wall, z1 + 0.012, state), Darken(fillColor, 0.70), Math.Min(opacity + 0.10, 1));
+
+        if (drawOutline)
+        {
+            DrawOutline(position, size, Color.FromRgb(230, 230, 230), Math.Min(opacity + 0.20, 1), state);
+        }
+    }
+
+    private void DrawHopper(VoxelCoord position, VoxelSize size, Color color, Color fillColor, double opacity, bool drawOutline, EditorState state)
+    {
+        DrawOpenTopContainer(position, size, color, fillColor, opacity, drawOutline, state);
+        DrawContainerLegs(position, size, color, opacity, state);
+        var spoutWidth = Math.Min(0.24, Math.Min(size.WidthX, size.DepthY) * 0.22);
+        var cx = position.X + size.WidthX * 0.5;
+        var cy = position.Y + size.DepthY * 0.5;
+        DrawConveyorBar(cx - spoutWidth, cx + spoutWidth, cy - spoutWidth, cy + spoutWidth, Math.Max(0, position.Z - 0.42), position.Z + 0.08, Darken(color, 0.78), Darken(color, 0.58), Darken(color, 0.48), opacity, state);
+    }
+
+    private void DrawChute(VoxelCoord position, VoxelSize size, int rotationZDegrees, Color color, Color linerColor, double opacity, bool drawOutline, EditorState state)
+    {
+        if (_renderer is null)
+        {
+            return;
+        }
+
+        var normalized = RotationHelper.NormalizeDegrees(rotationZDegrees);
+        var isX = normalized is 0 or 180;
+        var x0 = position.X;
+        var x1 = position.X + size.WidthX;
+        var y0 = position.Y;
+        var y1 = position.Y + size.DepthY;
+        var zLow = position.Z + Math.Min(0.18, size.HeightZ * 0.35);
+        var zHigh = position.Z + Math.Min(size.HeightZ, 0.78);
+        var slopeForward = normalized is 0 or 90;
+
+        Point a; Point b; Point c; Point d;
+        if (isX)
+        {
+            var za = slopeForward ? zHigh : zLow;
+            var zb = slopeForward ? zLow : zHigh;
+            a = Project(x0, y0, za, state); b = Project(x1, y0, zb, state); c = Project(x1, y1, zb, state); d = Project(x0, y1, za, state);
+        }
+        else
+        {
+            var za = slopeForward ? zHigh : zLow;
+            var zb = slopeForward ? zLow : zHigh;
+            a = Project(x0, y0, za, state); b = Project(x1, y0, za, state); c = Project(x1, y1, zb, state); d = Project(x0, y1, zb, state);
+        }
+
+        _renderer.AddFilledQuad(a, b, c, d, color, opacity);
+        _renderer.AddLine(a, b, Color.FromRgb(230, 226, 214), Math.Min(opacity + 0.18, 1));
+        _renderer.AddLine(c, d, Color.FromRgb(230, 226, 214), Math.Min(opacity + 0.18, 1));
+        _renderer.AddFilledQuad(a, b, Project((x0 + x1) * 0.5, (y0 + y1) * 0.5, (zLow + zHigh) * 0.5 - 0.04, state), d, linerColor, opacity * 0.32);
+        DrawSupportFeet(position, size, color, opacity, state);
+        if (drawOutline)
+        {
+            DrawOutline(position, size, Color.FromRgb(230, 230, 230), Math.Min(opacity + 0.18, 1), state);
+        }
+    }
+
+    private void DrawMaterialEndpoint(VoxelCoord position, VoxelSize size, Color color, Color fillColor, double opacity, bool drawOutline, EditorState state, bool isSource)
+    {
+        if (isSource)
+        {
+            DrawHopper(position, size, color, fillColor, opacity, drawOutline, state);
+            return;
+        }
+
+        DrawOpenTopContainer(position, size, color, fillColor, opacity, drawOutline, state);
+        DrawSupportFeet(position, size, color, opacity, state);
+    }
+
+    private void DrawPlatform(VoxelCoord position, VoxelSize size, Color color, Color detailColor, double opacity, bool drawOutline, EditorState state)
+    {
+        var deckHeight = Math.Min(0.20, size.HeightZ);
+        DrawConveyorBar(position.X, position.X + size.WidthX, position.Y, position.Y + size.DepthY, position.Z + size.HeightZ - deckHeight, position.Z + size.HeightZ, color, Darken(color, 0.70), Darken(color, 0.56), opacity, state);
+        DrawContainerLegs(position, size, color, opacity, state);
+        DrawRailings(position, size, detailColor, opacity, state, includeFront: false);
+        var stripeZ = position.Z + size.HeightZ + 0.012;
+        DrawConveyorTopQuad(position.X + 0.10, position.X + size.WidthX - 0.10, position.Y + 0.10, position.Y + 0.16, stripeZ, detailColor, opacity * 0.85, state);
+        if (drawOutline)
+        {
+            DrawOutline(position, size, Color.FromRgb(230, 230, 230), Math.Min(opacity + 0.18, 1), state);
+        }
+    }
+
+    private void DrawFence(VoxelCoord position, VoxelSize size, Color color, Color detailColor, double opacity, bool drawOutline, EditorState state)
+    {
+        var postWidth = Math.Min(0.10, Math.Min(size.WidthX, size.DepthY) * 0.18);
+        var railHeight = Math.Max(0.36, size.HeightZ);
+        DrawRailRun(position.X, position.X + size.WidthX, position.Y, position.Z, railHeight, postWidth, color, detailColor, opacity, state);
+        DrawRailRun(position.X, position.X + size.WidthX, position.Y + size.DepthY - postWidth, position.Z, railHeight, postWidth, color, detailColor, opacity, state);
+        if (drawOutline)
+        {
+            DrawOutline(position, size, Color.FromRgb(230, 230, 230), Math.Min(opacity + 0.18, 1), state);
+        }
     }
 
     private void DrawSupportFrame(VoxelCoord position, VoxelSize size, Color color, double opacity, bool drawOutline, EditorState state)
@@ -1094,6 +1223,8 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
         DrawConveyorBar(position.X, position.X + size.WidthX, position.Y + size.DepthY - w, position.Y + size.DepthY, z1 - w, z1, color, Darken(color, 0.74), Darken(color, 0.60), opacity, state);
         DrawConveyorBar(position.X, position.X + w, position.Y, position.Y + size.DepthY, z1 - w, z1, color, Darken(color, 0.74), Darken(color, 0.60), opacity, state);
         DrawConveyorBar(position.X + size.WidthX - w, position.X + size.WidthX, position.Y, position.Y + size.DepthY, z1 - w, z1, color, Darken(color, 0.74), Darken(color, 0.60), opacity, state);
+        DrawTrussDiagonals(position, size, Color.FromRgb(210, 218, 226), opacity, state);
+        DrawSupportFeet(position, size, color, opacity, state);
         if (drawOutline)
         {
             DrawOutline(position, size, Color.FromRgb(230, 230, 230), Math.Min(opacity + 0.20, 1), state);
@@ -1132,6 +1263,119 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
         {
             DrawOutline(position, new VoxelSize(size.WidthX, size.DepthY, visualHeight), Color.FromRgb(230, 230, 230), Math.Min(opacity + 0.20, 1), state);
         }
+    }
+
+
+    private void DrawContainerLegs(VoxelCoord position, VoxelSize size, Color color, double opacity, EditorState state)
+    {
+        var legWidth = Math.Min(0.10, Math.Min(size.WidthX, size.DepthY) * 0.16);
+        var z0 = position.Z;
+        var z1 = position.Z + Math.Max(0.08, size.HeightZ);
+        foreach (var (x, y) in new[]
+        {
+            (position.X + legWidth * 0.8, position.Y + legWidth * 0.8),
+            (position.X + size.WidthX - legWidth * 1.8, position.Y + legWidth * 0.8),
+            (position.X + legWidth * 0.8, position.Y + size.DepthY - legWidth * 1.8),
+            (position.X + size.WidthX - legWidth * 1.8, position.Y + size.DepthY - legWidth * 1.8)
+        })
+        {
+            DrawConveyorBar(x, x + legWidth, y, y + legWidth, z0, z1, color, Darken(color, 0.66), Darken(color, 0.52), opacity, state);
+        }
+    }
+
+    private void DrawTrussDiagonals(VoxelCoord position, VoxelSize size, Color color, double opacity, EditorState state)
+    {
+        if (_renderer is null)
+        {
+            return;
+        }
+
+        var x0 = position.X + Math.Min(0.12, size.WidthX * 0.16);
+        var x1 = position.X + size.WidthX - Math.Min(0.12, size.WidthX * 0.16);
+        var y0 = position.Y + Math.Min(0.12, size.DepthY * 0.16);
+        var y1 = position.Y + size.DepthY - Math.Min(0.12, size.DepthY * 0.16);
+        var z0 = position.Z + size.HeightZ * 0.18;
+        var z1 = position.Z + size.HeightZ * 0.82;
+        var trussOpacity = Math.Min(opacity + 0.10, 1);
+
+        _renderer.AddLine(Project(x0, y0, z0, state), Project(x1, y0, z1, state), color, trussOpacity);
+        _renderer.AddLine(Project(x1, y0, z0, state), Project(x0, y0, z1, state), Darken(color, 0.72), trussOpacity);
+        _renderer.AddLine(Project(x0, y1, z0, state), Project(x1, y1, z1, state), color, trussOpacity);
+        _renderer.AddLine(Project(x1, y1, z0, state), Project(x0, y1, z1, state), Darken(color, 0.72), trussOpacity);
+    }
+
+    private void DrawSupportFeet(VoxelCoord position, VoxelSize size, Color color, double opacity, EditorState state)
+    {
+        var foot = Math.Min(0.18, Math.Min(size.WidthX, size.DepthY) * 0.22);
+        var z0 = position.Z;
+        var z1 = position.Z + Math.Min(0.09, Math.Max(0.05, size.HeightZ * 0.16));
+        foreach (var (x, y) in new[]
+        {
+            (position.X + foot * 0.35, position.Y + foot * 0.35),
+            (position.X + size.WidthX - foot * 1.35, position.Y + foot * 0.35),
+            (position.X + foot * 0.35, position.Y + size.DepthY - foot * 1.35),
+            (position.X + size.WidthX - foot * 1.35, position.Y + size.DepthY - foot * 1.35)
+        })
+        {
+            DrawConveyorBar(x, x + foot, y, y + foot, z0, z1, Darken(color, 0.74), Darken(color, 0.56), Darken(color, 0.46), opacity, state);
+        }
+    }
+
+    private void DrawRailings(VoxelCoord position, VoxelSize size, Color color, double opacity, EditorState state, bool includeFront)
+    {
+        var postWidth = Math.Min(0.08, Math.Min(size.WidthX, size.DepthY) * 0.10);
+        var z0 = position.Z + size.HeightZ;
+        var railHeight = 0.48;
+        DrawRailRun(position.X, position.X + size.WidthX, position.Y, z0, railHeight, postWidth, color, color, opacity, state);
+        DrawRailRun(position.X, position.X + size.WidthX, position.Y + size.DepthY - postWidth, z0, railHeight, postWidth, color, color, opacity, state);
+        if (includeFront)
+        {
+            DrawRailRunY(position.X, position.Y, position.Y + size.DepthY, z0, railHeight, postWidth, color, color, opacity, state);
+            DrawRailRunY(position.X + size.WidthX - postWidth, position.Y, position.Y + size.DepthY, z0, railHeight, postWidth, color, color, opacity, state);
+        }
+    }
+
+    private void DrawRailRun(double x0, double x1, double y, double z0, double railHeight, double postWidth, Color postColor, Color railColor, double opacity, EditorState state)
+    {
+        var spans = Math.Max(2, (int)Math.Ceiling(x1 - x0));
+        for (var i = 0; i <= spans; i++)
+        {
+            var x = x0 + (x1 - x0 - postWidth) * i / spans;
+            DrawConveyorBar(x, x + postWidth, y, y + postWidth, z0, z0 + railHeight, postColor, Darken(postColor, 0.66), Darken(postColor, 0.52), opacity, state);
+        }
+
+        DrawConveyorBar(x0, x1, y, y + postWidth, z0 + railHeight * 0.78, z0 + railHeight * 0.90, railColor, Darken(railColor, 0.68), Darken(railColor, 0.54), opacity, state);
+        DrawConveyorBar(x0, x1, y, y + postWidth, z0 + railHeight * 0.42, z0 + railHeight * 0.52, railColor, Darken(railColor, 0.68), Darken(railColor, 0.54), opacity * 0.92, state);
+    }
+
+    private void DrawRailRunY(double x, double y0, double y1, double z0, double railHeight, double postWidth, Color postColor, Color railColor, double opacity, EditorState state)
+    {
+        var spans = Math.Max(2, (int)Math.Ceiling(y1 - y0));
+        for (var i = 0; i <= spans; i++)
+        {
+            var y = y0 + (y1 - y0 - postWidth) * i / spans;
+            DrawConveyorBar(x, x + postWidth, y, y + postWidth, z0, z0 + railHeight, postColor, Darken(postColor, 0.66), Darken(postColor, 0.52), opacity, state);
+        }
+
+        DrawConveyorBar(x, x + postWidth, y0, y1, z0 + railHeight * 0.78, z0 + railHeight * 0.90, railColor, Darken(railColor, 0.68), Darken(railColor, 0.54), opacity, state);
+        DrawConveyorBar(x, x + postWidth, y0, y1, z0 + railHeight * 0.42, z0 + railHeight * 0.52, railColor, Darken(railColor, 0.68), Darken(railColor, 0.54), opacity * 0.92, state);
+    }
+
+    private void DrawMaterialFillSurface(double x0, double x1, double y0, double y1, double z, Color fillColor, double opacity, EditorState state)
+    {
+        if (x1 <= x0 || y1 <= y0)
+        {
+            return;
+        }
+
+        DrawConveyorTopQuad(x0, x1, y0, y1, z, fillColor, Math.Min(opacity + 0.08, 1), state);
+        var ridge = TintColor(Color.FromRgb(255, 238, 170), fillColor, 0.18);
+        var cx = (x0 + x1) * 0.5;
+        var cy = (y0 + y1) * 0.5;
+        _renderer?.AddLine(Project(x0 + (x1 - x0) * 0.18, cy, z + 0.012, state), Project(cx, y0 + (y1 - y0) * 0.18, z + 0.035, state), ridge, opacity * 0.64);
+        _renderer?.AddLine(Project(cx, y0 + (y1 - y0) * 0.18, z + 0.035, state), Project(x1 - (x1 - x0) * 0.18, cy, z + 0.012, state), ridge, opacity * 0.64);
+        _renderer?.AddLine(Project(x0 + (x1 - x0) * 0.18, cy, z + 0.012, state), Project(cx, y1 - (y1 - y0) * 0.18, z + 0.028, state), Darken(fillColor, 0.72), opacity * 0.50);
+        _renderer?.AddLine(Project(cx, y1 - (y1 - y0) * 0.18, z + 0.028, state), Project(x1 - (x1 - x0) * 0.18, cy, z + 0.012, state), Darken(fillColor, 0.72), opacity * 0.50);
     }
 
     private void DrawIsoBox(VoxelCoord position, VoxelSize size, Color color, double opacity, bool drawOutline, EditorState state)

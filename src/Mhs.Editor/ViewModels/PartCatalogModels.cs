@@ -71,6 +71,9 @@ public sealed class PartCatalogMetadataEntry
 
     [JsonPropertyName("isPlaceable")]
     public bool IsPlaceable { get; init; }
+
+    [JsonPropertyName("visualStyle")]
+    public string VisualStyle { get; init; } = string.Empty;
 }
 
 public static class PartCatalogLoader
