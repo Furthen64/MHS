@@ -114,6 +114,23 @@
             <Setter Property="BorderThickness" Value="0,0,1,0" />
             <Setter Property="Padding" Value="8,0" />
         </Style>
+        <Style Selector="Border.workflow-card">
+            <Setter Property="Background" Value="#26313B" />
+            <Setter Property="BorderBrush" Value="#445468" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="9" />
+            <Setter Property="Padding" Value="10,7" />
+        </Style>
+        <Style Selector="TextBlock.workflow-label">
+            <Setter Property="Foreground" Value="#9FB4CC" />
+            <Setter Property="FontSize" Value="10" />
+            <Setter Property="FontWeight" Value="Bold" />
+        </Style>
+        <Style Selector="TextBlock.workflow-value">
+            <Setter Property="Foreground" Value="#D4DEE9" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
 
     </Window.Styles>
     <DockPanel>
@@ -463,6 +480,87 @@
                                        VerticalAlignment="Center" />
                         </DockPanel>
                     </Border>
+                    <Border DockPanel.Dock="Bottom" Background="{Binding ViewportToolbarBackground}" BorderBrush="{Binding ViewportToolbarBorderBrush}" BorderThickness="0,1,0,0" Padding="12,9">
+                        <Grid ColumnDefinitions="Auto,Auto,*,Auto" ColumnSpacing="12">
+                            <Border Grid.Column="0" Classes="workflow-card">
+                                <StackPanel Spacing="5">
+                                    <TextBlock Text="ACTIVE LEVEL" Classes="workflow-label" />
+                                    <StackPanel Orientation="Horizontal" Spacing="10">
+                                        <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+                                            <TextBlock Text="Floor" Foreground="{Binding ViewportToolbarTextBrush}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                            <RadioButton Content="0" Foreground="{Binding ViewportToolbarControlBrush}" GroupName="FloorSelect" IsChecked="{Binding IsFloor0Active}" Command="{Binding Floor0Command}" />
+                                            <RadioButton Content="1" Foreground="{Binding ViewportToolbarControlBrush}" GroupName="FloorSelect" IsChecked="{Binding IsFloor1Active}" Command="{Binding Floor1Command}" />
+                                            <RadioButton Content="2" Foreground="{Binding ViewportToolbarControlBrush}" GroupName="FloorSelect" IsChecked="{Binding IsFloor2Active}" Command="{Binding Floor2Command}" />
+                                        </StackPanel>
+                                        <Border Width="1" Background="{Binding ViewportToolbarSeparatorBrush}" />
+                                        <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding LayerDisplayText}" Foreground="{Binding ViewportToolbarTextBrush}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                            <RadioButton Content="0" Foreground="{Binding ViewportToolbarControlBrush}" GroupName="LayerSelect" IsChecked="{Binding IsLayer0Active}" Command="{Binding Layer0Command}" />
+                                            <RadioButton Content="1" Foreground="{Binding ViewportToolbarControlBrush}" GroupName="LayerSelect" IsChecked="{Binding IsLayer1Active}" Command="{Binding Layer1Command}" />
+                                            <RadioButton Content="2" Foreground="{Binding ViewportToolbarControlBrush}" GroupName="LayerSelect" IsChecked="{Binding IsLayer2Active}" Command="{Binding Layer2Command}" />
+                                        </StackPanel>
+                                    </StackPanel>
+                                    <TextBlock Text="{Binding AbsoluteZDisplayText}" Foreground="{Binding ViewportToolbarSubtleTextBrush}" FontSize="10" />
+                                </StackPanel>
+                            </Border>
+
+                            <Border Grid.Column="1" Classes="workflow-card">
+                                <StackPanel Spacing="5">
+                                    <TextBlock Text="VIEWPORT" Classes="workflow-label" />
+                                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                        <RadioButton Content="Presentation" Foreground="{Binding ViewportToolbarControlBrush}" GroupName="ViewportVisualMode" IsChecked="{Binding IsPresentationViewportVisualMode}" Command="{Binding UsePresentationViewportModeCommand}" />
+                                        <RadioButton Content="Technical" Foreground="{Binding ViewportToolbarControlBrush}" GroupName="ViewportVisualMode" IsChecked="{Binding IsTechnicalViewportVisualMode}" Command="{Binding UseTechnicalViewportModeCommand}" />
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                        <CheckBox Content="Show Grid" IsChecked="{Binding ShowGrid, Mode=TwoWay}" Foreground="{Binding ViewportToolbarControlBrush}" />
+                                        <CheckBox Content="Show Bounds" IsChecked="{Binding ShowBounds, Mode=TwoWay}" Foreground="{Binding ViewportToolbarControlBrush}" />
+                                        <CheckBox Content="Show Flow" IsChecked="{Binding ShowFlow, Mode=TwoWay}" Foreground="{Binding ViewportToolbarControlBrush}" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Grid.Column="2" Classes="workflow-card">
+                                <Grid RowDefinitions="Auto,Auto" RowSpacing="6">
+                                    <DockPanel LastChildFill="False">
+                                        <TextBlock DockPanel.Dock="Left" Text="MATERIAL / FLOW PALETTE" Classes="workflow-label" VerticalAlignment="Center" />
+                                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="6">
+                                            <TextBlock Text="{Binding MaterialPaletteSummaryText}" Foreground="{Binding ViewportToolbarSubtleTextBrush}" FontSize="10" VerticalAlignment="Center" />
+                                            <Button Classes="catalog-tool" Content="Inject" Command="{Binding InjectDebugOreCommand}" />
+                                            <Button Classes="catalog-tool" Content="Step" Command="{Binding StepMaterialFlowCommand}" />
+                                            <Button Classes="catalog-tool" Content="Clear" Command="{Binding ClearMaterialFlowCommand}" />
+                                        </StackPanel>
+                                    </DockPanel>
+                                    <ItemsControl Grid.Row="1" ItemsSource="{Binding MaterialTrayItems}">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <WrapPanel />
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="vm:MaterialTrayItemViewModel">
+                                                <Border Margin="0,0,7,0" Padding="7,5" CornerRadius="7" Background="#1B2530" BorderBrush="#3C4C5C" BorderThickness="1">
+                                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                                        <Border Width="22" Height="22" CornerRadius="5" Background="{Binding TopBrush}" BorderBrush="{Binding EdgeBrush}" BorderThickness="1" />
+                                                        <StackPanel Spacing="0">
+                                                            <TextBlock Text="{Binding DisplayName}" Foreground="{Binding TextBrush}" FontSize="10.5" FontWeight="SemiBold" />
+                                                            <TextBlock Text="{Binding CountText}" Foreground="#8FA2B8" FontSize="9.5" />
+                                                        </StackPanel>
+                                                    </StackPanel>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </Grid>
+                            </Border>
+
+                            <Border Grid.Column="3" Classes="workflow-card" MinWidth="240">
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="STATUS HINT" Classes="workflow-label" />
+                                    <TextBlock Text="{Binding StatusHintText}" Foreground="{Binding ViewportToolbarControlBrush}" FontSize="11" TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+                    </Border>
                     <Grid Background="{Binding ViewportSurfaceBackground}">
                     <viewport:SoftwareCubeViewport x:Name="SoftwareViewport"
                                                    IsVisible="{Binding IsSoftwareViewportMode}"
@@ -473,44 +571,6 @@
                                                         EditorState="{Binding EditorState}"
                                                         InteractionPreset="{Binding InteractionPreset}" />
 
-                        <Border HorizontalAlignment="Center"
-                                VerticalAlignment="Bottom"
-                                Margin="0,0,0,18"
-                                Padding="12,9"
-                                Background="{Binding ViewportToolbarBackground}"
-                                BorderBrush="{Binding ViewportToolbarBorderBrush}"
-                                BorderThickness="1"
-                                CornerRadius="10"
-                                BoxShadow="0 8 24 0 #80000000">
-                            <StackPanel Orientation="Horizontal" Spacing="14" VerticalAlignment="Center">
-                                <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
-                                    <TextBlock Text="Floor" Foreground="{Binding ViewportToolbarTextBrush}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" />
-                                    <RadioButton Content="0" Foreground="{Binding ViewportToolbarControlBrush}" GroupName="FloorSelect" IsChecked="{Binding IsFloor0Active}" Command="{Binding Floor0Command}" />
-                                    <RadioButton Content="1" Foreground="{Binding ViewportToolbarControlBrush}" GroupName="FloorSelect" IsChecked="{Binding IsFloor1Active}" Command="{Binding Floor1Command}" />
-                                    <RadioButton Content="2" Foreground="{Binding ViewportToolbarControlBrush}" GroupName="FloorSelect" IsChecked="{Binding IsFloor2Active}" Command="{Binding Floor2Command}" />
-                                </StackPanel>
-                                <Border Width="1" Background="{Binding ViewportToolbarSeparatorBrush}" />
-                                <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
-                                    <TextBlock Text="{Binding LayerDisplayText}" Foreground="{Binding ViewportToolbarTextBrush}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" />
-                                    <RadioButton Content="0" Foreground="{Binding ViewportToolbarControlBrush}" GroupName="LayerSelect" IsChecked="{Binding IsLayer0Active}" Command="{Binding Layer0Command}" />
-                                    <RadioButton Content="1" Foreground="{Binding ViewportToolbarControlBrush}" GroupName="LayerSelect" IsChecked="{Binding IsLayer1Active}" Command="{Binding Layer1Command}" />
-                                    <RadioButton Content="2" Foreground="{Binding ViewportToolbarControlBrush}" GroupName="LayerSelect" IsChecked="{Binding IsLayer2Active}" Command="{Binding Layer2Command}" />
-                                </StackPanel>
-                                <Border Width="1" Background="{Binding ViewportToolbarSeparatorBrush}" />
-                                <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
-                                    <TextBlock Text="Style" Foreground="{Binding ViewportToolbarTextBrush}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" />
-                                    <RadioButton Content="Presentation" Foreground="{Binding ViewportToolbarControlBrush}" GroupName="ViewportVisualMode" IsChecked="{Binding IsPresentationViewportVisualMode}" Command="{Binding UsePresentationViewportModeCommand}" />
-                                    <RadioButton Content="Technical" Foreground="{Binding ViewportToolbarControlBrush}" GroupName="ViewportVisualMode" IsChecked="{Binding IsTechnicalViewportVisualMode}" Command="{Binding UseTechnicalViewportModeCommand}" />
-                                </StackPanel>
-                                <Border Width="1" Background="{Binding ViewportToolbarSeparatorBrush}" />
-                                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                    <CheckBox Content="Show Grid" IsChecked="{Binding ShowGrid, Mode=TwoWay}" Foreground="{Binding ViewportToolbarControlBrush}" />
-                                    <CheckBox Content="Show Bounds" IsChecked="{Binding ShowBounds, Mode=TwoWay}" Foreground="{Binding ViewportToolbarControlBrush}" />
-                                    <CheckBox Content="Show Flow" IsChecked="{Binding ShowFlow, Mode=TwoWay}" Foreground="{Binding ViewportToolbarControlBrush}" />
-                                </StackPanel>
-                                <TextBlock Text="{Binding AbsoluteZDisplayText}" Foreground="{Binding ViewportToolbarSubtleTextBrush}" FontSize="11" VerticalAlignment="Center" />
-                            </StackPanel>
-                        </Border>
 
                         <Border IsVisible="{Binding FloatingDebugPanelVisible}"
                                 HorizontalAlignment="Right"

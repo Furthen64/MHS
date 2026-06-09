@@ -10,6 +10,7 @@ using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using Avalonia;
 using Avalonia.Input;
+using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Mhs.Editor.Editor;
 using Mhs.Editor.Settings;
@@ -287,6 +288,49 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public string ViewportToolbarControlBrush => IsPresentationViewportVisualMode ? "#3E4652" : "#D4DEE9";
     public string ViewportToolbarSeparatorBrush => IsPresentationViewportVisualMode ? "#C4B8A6" : "#455366";
     public string ViewportToolbarSubtleTextBrush => IsPresentationViewportVisualMode ? "#667181" : "#8EA2BA";
+
+    public IReadOnlyList<MaterialTrayItemViewModel> MaterialTrayItems => MaterialCatalog.AvailableMaterials
+        .Select(material => new MaterialTrayItemViewModel(
+            material.Id,
+            material.DisplayName,
+            ToHex(material.TopColor),
+            ToHex(material.RightColor),
+            FormatMaterialTrayCount(material.Id)))
+        .ToArray();
+
+    public string MaterialPaletteSummaryText
+    {
+        get
+        {
+            var sourceCount = EditorState.Scene.Objects.Count(IsMaterialSource);
+            var activePacketCount = EditorState.Scene.ConveyorRouteFlow.Routes
+                .Sum(route => route.Slots.Count(slot => slot is not null));
+            return $"{MaterialCatalog.AvailableMaterials.Count} types · {sourceCount} source(s) · {activePacketCount} packet(s)";
+        }
+    }
+
+    public string StatusHintText
+    {
+        get
+        {
+            if (EditorState.ActiveTool is ConveyorRouteTool)
+            {
+                return "Draw route anchors, then press Enter or RMB to finish the conveyor path.";
+            }
+
+            if (EditorState.IsMovingSelection)
+            {
+                return "Move preview is live. RMB confirms; Esc cancels the pending placement.";
+            }
+
+            if (EditorState.IsSelectionRotationMode)
+            {
+                return "Rotate preview is live. RMB confirms; Esc cancels rotation.";
+            }
+
+            return $"{EditorState.StatusMessage} · {EditorState.ActiveTool.Name} · hover X {(EditorState.HoveredVoxel?.X.ToString() ?? "-")} Y {(EditorState.HoveredVoxel?.Y.ToString() ?? "-")}";
+        }
+    }
 
     public string StatusText
     {
@@ -1934,6 +1978,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(ViewportToolbarSeparatorBrush));
         OnPropertyChanged(nameof(ViewportToolbarSubtleTextBrush));
         OnPropertyChanged(nameof(StatusText));
+        OnPropertyChanged(nameof(MaterialTrayItems));
+        OnPropertyChanged(nameof(MaterialPaletteSummaryText));
+        OnPropertyChanged(nameof(StatusHintText));
         OnPropertyChanged(nameof(IsCatalogBrowserOpen));
         OnPropertyChanged(nameof(BrowseMorePartsLabel));
         OnPropertyChanged(nameof(PartCatalogSummaryText));
@@ -2018,6 +2065,25 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
+
+    private string FormatMaterialTrayCount(string materialId)
+    {
+        var sourceCount = EditorState.Scene.Objects.Count(obj => IsMaterialSource(obj)
+            && string.Equals(MaterialCatalog.NormalizeId(obj.MaterialId), materialId, StringComparison.OrdinalIgnoreCase));
+        var packetCount = EditorState.Scene.ConveyorRouteFlow.Routes
+            .Sum(route => route.Slots.Count(slot => slot is not null
+                && string.Equals(MaterialCatalog.NormalizeId(slot.MaterialId), materialId, StringComparison.OrdinalIgnoreCase)));
+
+        return sourceCount == 0 && packetCount == 0
+            ? "ready"
+            : $"{sourceCount} src · {packetCount} pkt";
+    }
+
+    private static bool IsMaterialSource(SceneObject obj)
+        => string.Equals(obj.PartId, "mtrlsrc", StringComparison.OrdinalIgnoreCase);
+
+    private static string ToHex(Color color)
+        => $"#{color.R:X2}{color.G:X2}{color.B:X2}";
 
     private static string StatusLabel(PortConnectionStatus status) => status switch
     {
@@ -2750,4 +2816,15 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             CanExecuteChanged?.Invoke(this, EventArgs.Empty);
         }
     }
+}
+
+
+public sealed record MaterialTrayItemViewModel(
+    string Id,
+    string DisplayName,
+    string TopBrush,
+    string EdgeBrush,
+    string CountText)
+{
+    public string TextBrush => string.Equals(Id, "Coal", StringComparison.OrdinalIgnoreCase) ? "#DDE7F3" : "#F6FBFF";
 }
