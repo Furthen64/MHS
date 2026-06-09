@@ -9,6 +9,7 @@ using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Threading;
 using Mhs.Editor.Editor;
+using Mhs.Editor.Settings;
 
 namespace Mhs.Editor.Viewport;
 
@@ -536,9 +537,7 @@ public sealed class SoftwareCubeViewport : Control
 
 
     private static Color GetViewportBackgroundColor(EditorState state)
-        => state.ViewportVisualMode == ViewportVisualMode.Presentation
-            ? Color.FromRgb(236, 229, 216)
-            : Color.FromRgb(25, 30, 35);
+        => AppThemeService.ViewportColors().Background;
 
     private void DrawPresentationFloor(DrawingContext context, int absoluteZ)
     {
@@ -547,8 +546,9 @@ public sealed class SoftwareCubeViewport : Control
             return;
         }
 
-        var floorBrush = new SolidColorBrush(Color.FromRgb(219, 211, 196));
-        var alternateFloorBrush = new SolidColorBrush(Color.FromRgb(224, 217, 203));
+        var viewportColors = AppThemeService.ViewportColors();
+        var floorBrush = new SolidColorBrush(viewportColors.Floor);
+        var alternateFloorBrush = new SolidColorBrush(viewportColors.AlternateFloor);
 
         for (var x = WorldGridSettings.MinCoord; x < WorldGridSettings.MaxCoord; x++)
         {
@@ -587,9 +587,8 @@ public sealed class SoftwareCubeViewport : Control
         {
             var z = floor * WorldVerticalSettings.LayersPerFloor;
             var isActive = floor == activeFloor;
-            var color = state.ViewportVisualMode == ViewportVisualMode.Presentation
-                ? (isActive ? Color.FromArgb(170, 126, 116, 96) : Color.FromArgb(60, 126, 116, 96))
-                : (isActive ? Color.FromArgb(200, 150, 190, 255) : Color.FromArgb(70, 130, 140, 160));
+            var viewportColors = AppThemeService.ViewportColors();
+            var color = isActive ? viewportColors.ActiveFloorLine : viewportColors.InactiveFloorLine;
             var pen = new Pen(new SolidColorBrush(color), isActive ? 2 : 1);
 
             var a = Project(WorldGridSettings.MinCoord, WorldGridSettings.MinCoord, z, state);
@@ -611,9 +610,7 @@ public sealed class SoftwareCubeViewport : Control
             return;
         }
 
-        var gridColor = state.ViewportVisualMode == ViewportVisualMode.Presentation
-            ? Color.FromArgb(72, 120, 111, 96)
-            : Color.FromArgb(125, 160, 190, 220);
+        var gridColor = AppThemeService.ViewportColors().GridLine;
         var gridPen = new Pen(new SolidColorBrush(gridColor), 1.2);
 
         for (var x = WorldGridSettings.MinCoord; x <= WorldGridSettings.MaxCoord; x++)

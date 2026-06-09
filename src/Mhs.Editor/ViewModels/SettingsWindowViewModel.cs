@@ -23,6 +23,12 @@ public sealed class SettingsWindowViewModel
             new UiModeOption("Simple", "simple"),
             new UiModeOption("Expert", "expert")
         ]);
+        AvailableThemeModes = new ObservableCollection<ThemeModeOption>(
+        [
+            new ThemeModeOption("Darkmode", AppThemeService.DarkMode),
+            new ThemeModeOption("Lightmode", AppThemeService.LightMode),
+            new ThemeModeOption("High contrast", AppThemeService.HighContrastMode)
+        ]);
 
         OpenMaximized = preferences.OpenMaximized;
         DefaultFloor = ClampFloor(preferences.DefaultFloor);
@@ -35,6 +41,9 @@ public sealed class SettingsWindowViewModel
         SelectedUiMode = AvailableUiModes.FirstOrDefault(mode =>
                 mode.Value.Equals(preferences.UiMode, System.StringComparison.OrdinalIgnoreCase))
             ?? AvailableUiModes[0];
+        SelectedThemeMode = AvailableThemeModes.FirstOrDefault(mode =>
+                mode.Value.Equals(AppThemeService.NormalizeThemeMode(preferences.ThemeMode), System.StringComparison.OrdinalIgnoreCase))
+            ?? AvailableThemeModes[0];
     }
 
     public ObservableCollection<GpuOption> AvailableGpus { get; }
@@ -42,12 +51,14 @@ public sealed class SettingsWindowViewModel
     public ObservableCollection<int> AvailableLayers { get; }
     public ObservableCollection<RendererModeOption> AvailableRendererModes { get; }
     public ObservableCollection<UiModeOption> AvailableUiModes { get; }
+    public ObservableCollection<ThemeModeOption> AvailableThemeModes { get; }
     public bool OpenMaximized { get; set; }
     public int DefaultFloor { get; set; }
     public int DefaultLayer { get; set; }
     public GpuOption? SelectedGpu { get; set; }
     public RendererModeOption? SelectedRendererMode { get; set; }
     public UiModeOption? SelectedUiMode { get; set; }
+    public ThemeModeOption? SelectedThemeMode { get; set; }
 
     public AppPreferences ToPreferences(AppPreferences basePreferences)
     {
@@ -59,7 +70,8 @@ public sealed class SettingsWindowViewModel
             DefaultFloor = ClampFloor(DefaultFloor),
             DefaultLayer = ClampLayer(DefaultLayer),
             DefaultRendererMode = SelectedRendererMode?.Value ?? "opengl",
-            UiMode = SelectedUiMode?.Value ?? "simple"
+            UiMode = SelectedUiMode?.Value ?? "simple",
+            ThemeMode = SelectedThemeMode?.Value ?? AppThemeService.DarkMode
         };
     }
 
@@ -76,6 +88,11 @@ public sealed record RendererModeOption(string Label, string Value)
 }
 
 public sealed record UiModeOption(string Label, string Value)
+{
+    public override string ToString() => Label;
+}
+
+public sealed record ThemeModeOption(string Label, string Value)
 {
     public override string ToString() => Label;
 }

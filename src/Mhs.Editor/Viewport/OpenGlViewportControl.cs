@@ -544,9 +544,7 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
 
 
     private static Color GetViewportBackgroundColor(EditorState state)
-        => state.ViewportVisualMode == ViewportVisualMode.Presentation
-            ? Color.FromRgb(236, 229, 216)
-            : Color.FromRgb(25, 30, 35);
+        => AppThemeService.ViewportColors().Background;
 
     private void DrawPresentationFloor(int absoluteZ)
     {
@@ -555,8 +553,9 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
             return;
         }
 
-        var floorColor = Color.FromRgb(219, 211, 196);
-        var alternateFloorColor = Color.FromRgb(224, 217, 203);
+        var viewportColors = AppThemeService.ViewportColors();
+        var floorColor = viewportColors.Floor;
+        var alternateFloorColor = viewportColors.AlternateFloor;
 
         for (var x = WorldGridSettings.MinCoord; x < WorldGridSettings.MaxCoord; x++)
         {
@@ -583,9 +582,8 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
         {
             var z = floor * WorldVerticalSettings.LayersPerFloor;
             var isActive = floor == activeFloor;
-            var color = state.ViewportVisualMode == ViewportVisualMode.Presentation
-                ? (isActive ? Color.FromArgb(170, 126, 116, 96) : Color.FromArgb(60, 126, 116, 96))
-                : (isActive ? Color.FromArgb(200, 150, 190, 255) : Color.FromArgb(70, 130, 140, 160));
+            var viewportColors = AppThemeService.ViewportColors();
+            var color = isActive ? viewportColors.ActiveFloorLine : viewportColors.InactiveFloorLine;
 
             var a = Project(WorldGridSettings.MinCoord, WorldGridSettings.MinCoord, z, state);
             var b = Project(WorldGridSettings.MaxCoord, WorldGridSettings.MinCoord, z, state);
@@ -606,9 +604,7 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
             return;
         }
 
-        var color = state.ViewportVisualMode == ViewportVisualMode.Presentation
-            ? Color.FromArgb(72, 120, 111, 96)
-            : Color.FromArgb(125, 160, 190, 220);
+        var color = AppThemeService.ViewportColors().GridLine;
 
         for (var x = WorldGridSettings.MinCoord; x <= WorldGridSettings.MaxCoord; x++)
         {

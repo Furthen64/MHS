@@ -16,9 +16,9 @@
         MinHeight="600">
     <Window.Styles>
         <Style Selector="Button.catalog-tool">
-            <Setter Property="Background" Value="#2A3038" />
-            <Setter Property="Foreground" Value="#D9DEE5" />
-            <Setter Property="BorderBrush" Value="#404853" />
+            <Setter Property="Background" Value="{DynamicResource ThemeBrush_2A3038}" />
+            <Setter Property="Foreground" Value="{DynamicResource ThemeBrush_D9DEE5}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ThemeBrush_404853}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="CornerRadius" Value="3" />
             <Setter Property="Padding" Value="6,4" />
@@ -27,8 +27,8 @@
         <Style Selector="Button.part-tile">
             <Setter Property="Width" Value="116" />
             <Setter Property="Height" Value="132" />
-            <Setter Property="Background" Value="#202A36" />
-            <Setter Property="BorderBrush" Value="#3F5368" />
+            <Setter Property="Background" Value="{DynamicResource ThemeBrush_202A36}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ThemeBrush_3F5368}" />
             <Setter Property="BorderThickness" Value="1.5" />
             <Setter Property="CornerRadius" Value="10" />
             <Setter Property="Padding" Value="8" />
@@ -38,28 +38,28 @@
             <Setter Property="VerticalContentAlignment" Value="Stretch" />
         </Style>
         <Style Selector="Button.part-tile:pointerover">
-            <Setter Property="Background" Value="#2B3E52" />
-            <Setter Property="BorderBrush" Value="#89C4FF" />
+            <Setter Property="Background" Value="{DynamicResource ThemeBrush_2B3E52}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ThemeBrush_89C4FF}" />
             <Setter Property="BorderThickness" Value="2" />
         </Style>
         <Style Selector="Button.part-tile:pressed">
-            <Setter Property="Background" Value="#1F4F83" />
-            <Setter Property="BorderBrush" Value="#9CCDFF" />
+            <Setter Property="Background" Value="{DynamicResource ThemeBrush_1F4F83}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ThemeBrush_9CCDFF}" />
             <Setter Property="BorderThickness" Value="2" />
         </Style>
         <Style Selector="Button.part-tile:focus">
-            <Setter Property="BorderBrush" Value="#FFD15A" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ThemeBrush_FFD15A}" />
             <Setter Property="BorderThickness" Value="2" />
         </Style>
         <Style Selector="Button.part-tile.accent">
-            <Setter Property="Background" Value="#214A76" />
-            <Setter Property="BorderBrush" Value="#8FC6FF" />
+            <Setter Property="Background" Value="{DynamicResource ThemeBrush_214A76}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ThemeBrush_8FC6FF}" />
             <Setter Property="BorderThickness" Value="2" />
         </Style>
         <Style Selector="Button.catalog-filter">
-            <Setter Property="Background" Value="#18212B" />
-            <Setter Property="Foreground" Value="#B9C6D4" />
-            <Setter Property="BorderBrush" Value="#334557" />
+            <Setter Property="Background" Value="{DynamicResource ThemeBrush_18212B}" />
+            <Setter Property="Foreground" Value="{DynamicResource ThemeBrush_B9C6D4}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ThemeBrush_334557}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="CornerRadius" Value="12" />
             <Setter Property="Padding" Value="8,4" />
@@ -67,14 +67,14 @@
             <Setter Property="Margin" Value="0,0,6,6" />
         </Style>
         <Style Selector="Button.catalog-filter.selected">
-            <Setter Property="Background" Value="#335C8A" />
-            <Setter Property="Foreground" Value="#FFFFFF" />
-            <Setter Property="BorderBrush" Value="#8FC6FF" />
+            <Setter Property="Background" Value="{DynamicResource ThemeBrush_335C8A}" />
+            <Setter Property="Foreground" Value="{DynamicResource ThemeBrush_FFFFFF}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ThemeBrush_8FC6FF}" />
         </Style>
         <Style Selector="Button.ribbon-button">
-            <Setter Property="Background" Value="#202834" />
-            <Setter Property="Foreground" Value="#E6ECF4" />
-            <Setter Property="BorderBrush" Value="#354352" />
+            <Setter Property="Background" Value="{DynamicResource ThemeBrush_202834}" />
+            <Setter Property="Foreground" Value="{DynamicResource ThemeBrush_E6ECF4}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ThemeBrush_354352}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="CornerRadius" Value="8" />
             <Setter Property="Padding" Value="9,5" />
@@ -84,30 +84,30 @@
             <Setter Property="HorizontalContentAlignment" Value="Center" />
         </Style>
         <Style Selector="Button.ribbon-button:pointerover">
-            <Setter Property="Background" Value="#2A3A4D" />
-            <Setter Property="BorderBrush" Value="#6BA9FF" />
+            <Setter Property="Background" Value="{DynamicResource ThemeBrush_2A3A4D}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ThemeBrush_6BA9FF}" />
         </Style>
         <Style Selector="Button.ribbon-button.accent">
-            <Setter Property="Background" Value="#1D5D97" />
-            <Setter Property="BorderBrush" Value="#8BC7FF" />
+            <Setter Property="Background" Value="{DynamicResource ThemeBrush_1D5D97}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ThemeBrush_8BC7FF}" />
             <Setter Property="BorderThickness" Value="2" />
-            <Setter Property="Foreground" Value="#FFFFFF" />
+            <Setter Property="Foreground" Value="{DynamicResource ThemeBrush_FFFFFF}" />
         </Style>
         <Style Selector="Button.ribbon-button.accent:pointerover">
-            <Setter Property="Background" Value="#2472B8" />
-            <Setter Property="BorderBrush" Value="#B5DDFF" />
+            <Setter Property="Background" Value="{DynamicResource ThemeBrush_2472B8}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ThemeBrush_B5DDFF}" />
         </Style>
         <Style Selector="Button.ribbon-button:focus">
-            <Setter Property="BorderBrush" Value="#FFD15A" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ThemeBrush_FFD15A}" />
             <Setter Property="BorderThickness" Value="2" />
         </Style>
         <Style Selector="Button.ribbon-button:disabled">
             <Setter Property="Opacity" Value="0.45" />
         </Style>
         <Style Selector="Button.ribbon-icon">
-            <Setter Property="Background" Value="#1B2129" />
-            <Setter Property="Foreground" Value="#DDE7F3" />
-            <Setter Property="BorderBrush" Value="#303946" />
+            <Setter Property="Background" Value="{DynamicResource ThemeBrush_1B2129}" />
+            <Setter Property="Foreground" Value="{DynamicResource ThemeBrush_DDE7F3}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ThemeBrush_303946}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="CornerRadius" Value="8" />
             <Setter Property="Padding" Value="8,5" />
@@ -127,37 +127,37 @@
             <Setter Property="TextAlignment" Value="Center" />
         </Style>
         <Style Selector="TextBlock.ribbon-label">
-            <Setter Property="Foreground" Value="#9AAABD" />
+            <Setter Property="Foreground" Value="{DynamicResource ThemeBrush_9AAABD}" />
             <Setter Property="FontSize" Value="9.5" />
             <Setter Property="FontWeight" Value="Bold" />
             <Setter Property="LetterSpacing" Value="0.4" />
         </Style>
         <Style Selector="Border.ribbon-group">
-            <Setter Property="BorderBrush" Value="#35404D" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ThemeBrush_35404D}" />
             <Setter Property="BorderThickness" Value="0,0,1,0" />
             <Setter Property="Padding" Value="8,0" />
         </Style>
         <Style Selector="Border.active-tool-pill">
-            <Setter Property="Background" Value="#243750" />
-            <Setter Property="BorderBrush" Value="#69B6FF" />
+            <Setter Property="Background" Value="{DynamicResource ThemeBrush_243750}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ThemeBrush_69B6FF}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="CornerRadius" Value="12" />
             <Setter Property="Padding" Value="10,4" />
         </Style>
         <Style Selector="Border.workflow-card">
-            <Setter Property="Background" Value="#26313B" />
-            <Setter Property="BorderBrush" Value="#445468" />
+            <Setter Property="Background" Value="{DynamicResource ThemeBrush_26313B}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ThemeBrush_445468}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="CornerRadius" Value="9" />
             <Setter Property="Padding" Value="10,7" />
         </Style>
         <Style Selector="TextBlock.workflow-label">
-            <Setter Property="Foreground" Value="#9FB4CC" />
+            <Setter Property="Foreground" Value="{DynamicResource ThemeBrush_9FB4CC}" />
             <Setter Property="FontSize" Value="10" />
             <Setter Property="FontWeight" Value="Bold" />
         </Style>
         <Style Selector="TextBlock.workflow-value">
-            <Setter Property="Foreground" Value="#D4DEE9" />
+            <Setter Property="Foreground" Value="{DynamicResource ThemeBrush_D4DEE9}" />
             <Setter Property="FontSize" Value="11" />
             <Setter Property="FontWeight" Value="SemiBold" />
         </Style>
@@ -165,18 +165,18 @@
     </Window.Styles>
     <DockPanel>
         <Border DockPanel.Dock="Top"
-                Background="#171C22"
-                BorderBrush="#2D343F"
+                Background="{DynamicResource ThemeBrush_171C22}"
+                BorderBrush="{DynamicResource ThemeBrush_2D343F}"
                 BorderThickness="0,0,0,1">
             <Grid RowDefinitions="64,66">
-                <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Background="#151A20">
+                <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Background="{DynamicResource ThemeBrush_151A20}">
                     <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="12" Margin="10,0" VerticalAlignment="Center">
-                        <Border Width="32" Height="32" CornerRadius="6" Background="#213247" BorderBrush="#3F6C99" BorderThickness="1">
-                            <TextBlock Text="M" Foreground="#FFD15A" FontWeight="Bold" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        <Border Width="32" Height="32" CornerRadius="6" Background="{DynamicResource ThemeBrush_213247}" BorderBrush="{DynamicResource ThemeBrush_3F6C99}" BorderThickness="1">
+                            <TextBlock Text="M" Foreground="{DynamicResource ThemeBrush_FFD15A}" FontWeight="Bold" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Border>
                         <StackPanel Spacing="1" VerticalAlignment="Center">
-                            <TextBlock Text="Material Handling System Editor" Foreground="#F0F4FA" FontWeight="SemiBold" FontSize="14" />
-                            <TextBlock Text="Command Workspace" Foreground="#738398" FontSize="10" />
+                            <TextBlock Text="Material Handling System Editor" Foreground="{DynamicResource ThemeBrush_F0F4FA}" FontWeight="SemiBold" FontSize="14" />
+                            <TextBlock Text="Command Workspace" Foreground="{DynamicResource ThemeBrush_738398}" FontSize="10" />
                         </StackPanel>
                     </StackPanel>
 
@@ -229,7 +229,7 @@
                     </WrapPanel>
 
                     <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" Margin="10,0" VerticalAlignment="Center">
-                        <Menu Background="Transparent" Foreground="#DDE7F3">
+                        <Menu Background="Transparent" Foreground="{DynamicResource ThemeBrush_DDE7F3}">
                             <MenuItem Header="☰">
                                 <MenuItem Header="_Demo Factory Scene" Command="{Binding LoadDemoFactorySceneCommand}" />
                                 <Separator />
@@ -264,7 +264,7 @@
                     </StackPanel>
                 </Grid>
 
-                <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto,Auto,Auto" Background="#20262E">
+                <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto,Auto,Auto" Background="{DynamicResource ThemeBrush_20262E}">
                     <Border Grid.Column="0" Classes="ribbon-group">
                         <StackPanel Spacing="2" VerticalAlignment="Center">
                             <TextBlock Classes="ribbon-label" Text="SELECT" HorizontalAlignment="Center" />
@@ -339,57 +339,57 @@
                     </Border>
                     <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="8" Margin="8,0,10,0" VerticalAlignment="Center">
                         <TextBlock Classes="ribbon-label" Text="SNAP" VerticalAlignment="Center" />
-                        <Border Background="#151A20" BorderBrush="#49617A" BorderThickness="1" CornerRadius="8" Padding="10,5" MinWidth="94" AutomationProperties.Name="Snap grid controls">
+                        <Border Background="{DynamicResource ThemeBrush_151A20}" BorderBrush="{DynamicResource ThemeBrush_49617A}" BorderThickness="1" CornerRadius="8" Padding="10,5" MinWidth="94" AutomationProperties.Name="Snap grid controls">
                             <DockPanel LastChildFill="False">
-                                <TextBlock DockPanel.Dock="Left" Text="⌗ Grid" Foreground="#E4ECF6" FontWeight="SemiBold" />
-                                <TextBlock DockPanel.Dock="Right" Text="⌄" Foreground="#8DA0B7" Margin="10,0,0,0" />
+                                <TextBlock DockPanel.Dock="Left" Text="⌗ Grid" Foreground="{DynamicResource ThemeBrush_E4ECF6}" FontWeight="SemiBold" />
+                                <TextBlock DockPanel.Dock="Right" Text="⌄" Foreground="{DynamicResource ThemeBrush_8DA0B7}" Margin="10,0,0,0" />
                             </DockPanel>
                         </Border>
                     </StackPanel>
                     <Border Grid.Column="4" Classes="active-tool-pill" Margin="0,0,10,0" VerticalAlignment="Center" ToolTip.Tip="{Binding ActiveToolAccessibilityText}" AutomationProperties.Name="{Binding ActiveToolAccessibilityText}">
                         <StackPanel Orientation="Horizontal" Spacing="6">
-                            <TextBlock Text="●" Foreground="#7FDBFF" />
-                            <TextBlock Text="{Binding ActiveToolBadgeText}" Foreground="#F7FBFF" FontWeight="SemiBold" FontSize="11" />
+                            <TextBlock Text="●" Foreground="{DynamicResource ThemeBrush_7FDBFF}" />
+                            <TextBlock Text="{Binding ActiveToolBadgeText}" Foreground="{DynamicResource ThemeBrush_F7FBFF}" FontWeight="SemiBold" FontSize="11" />
                         </StackPanel>
                     </Border>
                 </Grid>
             </Grid>
         </Border>
 
-        <Border DockPanel.Dock="Bottom" Background="#151A20" BorderBrush="#303844" BorderThickness="0,1,0,0" Padding="10,3">
-            <TextBlock Foreground="#C9D3DF"
+        <Border DockPanel.Dock="Bottom" Background="{DynamicResource ThemeBrush_151A20}" BorderBrush="{DynamicResource ThemeBrush_303844}" BorderThickness="0,1,0,0" Padding="10,3">
+            <TextBlock Foreground="{DynamicResource ThemeBrush_C9D3DF}"
                        FontSize="11"
                        Text="{Binding StatusText}"
                        VerticalAlignment="Center"
                        TextTrimming="CharacterEllipsis" />
         </Border>
 
-        <Grid ColumnDefinitions="330,*,300" Background="#1B1D23">
+        <Grid ColumnDefinitions="330,*,300" Background="{DynamicResource ThemeBrush_1B1D23}">
             <DockPanel Grid.Column="0" Margin="8" LastChildFill="True">
-                <Border DockPanel.Dock="Top" Padding="10" Background="#20252C" CornerRadius="4" Margin="0,0,0,6">
+                <Border DockPanel.Dock="Top" Padding="10" Background="{DynamicResource ThemeBrush_20252C}" CornerRadius="4" Margin="0,0,0,6">
                     <StackPanel Spacing="8">
                         <StackPanel Spacing="2">
-                            <TextBlock Text="Part Catalog" FontWeight="Bold" Foreground="#F4F8FD" FontSize="15" />
+                            <TextBlock Text="Part Catalog" FontWeight="Bold" Foreground="{DynamicResource ThemeBrush_F4F8FD}" FontSize="15" />
                             <TextBlock Text="Transport · Feed &amp; Discharge · Vertical · Structure · Utilities"
-                                       Foreground="#8FA2B8"
+                                       Foreground="{DynamicResource ThemeBrush_8FA2B8}"
                                        FontSize="10"
                                        TextWrapping="Wrap" />
                         </StackPanel>
                         <TextBox PlaceholderText="Search parts by name, function, or synonym..."
                                  Text="{Binding PartSearchText, Mode=TwoWay}"
-                                 Background="#131922"
-                                 BorderBrush="#3B4C61"
-                                 Foreground="#E5E9F0" />
+                                 Background="{DynamicResource ThemeBrush_131922}"
+                                 BorderBrush="{DynamicResource ThemeBrush_3B4C61}"
+                                 Foreground="{DynamicResource ThemeBrush_E5E9F0}" />
                         <Border IsVisible="{Binding IsCatalogBrowserOpen}"
-                                Background="#151D27"
-                                BorderBrush="#32475B"
+                                Background="{DynamicResource ThemeBrush_151D27}"
+                                BorderBrush="{DynamicResource ThemeBrush_32475B}"
                                 BorderThickness="1"
                                 CornerRadius="8"
                                 Padding="8">
                             <StackPanel Spacing="6">
-                                <TextBlock Text="Browse catalog" Foreground="#E8F1FC" FontWeight="SemiBold" FontSize="12" />
+                                <TextBlock Text="Browse catalog" Foreground="{DynamicResource ThemeBrush_E8F1FC}" FontWeight="SemiBold" FontSize="12" />
                                 <TextBlock Text="Filter by concept category, then search within the selected group."
-                                           Foreground="#91A4B8"
+                                           Foreground="{DynamicResource ThemeBrush_91A4B8}"
                                            FontSize="10"
                                            TextWrapping="Wrap" />
                                 <ItemsControl ItemsSource="{Binding PartCatalogCategoryFilters}">
@@ -405,8 +405,8 @@
                                                     Command="{Binding ApplyCommand}">
                                                 <StackPanel Orientation="Horizontal" Spacing="5">
                                                     <TextBlock Text="{Binding DisplayName}" />
-                                                    <Border Background="#223247" CornerRadius="8" Padding="5,0">
-                                                        <TextBlock Text="{Binding BadgeText}" FontSize="9" Foreground="#DDEBFA" />
+                                                    <Border Background="{DynamicResource ThemeBrush_223247}" CornerRadius="8" Padding="5,0">
+                                                        <TextBlock Text="{Binding BadgeText}" FontSize="9" Foreground="{DynamicResource ThemeBrush_DDEBFA}" />
                                                     </Border>
                                                 </StackPanel>
                                             </Button>
@@ -414,7 +414,7 @@
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
                                 <TextBlock Text="{Binding PartCatalogSummaryText}"
-                                           Foreground="#C8D6E4"
+                                           Foreground="{DynamicResource ThemeBrush_C8D6E4}"
                                            FontSize="10"
                                            TextWrapping="Wrap" />
                             </StackPanel>
@@ -429,12 +429,12 @@
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="vm:PartCatalogSectionViewModel">
                                         <StackPanel Spacing="5" Margin="0,8,0,0" HorizontalAlignment="Stretch">
-                                            <Border Background="#18212B"
-                                                    BorderBrush="#2E3B49"
+                                            <Border Background="{DynamicResource ThemeBrush_18212B}"
+                                                    BorderBrush="{DynamicResource ThemeBrush_2E3B49}"
                                                     BorderThickness="0,0,0,1"
                                                     Padding="0,0,0,4">
                                                 <TextBlock Text="{Binding Name}"
-                                                           Foreground="#9EACBA"
+                                                           Foreground="{DynamicResource ThemeBrush_9EACBA}"
                                                            FontSize="10"
                                                            FontWeight="Bold" />
                                             </Border>
@@ -455,8 +455,8 @@
                                                             <StackPanel Spacing="7" HorizontalAlignment="Center" VerticalAlignment="Stretch">
                                                                 <Border Width="86"
                                                                         Height="72"
-                                                                        Background="#121922"
-                                                                        BorderBrush="#475B70"
+                                                                        Background="{DynamicResource ThemeBrush_121922}"
+                                                                        BorderBrush="{DynamicResource ThemeBrush_475B70}"
                                                                         BorderThickness="1.5"
                                                                         CornerRadius="9"
                                                                         HorizontalAlignment="Center">
@@ -468,7 +468,7 @@
                                                                            VerticalAlignment="Center" />
                                                                 </Border>
                                                                 <TextBlock Text="{Binding DisplayName}"
-                                                                           Foreground="#DEE6F0"
+                                                                           Foreground="{DynamicResource ThemeBrush_DEE6F0}"
                                                                            FontSize="11"
                                                                            FontWeight="SemiBold"
                                                                            TextAlignment="Center"
@@ -488,21 +488,21 @@
                         </ScrollViewer>
                         <Button Content="{Binding BrowseMorePartsLabel}"
                                 Command="{Binding BrowseMorePartsCommand}"
-                                Background="#233A5A"
-                                Foreground="#E8F1FC"
-                                BorderBrush="#4A6F9F"
+                                Background="{DynamicResource ThemeBrush_233A5A}"
+                                Foreground="{DynamicResource ThemeBrush_E8F1FC}"
+                                BorderBrush="{DynamicResource ThemeBrush_4A6F9F}"
                                 BorderThickness="1"
                                 CornerRadius="4"
                                 Padding="10,6" />
                     </StackPanel>
                 </Border>
 
-                <Border Padding="8" Background="#1A1F29" CornerRadius="4">
+                <Border Padding="8" Background="{DynamicResource ThemeBrush_1A1F29}" CornerRadius="4">
                     <DockPanel>
                         <TextBlock DockPanel.Dock="Top"
                                    Text="Scene Objects"
                                    FontWeight="Bold"
-                                   Foreground="#ECEFF4"
+                                   Foreground="{DynamicResource ThemeBrush_ECEFF4}"
                                    FontSize="13"
                                    Margin="0,0,0,6" />
                         <ScrollViewer>
@@ -524,11 +524,11 @@
                                         <Setter Property="BorderThickness" Value="1" />
                                     </Style>
                                     <Style Selector="ListBoxItem:selected">
-                                        <Setter Property="Background" Value="#2B3E58" />
-                                        <Setter Property="BorderBrush" Value="#88B8FF" />
+                                        <Setter Property="Background" Value="{DynamicResource ThemeBrush_2B3E58}" />
+                                        <Setter Property="BorderBrush" Value="{DynamicResource ThemeBrush_88B8FF}" />
                                     </Style>
                                     <Style Selector="ListBoxItem:pointerover:not(:selected)">
-                                        <Setter Property="Background" Value="#1F2934" />
+                                        <Setter Property="Background" Value="{DynamicResource ThemeBrush_1F2934}" />
                                     </Style>
                                 </ListBox.Styles>
                                 <ListBox.ItemTemplate>
@@ -536,19 +536,19 @@
                                         <Panel>
                                             <TextBlock Text="{Binding Label}"
                                                        IsVisible="{Binding IsGroupHeader}"
-                                                       Foreground="#5E7A94"
+                                                       Foreground="{DynamicResource ThemeBrush_5E7A94}"
                                                        FontSize="10"
                                                        FontWeight="SemiBold"
                                                        Margin="{Binding ContentMargin}" />
                                             <StackPanel IsVisible="{Binding !IsGroupHeader}" Spacing="1" Margin="{Binding ContentMargin}">
                                                 <TextBlock Text="{Binding Label}"
-                                                           Foreground="#C8D8E8"
+                                                           Foreground="{DynamicResource ThemeBrush_C8D8E8}"
                                                            FontSize="11.5"
                                                            FontWeight="SemiBold"
                                                            TextTrimming="CharacterEllipsis" />
                                                 <TextBlock Text="{Binding StatusText}"
                                                            IsVisible="{Binding HasStatus}"
-                                                           Foreground="#6FADB5"
+                                                           Foreground="{DynamicResource ThemeBrush_6FADB5}"
                                                            FontSize="10"
                                                            TextTrimming="CharacterEllipsis" />
                                             </StackPanel>
@@ -569,16 +569,16 @@
                     BorderThickness="1"
                     BorderBrush="{Binding ViewportPanelBorderBrush}">
                 <DockPanel>
-                    <Border DockPanel.Dock="Top" Background="#242830" BorderBrush="{Binding ViewportPanelBorderBrush}" BorderThickness="0,0,0,1" Padding="10,7">
+                    <Border DockPanel.Dock="Top" Background="{DynamicResource ThemeBrush_242830}" BorderBrush="{Binding ViewportPanelBorderBrush}" BorderThickness="0,0,0,1" Padding="10,7">
                         <DockPanel LastChildFill="False">
                             <TextBlock DockPanel.Dock="Left"
                                        Text="Factory View"
-                                       Foreground="#EEF4FB"
+                                       Foreground="{DynamicResource ThemeBrush_EEF4FB}"
                                        FontWeight="SemiBold"
                                        VerticalAlignment="Center" />
                             <TextBlock DockPanel.Dock="Right"
                                        Text="{Binding ViewportSummaryText}"
-                                       Foreground="#8EA2BA"
+                                       Foreground="{DynamicResource ThemeBrush_8EA2BA}"
                                        FontSize="11"
                                        VerticalAlignment="Center" />
                         </DockPanel>
@@ -641,12 +641,12 @@
                                         </ItemsControl.ItemsPanel>
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate x:DataType="vm:MaterialTrayItemViewModel">
-                                                <Border Margin="0,0,7,0" Padding="7,5" CornerRadius="7" Background="#1B2530" BorderBrush="#3C4C5C" BorderThickness="1">
+                                                <Border Margin="0,0,7,0" Padding="7,5" CornerRadius="7" Background="{DynamicResource ThemeBrush_1B2530}" BorderBrush="{DynamicResource ThemeBrush_3C4C5C}" BorderThickness="1">
                                                     <StackPanel Orientation="Horizontal" Spacing="6">
                                                         <Border Width="22" Height="22" CornerRadius="5" Background="{Binding TopBrush}" BorderBrush="{Binding EdgeBrush}" BorderThickness="1" />
                                                         <StackPanel Spacing="0">
                                                             <TextBlock Text="{Binding DisplayName}" Foreground="{Binding TextBrush}" FontSize="10.5" FontWeight="SemiBold" />
-                                                            <TextBlock Text="{Binding CountText}" Foreground="#8FA2B8" FontSize="9.5" />
+                                                            <TextBlock Text="{Binding CountText}" Foreground="{DynamicResource ThemeBrush_8FA2B8}" FontSize="9.5" />
                                                         </StackPanel>
                                                     </StackPanel>
                                                 </Border>
@@ -681,31 +681,31 @@
                                 Margin="14"
                                 MaxWidth="380"
                                 Padding="12"
-                                Background="#D9131820"
-                                BorderBrush="#586A82"
+                                Background="{DynamicResource ThemeBrush_D9131820}"
+                                BorderBrush="{DynamicResource ThemeBrush_586A82}"
                                 BorderThickness="1"
                                 CornerRadius="6">
                             <StackPanel Spacing="8">
-                                <TextBlock Text="Conveyor Debug" FontWeight="Bold" Foreground="#F3F6FB" />
-                                <TextBlock Text="{Binding ConveyorDebugSelectionText}" Foreground="#D8DEE9" />
-                                <TextBlock Text="{Binding ConveyorDebugRouteSummaryText}" Foreground="#BFD2EA" TextWrapping="Wrap" />
-                                <Border Background="#0F1217"
-                                        BorderBrush="#374657"
+                                <TextBlock Text="Conveyor Debug" FontWeight="Bold" Foreground="{DynamicResource ThemeBrush_F3F6FB}" />
+                                <TextBlock Text="{Binding ConveyorDebugSelectionText}" Foreground="{DynamicResource ThemeBrush_D8DEE9}" />
+                                <TextBlock Text="{Binding ConveyorDebugRouteSummaryText}" Foreground="{DynamicResource ThemeBrush_BFD2EA}" TextWrapping="Wrap" />
+                                <Border Background="{DynamicResource ThemeBrush_0F1217}"
+                                        BorderBrush="{DynamicResource ThemeBrush_374657}"
                                         BorderThickness="1"
                                         CornerRadius="4"
                                         Padding="8">
                                     <TextBlock Text="{Binding ConveyorDebugGridText}"
-                                               Foreground="#E5E9F0"
+                                               Foreground="{DynamicResource ThemeBrush_E5E9F0}"
                                                FontFamily="Consolas"
                                                TextWrapping="NoWrap" />
                                 </Border>
-                                <TextBlock Text="{Binding ConveyorDebugLegendText}" Foreground="#8EACCC" TextWrapping="Wrap" />
+                                <TextBlock Text="{Binding ConveyorDebugLegendText}" Foreground="{DynamicResource ThemeBrush_8EACCC}" TextWrapping="Wrap" />
                                 <StackPanel Orientation="Horizontal" Spacing="6">
                                     <Button Content="Inject DebugOre" Command="{Binding InjectDebugOreCommand}" />
                                     <Button Content="Step Flow" Command="{Binding StepMaterialFlowCommand}" />
                                     <Button Content="Clear Flow" Command="{Binding ClearMaterialFlowCommand}" />
                                 </StackPanel>
-                                <TextBlock Text="{Binding InspectorMaterialFlowText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
+                                <TextBlock Text="{Binding InspectorMaterialFlowText}" Foreground="{DynamicResource ThemeBrush_D8DEE9}" TextWrapping="Wrap" />
                             </StackPanel>
                         </Border>
                     </Grid>
@@ -716,7 +716,7 @@
                     IsVisible="{Binding ExpertInspectorVisible}"
                     Margin="8"
                     Padding="0"
-                    Background="#232833"
+                    Background="{DynamicResource ThemeBrush_232833}"
                     CornerRadius="4">
                 <TabControl>
                     <TabItem Header="Inspector">
@@ -726,8 +726,8 @@
                                     <Border Grid.Column="0"
                                             Width="78"
                                             Height="78"
-                                            Background="#111820"
-                                            BorderBrush="#3B4C61"
+                                            Background="{DynamicResource ThemeBrush_111820}"
+                                            BorderBrush="{DynamicResource ThemeBrush_3B4C61}"
                                             BorderThickness="1"
                                             CornerRadius="8"
                                             Padding="8">
@@ -737,7 +737,7 @@
                                                    HorizontalAlignment="Center"
                                                    VerticalAlignment="Center" />
                                             <TextBlock Text="PART"
-                                                       Foreground="#465569"
+                                                       Foreground="{DynamicResource ThemeBrush_465569}"
                                                        FontSize="10"
                                                        FontWeight="Bold"
                                                        HorizontalAlignment="Center"
@@ -746,14 +746,14 @@
                                     </Border>
                                     <StackPanel Grid.Column="1" Spacing="6" VerticalAlignment="Center">
                                         <TextBlock Text="{Binding InspectorSelectedText}"
-                                                   Foreground="#EEF4FB"
+                                                   Foreground="{DynamicResource ThemeBrush_EEF4FB}"
                                                    FontWeight="SemiBold"
                                                    TextWrapping="Wrap" />
                                         <Grid ColumnDefinitions="52,*" ColumnSpacing="8">
                                             <TextBlock Grid.Column="0"
                                                        Text="Name"
                                                        VerticalAlignment="Center"
-                                                       Foreground="#AFC6E9" />
+                                                       Foreground="{DynamicResource ThemeBrush_AFC6E9}" />
                                             <TextBox x:Name="InspectorNameTextBox"
                                                      Grid.Column="1"
                                                      IsEnabled="{Binding HasSelectedObject}"
@@ -761,7 +761,7 @@
                                                      GotFocus="OnInspectorNameGotFocus"
                                                      KeyDown="OnInspectorNameKeyDown" />
                                         </Grid>
-                                        <Border Background="#13251C"
+                                        <Border Background="{DynamicResource ThemeBrush_13251C}"
                                                 BorderBrush="{Binding InspectorValidityBrush}"
                                                 BorderThickness="1"
                                                 CornerRadius="10"
@@ -773,65 +773,65 @@
                                                            Foreground="{Binding InspectorValidityBrush}"
                                                            FontWeight="SemiBold" />
                                                 <TextBlock Text="{Binding InspectorValidityDetail}"
-                                                           Foreground="#B8C7D9"
+                                                           Foreground="{DynamicResource ThemeBrush_B8C7D9}"
                                                            TextTrimming="CharacterEllipsis" />
                                             </StackPanel>
                                         </Border>
                                     </StackPanel>
                                 </Grid>
 
-                                <Border Background="#1C212A"
-                                        BorderBrush="#3B4252"
+                                <Border Background="{DynamicResource ThemeBrush_1C212A}"
+                                        BorderBrush="{DynamicResource ThemeBrush_3B4252}"
                                         BorderThickness="1"
                                         CornerRadius="4"
                                         Padding="8">
                                     <StackPanel Spacing="7">
                                         <TextBlock Text="TRANSFORM"
-                                                   Foreground="#8EA2BA"
+                                                   Foreground="{DynamicResource ThemeBrush_8EA2BA}"
                                                    FontSize="10"
                                                    FontWeight="Bold" />
                                         <Grid ColumnDefinitions="82,*,*,*" RowDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="6">
-                                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Position" Foreground="#AFC6E9" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Position" Foreground="{DynamicResource ThemeBrush_AFC6E9}" VerticalAlignment="Center" />
                                             <TextBox Grid.Row="0" Grid.Column="1" Watermark="X" IsEnabled="{Binding HasSelectedObject}" Text="{Binding InspectorPositionX, Mode=TwoWay}" />
                                             <TextBox Grid.Row="0" Grid.Column="2" Watermark="Y" IsEnabled="{Binding HasSelectedObject}" Text="{Binding InspectorPositionY, Mode=TwoWay}" />
                                             <TextBox Grid.Row="0" Grid.Column="3" Watermark="Z" IsEnabled="{Binding HasSelectedObject}" Text="{Binding InspectorPositionZ, Mode=TwoWay}" />
-                                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Rotation" Foreground="#AFC6E9" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Rotation" Foreground="{DynamicResource ThemeBrush_AFC6E9}" VerticalAlignment="Center" />
                                             <TextBox Grid.Row="1" Grid.Column="1" IsEnabled="{Binding HasSelectedObject}" Text="{Binding InspectorRotationZDegrees, Mode=TwoWay}" />
-                                            <TextBlock Grid.Row="1" Grid.Column="2" Grid.ColumnSpan="2" Text="degrees around Z" Foreground="#8EA2BA" VerticalAlignment="Center" />
-                                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Base" Foreground="#AFC6E9" />
-                                            <TextBlock Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="3" Text="{Binding InspectorBaseSizeValue}" Foreground="#D8DEE9" TextWrapping="Wrap" />
-                                            <TextBlock Grid.Row="3" Grid.Column="0" Text="Effective" Foreground="#AFC6E9" />
-                                            <TextBlock Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="3" Text="{Binding InspectorEffectiveSizeValue}" Foreground="#D8DEE9" TextWrapping="Wrap" />
+                                            <TextBlock Grid.Row="1" Grid.Column="2" Grid.ColumnSpan="2" Text="degrees around Z" Foreground="{DynamicResource ThemeBrush_8EA2BA}" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Base" Foreground="{DynamicResource ThemeBrush_AFC6E9}" />
+                                            <TextBlock Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="3" Text="{Binding InspectorBaseSizeValue}" Foreground="{DynamicResource ThemeBrush_D8DEE9}" TextWrapping="Wrap" />
+                                            <TextBlock Grid.Row="3" Grid.Column="0" Text="Effective" Foreground="{DynamicResource ThemeBrush_AFC6E9}" />
+                                            <TextBlock Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="3" Text="{Binding InspectorEffectiveSizeValue}" Foreground="{DynamicResource ThemeBrush_D8DEE9}" TextWrapping="Wrap" />
                                         </Grid>
                                     </StackPanel>
                                 </Border>
 
-                                <Border Background="#1C212A"
-                                        BorderBrush="#3B4252"
+                                <Border Background="{DynamicResource ThemeBrush_1C212A}"
+                                        BorderBrush="{DynamicResource ThemeBrush_3B4252}"
                                         BorderThickness="1"
                                         CornerRadius="4"
                                         Padding="8">
                                     <StackPanel Spacing="7">
                                         <TextBlock Text="CONVEYOR"
-                                                   Foreground="#8EA2BA"
+                                                   Foreground="{DynamicResource ThemeBrush_8EA2BA}"
                                                    FontSize="10"
                                                    FontWeight="Bold" />
                                         <Grid ColumnDefinitions="82,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="6">
-                                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Length" Foreground="#AFC6E9" />
-                                            <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding InspectorConveyorLengthText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
-                                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Range" Foreground="#AFC6E9" />
-                                            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding InspectorConveyorRangeText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
-                                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Speed" Foreground="#AFC6E9" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Length" Foreground="{DynamicResource ThemeBrush_AFC6E9}" />
+                                            <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding InspectorConveyorLengthText}" Foreground="{DynamicResource ThemeBrush_D8DEE9}" TextWrapping="Wrap" />
+                                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Range" Foreground="{DynamicResource ThemeBrush_AFC6E9}" />
+                                            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding InspectorConveyorRangeText}" Foreground="{DynamicResource ThemeBrush_D8DEE9}" TextWrapping="Wrap" />
+                                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Speed" Foreground="{DynamicResource ThemeBrush_AFC6E9}" VerticalAlignment="Center" />
                                             <TextBox Grid.Row="2" Grid.Column="1" IsEnabled="{Binding SelectedMtrlSrcPanelVisible}" Text="{Binding SelectedMtrlSrcUnitsPerSecondText, Mode=TwoWay}" />
-                                            <TextBlock Grid.Row="3" Grid.Column="0" Text="Direction" Foreground="#AFC6E9" />
-                                            <CheckBox Grid.Row="3" Grid.Column="1" IsEnabled="{Binding InspectorConveyorDirectionEditable}" IsChecked="{Binding InspectorConveyorFlowReversed, Mode=TwoWay}" Content="Reverse conveyor flow" Foreground="#D8DEE9" />
-                                            <TextBlock Grid.Row="4" Grid.Column="0" Text="Transfer" Foreground="#AFC6E9" />
-                                            <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding InspectorTransferBehaviorText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
+                                            <TextBlock Grid.Row="3" Grid.Column="0" Text="Direction" Foreground="{DynamicResource ThemeBrush_AFC6E9}" />
+                                            <CheckBox Grid.Row="3" Grid.Column="1" IsEnabled="{Binding InspectorConveyorDirectionEditable}" IsChecked="{Binding InspectorConveyorFlowReversed, Mode=TwoWay}" Content="Reverse conveyor flow" Foreground="{DynamicResource ThemeBrush_D8DEE9}" />
+                                            <TextBlock Grid.Row="4" Grid.Column="0" Text="Transfer" Foreground="{DynamicResource ThemeBrush_AFC6E9}" />
+                                            <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding InspectorTransferBehaviorText}" Foreground="{DynamicResource ThemeBrush_D8DEE9}" TextWrapping="Wrap" />
                                         </Grid>
 
                                         <Border IsVisible="{Binding SelectedMtrlSrcPanelVisible}"
-                                                Background="#172217"
-                                                BorderBrush="#6C8F59"
+                                                Background="{DynamicResource ThemeBrush_172217}"
+                                                BorderBrush="{DynamicResource ThemeBrush_6C8F59}"
                                                 BorderThickness="1"
                                                 CornerRadius="4"
                                                 Padding="8">
@@ -839,15 +839,15 @@
                                                 <TextBlock Text="MATERIAL SOURCE"
                                                            FontSize="10"
                                                            FontWeight="Bold"
-                                                           Foreground="#A7D397" />
+                                                           Foreground="{DynamicResource ThemeBrush_A7D397}" />
                                                 <TextBlock Text="Edit material and packet settings. Speed is shared with the conveyor Speed field above."
-                                                           Foreground="#C8D2DE"
+                                                           Foreground="{DynamicResource ThemeBrush_C8D2DE}"
                                                            TextWrapping="Wrap" />
                                                 <Grid ColumnDefinitions="80,*" RowDefinitions="Auto" ColumnSpacing="6">
                                                     <TextBlock Grid.Column="0"
                                                                VerticalAlignment="Center"
                                                                Text="Material"
-                                                               Foreground="#AFC6E9" />
+                                                               Foreground="{DynamicResource ThemeBrush_AFC6E9}" />
                                                     <ComboBox Grid.Column="1"
                                                               ItemsSource="{Binding AvailableMtrlSrcMaterialIds}"
                                                               SelectedItem="{Binding SelectedMtrlSrcMaterialId, Mode=TwoWay}" />
@@ -856,7 +856,7 @@
                                                    <TextBlock Grid.Column="0"
                                                               VerticalAlignment="Center"
                                                               Text="Granules"
-                                                              Foreground="#AFC6E9" />
+                                                              Foreground="{DynamicResource ThemeBrush_AFC6E9}" />
                                                    <ComboBox Grid.Column="1"
                                                              ItemsSource="{Binding AvailableMtrlSrcGranuleCounts}"
                                                              SelectedItem="{Binding SelectedMtrlSrcGranulesPerPacket, Mode=TwoWay}" />
@@ -869,73 +869,73 @@
                                                     <Button Grid.Column="2" Content="+0.5" Command="{Binding IncreaseSelectedMtrlSrcRateCommand}" />
                                                     <Button Grid.Column="3" Content="Apply" Command="{Binding ApplySelectedMtrlSrcRateCommand}" />
                                                 </Grid>
-                                                <TextBlock Text="{Binding SelectedMtrlSrcRateStatusText}" Foreground="#A7D397" TextWrapping="Wrap" />
+                                                <TextBlock Text="{Binding SelectedMtrlSrcRateStatusText}" Foreground="{DynamicResource ThemeBrush_A7D397}" TextWrapping="Wrap" />
                                             </StackPanel>
                                         </Border>
 
                                         <Border IsVisible="{Binding ConveyorRoutePanelVisible}"
-                                                Background="#151B23"
-                                                BorderBrush="#3B4252"
+                                                Background="{DynamicResource ThemeBrush_151B23}"
+                                                BorderBrush="{DynamicResource ThemeBrush_3B4252}"
                                                 BorderThickness="1"
                                                 CornerRadius="4"
                                                 Padding="8">
                                             <StackPanel Spacing="6">
-                                                <TextBlock Text="ROUTE PREVIEW" FontSize="10" FontWeight="Bold" Foreground="#8EA2BA" />
+                                                <TextBlock Text="ROUTE PREVIEW" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource ThemeBrush_8EA2BA}" />
                                                 <Grid ColumnDefinitions="88,*" RowDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="6" RowSpacing="4">
-                                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Anchors" Foreground="#AFC6E9" />
-                                                    <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding ConveyorRouteAnchorsValue}" Foreground="#D8DEE9" FontFamily="Consolas" />
-                                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Z Layer" Foreground="#AFC6E9" />
-                                                    <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding ConveyorRouteZValue}" Foreground="#D8DEE9" FontFamily="Consolas" />
-                                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Preview" Foreground="#AFC6E9" />
-                                                    <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding ConveyorRoutePreviewValue}" Foreground="#D8DEE9" FontFamily="Consolas" />
-                                                    <TextBlock Grid.Row="3" Grid.Column="0" Text="Block" Foreground="#AFC6E9" />
-                                                    <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding ConveyorRouteBlockedReasonValue}" Foreground="#D8DEE9" TextWrapping="Wrap" FontFamily="Consolas" />
+                                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Anchors" Foreground="{DynamicResource ThemeBrush_AFC6E9}" />
+                                                    <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding ConveyorRouteAnchorsValue}" Foreground="{DynamicResource ThemeBrush_D8DEE9}" FontFamily="Consolas" />
+                                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Z Layer" Foreground="{DynamicResource ThemeBrush_AFC6E9}" />
+                                                    <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding ConveyorRouteZValue}" Foreground="{DynamicResource ThemeBrush_D8DEE9}" FontFamily="Consolas" />
+                                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Preview" Foreground="{DynamicResource ThemeBrush_AFC6E9}" />
+                                                    <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding ConveyorRoutePreviewValue}" Foreground="{DynamicResource ThemeBrush_D8DEE9}" FontFamily="Consolas" />
+                                                    <TextBlock Grid.Row="3" Grid.Column="0" Text="Block" Foreground="{DynamicResource ThemeBrush_AFC6E9}" />
+                                                    <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding ConveyorRouteBlockedReasonValue}" Foreground="{DynamicResource ThemeBrush_D8DEE9}" TextWrapping="Wrap" FontFamily="Consolas" />
                                                 </Grid>
                                             </StackPanel>
                                         </Border>
                                     </StackPanel>
                                 </Border>
 
-                                <Border Background="#1C212A"
-                                        BorderBrush="#3B4252"
+                                <Border Background="{DynamicResource ThemeBrush_1C212A}"
+                                        BorderBrush="{DynamicResource ThemeBrush_3B4252}"
                                         BorderThickness="1"
                                         CornerRadius="4"
                                         Padding="8">
                                     <StackPanel Spacing="7">
                                         <TextBlock Text="VISUAL"
-                                                   Foreground="#8EA2BA"
+                                                   Foreground="{DynamicResource ThemeBrush_8EA2BA}"
                                                    FontSize="10"
                                                    FontWeight="Bold" />
                                         <Grid ColumnDefinitions="82,*" RowDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="6">
-                                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Material" Foreground="#AFC6E9" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Material" Foreground="{DynamicResource ThemeBrush_AFC6E9}" VerticalAlignment="Center" />
                                             <ComboBox Grid.Row="0" Grid.Column="1" IsEnabled="{Binding SelectedMtrlSrcPanelVisible}" ItemsSource="{Binding AvailableMtrlSrcMaterialIds}" SelectedItem="{Binding SelectedMtrlSrcMaterialId, Mode=TwoWay}" />
-                                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Paint" Foreground="#AFC6E9" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Paint" Foreground="{DynamicResource ThemeBrush_AFC6E9}" VerticalAlignment="Center" />
                                             <TextBox Grid.Row="1" Grid.Column="1" IsEnabled="False" Text="{Binding InspectorPaintText}" />
-                                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Accent" Foreground="#AFC6E9" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Accent" Foreground="{DynamicResource ThemeBrush_AFC6E9}" VerticalAlignment="Center" />
                                             <TextBox Grid.Row="2" Grid.Column="1" IsEnabled="False" Text="{Binding InspectorAccentColorText}" />
-                                            <TextBlock Grid.Row="3" Grid.Column="0" Text="Type" Foreground="#AFC6E9" />
-                                            <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding InspectorPartTypeText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
+                                            <TextBlock Grid.Row="3" Grid.Column="0" Text="Type" Foreground="{DynamicResource ThemeBrush_AFC6E9}" />
+                                            <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding InspectorPartTypeText}" Foreground="{DynamicResource ThemeBrush_D8DEE9}" TextWrapping="Wrap" />
                                         </Grid>
                                     </StackPanel>
                                 </Border>
 
                                 <Expander Header="Advanced diagnostics" IsExpanded="False">
-                                    <Border Background="#151B23"
-                                            BorderBrush="#3B4252"
+                                    <Border Background="{DynamicResource ThemeBrush_151B23}"
+                                            BorderBrush="{DynamicResource ThemeBrush_3B4252}"
                                             BorderThickness="1"
                                             CornerRadius="4"
                                             Padding="8">
                                         <StackPanel Spacing="6">
-                                            <TextBlock Text="{Binding InspectorIdText}" Foreground="#D8DEE9" />
-                                            <TextBlock Text="{Binding InspectorDiagnosticPositionText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
-                                            <TextBlock Text="{Binding InspectorDiagnosticSizeText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
-                                            <TextBlock Text="{Binding InspectorDiagnosticEffectiveSizeText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
-                                            <TextBlock Text="{Binding InspectorDiagnosticRotationText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
-                                            <TextBlock Text="{Binding InspectorDiagnosticZSpanText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
-                                            <TextBlock Text="{Binding InspectorDiagnosticRangeText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
-                                            <TextBlock Text="{Binding InspectorDiagnosticExtraText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
-                                            <TextBlock Text="{Binding InspectorPortText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
-                                            <TextBlock Text="{Binding InspectorMaterialFlowText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
+                                            <TextBlock Text="{Binding InspectorIdText}" Foreground="{DynamicResource ThemeBrush_D8DEE9}" />
+                                            <TextBlock Text="{Binding InspectorDiagnosticPositionText}" Foreground="{DynamicResource ThemeBrush_D8DEE9}" TextWrapping="Wrap" />
+                                            <TextBlock Text="{Binding InspectorDiagnosticSizeText}" Foreground="{DynamicResource ThemeBrush_D8DEE9}" TextWrapping="Wrap" />
+                                            <TextBlock Text="{Binding InspectorDiagnosticEffectiveSizeText}" Foreground="{DynamicResource ThemeBrush_D8DEE9}" TextWrapping="Wrap" />
+                                            <TextBlock Text="{Binding InspectorDiagnosticRotationText}" Foreground="{DynamicResource ThemeBrush_D8DEE9}" TextWrapping="Wrap" />
+                                            <TextBlock Text="{Binding InspectorDiagnosticZSpanText}" Foreground="{DynamicResource ThemeBrush_D8DEE9}" TextWrapping="Wrap" />
+                                            <TextBlock Text="{Binding InspectorDiagnosticRangeText}" Foreground="{DynamicResource ThemeBrush_D8DEE9}" TextWrapping="Wrap" />
+                                            <TextBlock Text="{Binding InspectorDiagnosticExtraText}" Foreground="{DynamicResource ThemeBrush_D8DEE9}" TextWrapping="Wrap" />
+                                            <TextBlock Text="{Binding InspectorPortText}" Foreground="{DynamicResource ThemeBrush_D8DEE9}" TextWrapping="Wrap" />
+                                            <TextBlock Text="{Binding InspectorMaterialFlowText}" Foreground="{DynamicResource ThemeBrush_D8DEE9}" TextWrapping="Wrap" />
                                         </StackPanel>
                                     </Border>
                                 </Expander>
@@ -946,46 +946,46 @@
                         <ScrollViewer VerticalScrollBarVisibility="Auto">
                             <StackPanel Spacing="8" Margin="10">
                                 <TextBlock Text="FLOOR / LAYER"
-                                           Foreground="#8EA2BA"
+                                           Foreground="{DynamicResource ThemeBrush_8EA2BA}"
                                            FontSize="10"
                                            FontWeight="Bold" />
                                 <Border Background="{Binding Floor2StackBackground}" BorderBrush="{Binding Floor2StackBorder}" BorderThickness="1" CornerRadius="4" Padding="6,4">
                                     <Button Background="Transparent" BorderThickness="0" HorizontalContentAlignment="Left" Command="{Binding Floor2Command}">
-                                        <TextBlock Text="{Binding Floor2StackText}" Foreground="#D8DEE9" />
+                                        <TextBlock Text="{Binding Floor2StackText}" Foreground="{DynamicResource ThemeBrush_D8DEE9}" />
                                     </Button>
                                 </Border>
                                 <Border Background="{Binding Floor1StackBackground}" BorderBrush="{Binding Floor1StackBorder}" BorderThickness="1" CornerRadius="4" Padding="6,4">
                                     <Button Background="Transparent" BorderThickness="0" HorizontalContentAlignment="Left" Command="{Binding Floor1Command}">
-                                        <TextBlock Text="{Binding Floor1StackText}" Foreground="#D8DEE9" />
+                                        <TextBlock Text="{Binding Floor1StackText}" Foreground="{DynamicResource ThemeBrush_D8DEE9}" />
                                     </Button>
                                 </Border>
                                 <Border Background="{Binding Floor0StackBackground}" BorderBrush="{Binding Floor0StackBorder}" BorderThickness="1" CornerRadius="4" Padding="6,4">
                                     <Button Background="Transparent" BorderThickness="0" HorizontalContentAlignment="Left" Command="{Binding Floor0Command}">
-                                        <TextBlock Text="{Binding Floor0StackText}" Foreground="#D8DEE9" />
+                                        <TextBlock Text="{Binding Floor0StackText}" Foreground="{DynamicResource ThemeBrush_D8DEE9}" />
                                     </Button>
                                 </Border>
                                 <Grid ColumnDefinitions="94,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="5" Margin="0,6,0,0">
-                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Active floor" Foreground="#AFC6E9" />
-                                    <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding ActiveFloorSummaryText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
-                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Active layer" Foreground="#AFC6E9" />
-                                    <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding ActiveLayerSummaryText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
-                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Absolute Z" Foreground="#AFC6E9" />
-                                    <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding ActiveAbsoluteZSummaryText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Active floor" Foreground="{DynamicResource ThemeBrush_AFC6E9}" />
+                                    <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding ActiveFloorSummaryText}" Foreground="{DynamicResource ThemeBrush_D8DEE9}" TextWrapping="Wrap" />
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Active layer" Foreground="{DynamicResource ThemeBrush_AFC6E9}" />
+                                    <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding ActiveLayerSummaryText}" Foreground="{DynamicResource ThemeBrush_D8DEE9}" TextWrapping="Wrap" />
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Absolute Z" Foreground="{DynamicResource ThemeBrush_AFC6E9}" />
+                                    <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding ActiveAbsoluteZSummaryText}" Foreground="{DynamicResource ThemeBrush_D8DEE9}" TextWrapping="Wrap" />
                                 </Grid>
                                 <Expander Header="Advanced renderer diagnostics"
                                           IsExpanded="False"
                                           IsVisible="{Binding ExpertGpuLabelsVisible}">
                                     <StackPanel Spacing="8">
                                         <StackPanel Orientation="Horizontal" Spacing="6">
-                                            <TextBlock Text="Renderer" Foreground="#AFC6E9" FontSize="11" VerticalAlignment="Center" />
+                                            <TextBlock Text="Renderer" Foreground="{DynamicResource ThemeBrush_AFC6E9}" FontSize="11" VerticalAlignment="Center" />
                                             <RadioButton Content="Software" GroupName="RendererMode" IsChecked="{Binding IsSoftwareViewportMode}" Command="{Binding UseSoftwareViewportCommand}" />
                                             <RadioButton Content="OpenGL" GroupName="RendererMode" IsChecked="{Binding IsOpenGlViewportMode}" Command="{Binding UseOpenGlViewportCommand}" />
                                         </StackPanel>
                                         <CheckBox Content="Show Conveyor Debug"
                                                   IsChecked="{Binding ShowConveyorDebug, Mode=TwoWay}"
-                                                  Foreground="#C7D1DD" />
-                                        <TextBlock Text="{Binding PreferredOpenGlGpuSummaryText}" Foreground="#AFC6E9" TextWrapping="Wrap" />
-                                        <TextBlock Text="{Binding OpenGlBackendSummaryText}" Foreground="#AFC6E9" TextWrapping="Wrap" />
+                                                  Foreground="{DynamicResource ThemeBrush_C7D1DD}" />
+                                        <TextBlock Text="{Binding PreferredOpenGlGpuSummaryText}" Foreground="{DynamicResource ThemeBrush_AFC6E9}" TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding OpenGlBackendSummaryText}" Foreground="{DynamicResource ThemeBrush_AFC6E9}" TextWrapping="Wrap" />
                                     </StackPanel>
                                 </Expander>
                             </StackPanel>

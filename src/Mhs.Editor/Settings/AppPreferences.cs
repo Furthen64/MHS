@@ -9,4 +9,5 @@ public sealed class AppPreferences
     public int DefaultLayer { get; set; }
     public string DefaultRendererMode { get; set; } = "opengl";
     public string UiMode { get; set; } = "simple";
+    public string ThemeMode { get; set; } = AppThemeService.DarkMode;
 }
