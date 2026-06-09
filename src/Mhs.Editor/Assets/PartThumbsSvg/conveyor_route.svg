@@ -1,17 +1,17 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96">
-<defs>
-<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#ebf4ff" stop-opacity="0.18"/><stop offset="0%" stop-color="#317384"/><stop offset="100%" stop-color="#111822"/></linearGradient>
-</defs>
-<rect x="10" y="10" width="76" height="76" fill="url(#bg)" stroke="#c8d8ef" stroke-width="2" rx="16" ry="16"/>
-<rect x="12" y="12" width="72" height="72" fill="none" stroke="#ffffff20" stroke-width="1" rx="14" ry="14"/>
-<path d="M 16 28 A 28 14 0 0 1 80 24" fill="none" stroke="#ffffff55" stroke-width="2" stroke-linecap="round"/>
-<rect x="18" y="72" width="60" height="4" fill="#ffffff10" rx="2" ry="2"/>
-<polyline points="20.0,62.0 32.0,62.0 32.0,40.0 52.0,40.0 52.0,24.0 72.0,24.0" fill="none" stroke="#c8d8ef" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
-<circle cx="20" cy="62" r="4" fill="#f7fbff" stroke="#c8d8ef" stroke-width="1"/>
-<circle cx="32" cy="62" r="4" fill="#f7fbff" stroke="#c8d8ef" stroke-width="1"/>
-<circle cx="32" cy="40" r="4" fill="#f7fbff" stroke="#c8d8ef" stroke-width="1"/>
-<circle cx="52" cy="40" r="4" fill="#f7fbff" stroke="#c8d8ef" stroke-width="1"/>
-<circle cx="52" cy="24" r="4" fill="#f7fbff" stroke="#c8d8ef" stroke-width="1"/>
-<polygon points="74.0,24.0 66.0,29.2 66.0,18.8" fill="#c8d8ef"/>
-<path d="M 17.6 22.0 A 12.0 12.0 0 0 1 39.3 23.9" fill="none" stroke="#ffffff66" stroke-width="2" stroke-linecap="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96" role="img" aria-label="conveyor route thumbnail">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ffd15a" stop-opacity="0.28"/>
+      <stop offset="48%" stop-color="#2b6f9f"/>
+      <stop offset="100%" stop-color="#111822"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="4" stdDeviation="3" flood-color="#000000" flood-opacity="0.35"/></filter>
+  </defs>
+  <rect x="8" y="8" width="80" height="80" rx="18" fill="url(#bg)" stroke="#ffd15a" stroke-width="2"/>
+  <path d="M18 25 C31 15 63 14 78 25" fill="none" stroke="#ffffff" stroke-opacity="0.28" stroke-width="2" stroke-linecap="round"/>
+  <ellipse cx="48" cy="76" rx="30" ry="5" fill="#000000" opacity="0.18"/>
+  <g filter="url(#shadow)">
+    <g><path d="M22 62 C28 30 52 28 58 48 S75 62 78 34" fill="none" stroke="#ffd15a" stroke-width="6" stroke-linecap="round" stroke-dasharray="8 5"/><circle cx="22" cy="62" r="6" fill="#dff4ff"/><circle cx="58" cy="48" r="6" fill="#dff4ff"/><circle cx="78" cy="34" r="6" fill="#dff4ff"/></g>
+  </g>
+  <rect x="13" y="13" width="70" height="70" rx="14" fill="none" stroke="#ffffff" stroke-opacity="0.15"/>
 </svg>
