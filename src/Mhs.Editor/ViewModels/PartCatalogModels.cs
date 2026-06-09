@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
@@ -18,7 +19,9 @@ public sealed class PartCatalogItemViewModel
     public string Id { get; init; } = string.Empty;
     public string DisplayName { get; init; } = string.Empty;
     public string Category { get; init; } = string.Empty;
+    public string Description { get; init; } = string.Empty;
     public IReadOnlyList<string> Tags { get; init; } = [];
+    public IReadOnlyList<string> SearchTerms { get; init; } = [];
     public string Thumbnail { get; init; } = string.Empty;
     public Bitmap? ThumbnailImage => GetThumbnailImage(Thumbnail);
     public string ToolType { get; init; } = "place";
@@ -49,6 +52,16 @@ public sealed class PartCatalogSectionViewModel
     public IReadOnlyList<PartCatalogItemViewModel> Items { get; init; } = [];
 }
 
+public sealed class PartCatalogCategoryFilterViewModel
+{
+    public string Name { get; init; } = string.Empty;
+    public string DisplayName { get; init; } = string.Empty;
+    public int Count { get; init; }
+    public bool IsSelected { get; init; }
+    public required ICommand ApplyCommand { get; init; }
+    public string BadgeText => Count.ToString(CultureInfo.InvariantCulture);
+}
+
 public sealed class PartCatalogMetadataEntry
 {
     [JsonPropertyName("id")]
@@ -60,8 +73,14 @@ public sealed class PartCatalogMetadataEntry
     [JsonPropertyName("category")]
     public string Category { get; init; } = string.Empty;
 
+    [JsonPropertyName("description")]
+    public string Description { get; init; } = string.Empty;
+
     [JsonPropertyName("tags")]
     public List<string> Tags { get; init; } = [];
+
+    [JsonPropertyName("searchTerms")]
+    public List<string> SearchTerms { get; init; } = [];
 
     [JsonPropertyName("thumbnail")]
     public string Thumbnail { get; init; } = string.Empty;

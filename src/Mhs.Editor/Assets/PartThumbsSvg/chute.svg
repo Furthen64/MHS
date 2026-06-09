@@ -1,15 +1,17 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96">
-<defs>
-<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#f5eaeb" stop-opacity="0.18"/><stop offset="0%" stop-color="#7f4a4c"/><stop offset="100%" stop-color="#111822"/></linearGradient>
-</defs>
-<rect x="10" y="10" width="76" height="76" fill="url(#bg)" stroke="#d7c0c2" stroke-width="2" rx="16" ry="16"/>
-<rect x="12" y="12" width="72" height="72" fill="none" stroke="#ffffff20" stroke-width="1" rx="14" ry="14"/>
-<path d="M 16 28 A 28 14 0 0 1 80 24" fill="none" stroke="#ffffff55" stroke-width="2" stroke-linecap="round"/>
-<rect x="18" y="72" width="60" height="4" fill="#ffffff10" rx="2" ry="2"/>
-<polygon points="24.0,26.0 42.0,22.0 70.0,48.0 53.0,53.0" fill="(152, 110, 111)"/>
-<polygon points="53.0,53.0 70.0,48.0 64.0,62.0 45.0,68.0" fill="(130, 94, 96)"/>
-<polyline points="25.0,26.0 42.0,22.0 70.0,48.0" fill="none" stroke="#d7c0c2" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
-<circle cx="52" cy="58" r="2" fill="#f5eaeb"/>
-<circle cx="58" cy="60" r="2" fill="#f5eaeb"/>
-<circle cx="64" cy="62" r="2" fill="#f5eaeb"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96" role="img" aria-label="chute thumbnail">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#d7c0c2" stop-opacity="0.28"/>
+      <stop offset="48%" stop-color="#814c4e"/>
+      <stop offset="100%" stop-color="#111822"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="4" stdDeviation="3" flood-color="#000000" flood-opacity="0.35"/></filter>
+  </defs>
+  <rect x="8" y="8" width="80" height="80" rx="18" fill="url(#bg)" stroke="#d7c0c2" stroke-width="2"/>
+  <path d="M18 25 C31 15 63 14 78 25" fill="none" stroke="#ffffff" stroke-opacity="0.28" stroke-width="2" stroke-linecap="round"/>
+  <ellipse cx="48" cy="76" rx="30" ry="5" fill="#000000" opacity="0.18"/>
+  <g filter="url(#shadow)">
+    <g><polygon points="24,28 42,22 74,48 54,57" fill="#95686a"/><polygon points="54,57 74,48 65,65 45,72" fill="#6d484b"/><path d="M25 28 L42 22 L74 48" stroke="#f5eaeb" stroke-width="4" fill="none" stroke-linecap="round"/><circle cx="56" cy="61" r="2.5" fill="#f5eaeb"/><circle cx="63" cy="64" r="2.5" fill="#f5eaeb"/></g>
+  </g>
+  <rect x="13" y="13" width="70" height="70" rx="14" fill="none" stroke="#ffffff" stroke-opacity="0.15"/>
 </svg>

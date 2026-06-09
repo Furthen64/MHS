@@ -25,21 +25,21 @@
             <Setter Property="FontSize" Value="10.5" />
         </Style>
         <Style Selector="Button.part-tile">
-            <Setter Property="Width" Value="88" />
-            <Setter Property="Height" Value="94" />
-            <Setter Property="Background" Value="#1A2028" />
-            <Setter Property="BorderBrush" Value="#2E3946" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="CornerRadius" Value="7" />
-            <Setter Property="Padding" Value="5" />
-            <Setter Property="Margin" Value="0,0,6,6" />
+            <Setter Property="Width" Value="116" />
+            <Setter Property="Height" Value="132" />
+            <Setter Property="Background" Value="#202A36" />
+            <Setter Property="BorderBrush" Value="#3F5368" />
+            <Setter Property="BorderThickness" Value="1.5" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="Padding" Value="8" />
+            <Setter Property="Margin" Value="0,0,10,10" />
             <Setter Property="HorizontalAlignment" Value="Left" />
             <Setter Property="HorizontalContentAlignment" Value="Center" />
             <Setter Property="VerticalContentAlignment" Value="Stretch" />
         </Style>
         <Style Selector="Button.part-tile:pointerover">
-            <Setter Property="Background" Value="#273648" />
-            <Setter Property="BorderBrush" Value="#78AFFF" />
+            <Setter Property="Background" Value="#2B3E52" />
+            <Setter Property="BorderBrush" Value="#89C4FF" />
             <Setter Property="BorderThickness" Value="2" />
         </Style>
         <Style Selector="Button.part-tile:pressed">
@@ -55,6 +55,21 @@
             <Setter Property="Background" Value="#214A76" />
             <Setter Property="BorderBrush" Value="#8FC6FF" />
             <Setter Property="BorderThickness" Value="2" />
+        </Style>
+        <Style Selector="Button.catalog-filter">
+            <Setter Property="Background" Value="#18212B" />
+            <Setter Property="Foreground" Value="#B9C6D4" />
+            <Setter Property="BorderBrush" Value="#334557" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="12" />
+            <Setter Property="Padding" Value="8,4" />
+            <Setter Property="FontSize" Value="10" />
+            <Setter Property="Margin" Value="0,0,6,6" />
+        </Style>
+        <Style Selector="Button.catalog-filter.selected">
+            <Setter Property="Background" Value="#335C8A" />
+            <Setter Property="Foreground" Value="#FFFFFF" />
+            <Setter Property="BorderBrush" Value="#8FC6FF" />
         </Style>
         <Style Selector="Button.ribbon-button">
             <Setter Property="Background" Value="#222831" />
@@ -229,17 +244,62 @@
                        TextTrimming="CharacterEllipsis" />
         </Border>
 
-        <Grid ColumnDefinitions="280,*,300" Background="#1B1D23">
+        <Grid ColumnDefinitions="330,*,300" Background="#1B1D23">
             <DockPanel Grid.Column="0" Margin="8" LastChildFill="True">
                 <Border DockPanel.Dock="Top" Padding="10" Background="#20252C" CornerRadius="4" Margin="0,0,0,6">
                     <StackPanel Spacing="8">
-                        <TextBlock Text="Material Handling" FontWeight="SemiBold" Foreground="#ECEFF4" FontSize="13" />
-                        <TextBox PlaceholderText="Search parts..."
+                        <StackPanel Spacing="2">
+                            <TextBlock Text="Part Catalog" FontWeight="Bold" Foreground="#F4F8FD" FontSize="15" />
+                            <TextBlock Text="Transport · Feed &amp; Discharge · Vertical · Structure · Utilities"
+                                       Foreground="#8FA2B8"
+                                       FontSize="10"
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
+                        <TextBox PlaceholderText="Search parts by name, function, or synonym..."
                                  Text="{Binding PartSearchText, Mode=TwoWay}"
                                  Background="#131922"
                                  BorderBrush="#3B4C61"
                                  Foreground="#E5E9F0" />
-                        <ScrollViewer MaxHeight="620" HorizontalScrollBarVisibility="Disabled">
+                        <Border IsVisible="{Binding IsCatalogBrowserOpen}"
+                                Background="#151D27"
+                                BorderBrush="#32475B"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="8">
+                            <StackPanel Spacing="6">
+                                <TextBlock Text="Browse catalog" Foreground="#E8F1FC" FontWeight="SemiBold" FontSize="12" />
+                                <TextBlock Text="Filter by concept category, then search within the selected group."
+                                           Foreground="#91A4B8"
+                                           FontSize="10"
+                                           TextWrapping="Wrap" />
+                                <ItemsControl ItemsSource="{Binding PartCatalogCategoryFilters}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <WrapPanel />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:PartCatalogCategoryFilterViewModel">
+                                            <Button Classes="catalog-filter"
+                                                    Classes.selected="{Binding IsSelected}"
+                                                    Command="{Binding ApplyCommand}">
+                                                <StackPanel Orientation="Horizontal" Spacing="5">
+                                                    <TextBlock Text="{Binding DisplayName}" />
+                                                    <Border Background="#223247" CornerRadius="8" Padding="5,0">
+                                                        <TextBlock Text="{Binding BadgeText}" FontSize="9" Foreground="#DDEBFA" />
+                                                    </Border>
+                                                </StackPanel>
+                                            </Button>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <TextBlock Text="{Binding PartCatalogSummaryText}"
+                                           Foreground="#C8D6E4"
+                                           FontSize="10"
+                                           TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
+                        <ScrollViewer MaxHeight="560" HorizontalScrollBarVisibility="Disabled">
                             <ItemsControl ItemsSource="{Binding PartCatalogSections}" HorizontalAlignment="Stretch">
                                 <ItemsControl.Styles>
                                     <Style Selector="ContentPresenter">
@@ -271,25 +331,25 @@
                                                 </ItemsControl.Styles>
                                                 <ItemsControl.ItemTemplate>
                                                     <DataTemplate x:DataType="vm:PartCatalogItemViewModel">
-                                                        <Button Classes="part-tile" Command="{Binding ActivateCommand}">
-                                                            <StackPanel Spacing="5" HorizontalAlignment="Center" VerticalAlignment="Stretch">
-                                                                <Border Width="54"
-                                                                        Height="52"
-                                                                        Background="#10161D"
-                                                                        BorderBrush="#33404D"
-                                                                        BorderThickness="1"
-                                                                        CornerRadius="6"
+                                                        <Button Classes="part-tile" Command="{Binding ActivateCommand}" ToolTip.Tip="{Binding Description}">
+                                                            <StackPanel Spacing="7" HorizontalAlignment="Center" VerticalAlignment="Stretch">
+                                                                <Border Width="86"
+                                                                        Height="72"
+                                                                        Background="#121922"
+                                                                        BorderBrush="#475B70"
+                                                                        BorderThickness="1.5"
+                                                                        CornerRadius="9"
                                                                         HorizontalAlignment="Center">
                                                                     <Image Source="{Binding ThumbnailImage}"
-                                                                           Width="46"
-                                                                           Height="46"
+                                                                           Width="76"
+                                                                           Height="64"
                                                                            Stretch="Uniform"
                                                                            HorizontalAlignment="Center"
                                                                            VerticalAlignment="Center" />
                                                                 </Border>
                                                                 <TextBlock Text="{Binding DisplayName}"
                                                                            Foreground="#DEE6F0"
-                                                                           FontSize="10"
+                                                                           FontSize="11"
                                                                            FontWeight="SemiBold"
                                                                            TextAlignment="Center"
                                                                            TextWrapping="Wrap"
@@ -306,7 +366,7 @@
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
                         </ScrollViewer>
-                        <Button Content="Browse More Parts..."
+                        <Button Content="{Binding BrowseMorePartsLabel}"
                                 Command="{Binding BrowseMorePartsCommand}"
                                 Background="#233A5A"
                                 Foreground="#E8F1FC"

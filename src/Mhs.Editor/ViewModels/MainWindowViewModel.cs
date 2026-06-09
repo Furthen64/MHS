@@ -21,6 +21,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 {
     private const float MaterialFlowTickSeconds = 0.25f;
     private const float ManualMaterialFlowStepSeconds = 0.35f;
+    private const string CatalogAllCategoryName = "All";
+    private static readonly IReadOnlyList<string> CatalogCategoryOrder = ["Transport", "Feed & Discharge", "Vertical", "Structure", "Utilities"];
     private static readonly IReadOnlyList<int> MtrlSrcGranuleCountOptions = [1, 5, 10, 50, 100];
     private readonly IEditorTool _selectTool = new SelectTool();
     private readonly ConveyorRouteTool _conveyorRouteTool = new();
@@ -39,6 +41,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private string _selectedMtrlSrcRateStatusText = "Select MtrlSrc";
     private SceneTreeNodeViewModel? _selectedSceneTreeNode;
     private string _partSearchText = string.Empty;
+    private string _selectedPartCategoryFilter = CatalogAllCategoryName;
+    private bool _isCatalogBrowserOpen;
     private string _activeViewMode = "Iso";
 
     public MainWindowViewModel()
@@ -60,11 +64,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             RaiseComputed();
         });
         LoadDemoFactorySceneCommand = new RelayCommand(LoadDemoFactoryScene);
-        BrowseMorePartsCommand = new RelayCommand(() =>
-        {
-            EditorState.StatusMessage = "Browse More Parts is not wired yet.";
-            RaiseComputed();
-        });
+        BrowseMorePartsCommand = new RelayCommand(ToggleCatalogBrowser);
         Floor0Command = new RelayCommand(() => SetActiveFloor(0));
         Floor1Command = new RelayCommand(() => SetActiveFloor(1));
         Floor2Command = new RelayCommand(() => SetActiveFloor(2));
@@ -108,6 +108,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         RightViewCommand = new RelayCommand(() => SetActiveViewMode("Right"));
 
         _partCatalogEntries = PartCatalogLoader.LoadCatalog();
+        RebuildPartCatalogCategoryFilters();
         RebuildPartCatalogSections();
 
         SetTool(_selectTool);
@@ -165,6 +166,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public ObservableCollection<SceneTreeNodeViewModel> SceneTreeNodes { get; } = [];
     public ObservableCollection<PartCatalogSectionViewModel> PartCatalogSections { get; } = [];
+    public ObservableCollection<PartCatalogCategoryFilterViewModel> PartCatalogCategoryFilters { get; } = [];
 
     public SceneTreeNodeViewModel? SelectedSceneTreeNode
     {
@@ -260,8 +262,14 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             _partSearchText = next;
             RebuildPartCatalogSections();
             OnPropertyChanged();
+            OnPropertyChanged(nameof(PartCatalogSummaryText));
         }
     }
+
+    public bool IsCatalogBrowserOpen => _isCatalogBrowserOpen;
+    public string BrowseMorePartsLabel => _isCatalogBrowserOpen ? "Hide Catalog Browser" : "Browse More Parts...";
+    public string PartCatalogSummaryText => BuildPartCatalogSummaryText();
+
     public string LayerDisplayText => $"Layer {EditorState.ActiveLayer}/{WorldVerticalSettings.LayersPerFloor - 1}";
     public string AbsoluteZDisplayText => $"Z {EditorState.ActiveAbsoluteZ}";
     public string ViewportSummaryText => $"{_activeViewMode} · {ViewportVisualModeLabel} · Floor {EditorState.ActiveFloor} · Layer {EditorState.ActiveLayer}";
@@ -1402,26 +1410,103 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         return new RelayCommand(() => { });
     }
 
+    private void ToggleCatalogBrowser()
+    {
+        _isCatalogBrowserOpen = !_isCatalogBrowserOpen;
+        if (_isCatalogBrowserOpen)
+        {
+            SelectPartCatalogCategory(CatalogAllCategoryName);
+            EditorState.StatusMessage = $"Catalog browser opened with {_partCatalogEntries.Count} searchable parts.";
+        }
+        else
+        {
+            EditorState.StatusMessage = "Catalog browser collapsed.";
+        }
+
+        OnPropertyChanged(nameof(IsCatalogBrowserOpen));
+        OnPropertyChanged(nameof(BrowseMorePartsLabel));
+        OnPropertyChanged(nameof(PartCatalogSummaryText));
+        RaiseComputed();
+    }
+
+    private void SelectPartCatalogCategory(string category)
+    {
+        _selectedPartCategoryFilter = string.IsNullOrWhiteSpace(category) ? CatalogAllCategoryName : category;
+        RebuildPartCatalogCategoryFilters();
+        RebuildPartCatalogSections();
+        OnPropertyChanged(nameof(PartCatalogSummaryText));
+    }
+
+    private void RebuildPartCatalogCategoryFilters()
+    {
+        PartCatalogCategoryFilters.Clear();
+        PartCatalogCategoryFilters.Add(new PartCatalogCategoryFilterViewModel
+        {
+            Name = CatalogAllCategoryName,
+            DisplayName = "All",
+            Count = _partCatalogEntries.Count,
+            IsSelected = string.Equals(_selectedPartCategoryFilter, CatalogAllCategoryName, StringComparison.OrdinalIgnoreCase),
+            ApplyCommand = new RelayCommand(() => SelectPartCatalogCategory(CatalogAllCategoryName))
+        });
+
+        foreach (var category in _partCatalogEntries
+            .Select(entry => entry.Category)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(CatalogCategorySortIndex))
+        {
+            var categoryName = category;
+            PartCatalogCategoryFilters.Add(new PartCatalogCategoryFilterViewModel
+            {
+                Name = categoryName,
+                DisplayName = categoryName,
+                Count = _partCatalogEntries.Count(entry => string.Equals(entry.Category, categoryName, StringComparison.OrdinalIgnoreCase)),
+                IsSelected = string.Equals(_selectedPartCategoryFilter, categoryName, StringComparison.OrdinalIgnoreCase),
+                ApplyCommand = new RelayCommand(() => SelectPartCatalogCategory(categoryName))
+            });
+        }
+    }
+
+    private string BuildPartCatalogSummaryText()
+    {
+        var visibleCount = PartCatalogSections.Sum(section => section.Items.Count);
+        var categoryLabel = string.Equals(_selectedPartCategoryFilter, CatalogAllCategoryName, StringComparison.OrdinalIgnoreCase)
+            ? "all concept categories"
+            : _selectedPartCategoryFilter;
+        var searchLabel = string.IsNullOrWhiteSpace(_partSearchText) ? "" : $" matching ‘{_partSearchText.Trim()}’";
+        return $"Showing {visibleCount} of {_partCatalogEntries.Count} parts in {categoryLabel}{searchLabel}.";
+    }
+
+    private static int CatalogCategorySortIndex(string category)
+    {
+        var index = CatalogCategoryOrder
+            .Select((name, position) => new { name, position })
+            .FirstOrDefault(item => string.Equals(item.name, category, StringComparison.OrdinalIgnoreCase))?.position;
+        return index ?? CatalogCategoryOrder.Count;
+    }
+
     private void RebuildPartCatalogSections()
     {
         IEnumerable<PartCatalogMetadataEntry> source = _partCatalogEntries;
+        if (!string.Equals(_selectedPartCategoryFilter, CatalogAllCategoryName, StringComparison.OrdinalIgnoreCase))
+        {
+            source = source.Where(entry => string.Equals(entry.Category, _selectedPartCategoryFilter, StringComparison.OrdinalIgnoreCase));
+        }
+
         if (!string.IsNullOrWhiteSpace(_partSearchText))
         {
             var query = _partSearchText.Trim();
             source = source.Where(entry =>
                 entry.DisplayName.Contains(query, StringComparison.OrdinalIgnoreCase)
                 || entry.Category.Contains(query, StringComparison.OrdinalIgnoreCase)
-                || entry.Tags.Any(tag => tag.Contains(query, StringComparison.OrdinalIgnoreCase)));
+                || entry.Description.Contains(query, StringComparison.OrdinalIgnoreCase)
+                || entry.VisualStyle.Contains(query, StringComparison.OrdinalIgnoreCase)
+                || entry.Tags.Any(tag => tag.Contains(query, StringComparison.OrdinalIgnoreCase))
+                || entry.SearchTerms.Any(term => term.Contains(query, StringComparison.OrdinalIgnoreCase)));
         }
-
-        var sectionOrder = source
-            .Select(entry => entry.Category)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
 
         var grouped = source
             .GroupBy(entry => entry.Category, StringComparer.OrdinalIgnoreCase)
-            .OrderBy(group => sectionOrder.FindIndex(category => string.Equals(category, group.Key, StringComparison.OrdinalIgnoreCase)));
+            .OrderBy(group => CatalogCategorySortIndex(group.Key));
 
         PartCatalogSections.Clear();
         foreach (var group in grouped)
@@ -1432,7 +1517,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                     Id = entry.Id,
                     DisplayName = entry.DisplayName,
                     Category = entry.Category,
+                    Description = entry.Description,
                     Tags = entry.Tags,
+                    SearchTerms = entry.SearchTerms,
                     Thumbnail = entry.Thumbnail,
                     ToolType = entry.ToolType,
                     IsPlaceable = entry.IsPlaceable,
@@ -1847,6 +1934,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(ViewportToolbarSeparatorBrush));
         OnPropertyChanged(nameof(ViewportToolbarSubtleTextBrush));
         OnPropertyChanged(nameof(StatusText));
+        OnPropertyChanged(nameof(IsCatalogBrowserOpen));
+        OnPropertyChanged(nameof(BrowseMorePartsLabel));
+        OnPropertyChanged(nameof(PartCatalogSummaryText));
         OnPropertyChanged(nameof(InspectorSelectedText));
         OnPropertyChanged(nameof(InspectorIdText));
         OnPropertyChanged(nameof(InspectorPositionText));
