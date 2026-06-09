@@ -245,7 +245,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ViewportInteractionPreset InteractionPreset => _interactionPreset;
     public bool UseOpenGlViewport => _useOpenGlViewport;
     public string PreferredOpenGlGpuName => _preferredOpenGlGpuName;
-    public int SceneViewportColumnSpan => _expertMode ? 1 : 2;
+    public int SceneViewportColumnSpan => 1;
     public string PartSearchText
     {
         get => _partSearchText;
@@ -411,6 +411,186 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             RaiseComputed();
         }
     }
+
+
+    public int InspectorPositionX
+    {
+        get => EditorState.SelectedObject?.Position.X ?? 0;
+        set => TryMoveSelectedObject(selected => selected.Position with { X = value });
+    }
+
+    public int InspectorPositionY
+    {
+        get => EditorState.SelectedObject?.Position.Y ?? 0;
+        set => TryMoveSelectedObject(selected => selected.Position with { Y = value });
+    }
+
+    public int InspectorPositionZ
+    {
+        get => EditorState.SelectedObject?.Position.Z ?? EditorState.ActiveAbsoluteZ;
+        set => TryMoveSelectedObject(selected => selected.Position with { Z = value });
+    }
+
+    public int InspectorRotationZDegrees
+    {
+        get => EditorState.SelectedObject?.RotationZDegrees ?? EditorState.ActivePlacementRotationZDegrees;
+        set
+        {
+            if (EditorState.SelectedObject is not { } selected)
+            {
+                return;
+            }
+
+            var normalized = RotationHelper.NormalizeDegrees(value);
+            var targetSize = selected.GetEffectiveSize(normalized);
+            var validation = EditorState.ValidatePlacement(selected.Position, targetSize, selected.Id);
+            if (!validation.IsValid)
+            {
+                EditorState.StatusMessage = $"Inspector blocked rotation: {validation.Reason ?? "invalid"}";
+                RaiseComputed();
+                return;
+            }
+
+            selected.RotationZDegrees = normalized;
+            if (selected.IsRouteConveyorSegment)
+            {
+                selected.RouteFlowReversed = normalized is 180 or 270;
+            }
+
+            RefreshConveyorFlowTopology();
+            EditorState.StatusMessage = $"Inspector updated rotation to {normalized}°";
+            RaiseComputed();
+        }
+    }
+
+    public string InspectorBaseSizeValue => EditorState.SelectedObject?.BaseSize.ToString() ?? "-";
+
+    public string InspectorEffectiveSizeValue => EditorState.SelectedObject?.EffectiveSize.ToString() ?? "-";
+
+    public string InspectorPartTypeText => EditorState.SelectedObject is null ? "Type: -" : EditorState.SelectedObject.PartType;
+
+    public string InspectorValidityText
+    {
+        get
+        {
+            if (EditorState.SelectedObject is null)
+            {
+                return "No selection";
+            }
+
+            return SelectedPlacementValidation().IsValid ? "Valid" : "Invalid";
+        }
+    }
+
+    public string InspectorValidityDetail
+    {
+        get
+        {
+            if (EditorState.SelectedObject is null)
+            {
+                return "Select a part to inspect";
+            }
+
+            var validation = SelectedPlacementValidation();
+            return validation.IsValid ? "Placement and bounds check passed" : validation.Reason ?? "Placement check failed";
+        }
+    }
+
+    public string InspectorValidityBrush => EditorState.SelectedObject is null
+        ? "#8EA2BA"
+        : SelectedPlacementValidation().IsValid ? "#7EE787" : "#FF7B72";
+
+    public string InspectorConveyorLengthText
+    {
+        get
+        {
+            if (EditorState.SelectedObject is not { } selected || !selected.IsConveyor)
+            {
+                return "Select a conveyor";
+            }
+
+            if (selected.RouteStartCell is { } start && selected.RouteEndCell is { } end)
+            {
+                return $"{Math.Abs(end.X - start.X) + Math.Abs(end.Y - start.Y) + Math.Abs(end.Z - start.Z) + 1} cells";
+            }
+
+            return $"{Math.Max(selected.EffectiveSize.WidthX, selected.EffectiveSize.DepthY)} cells";
+        }
+    }
+
+    public string InspectorConveyorRangeText
+    {
+        get
+        {
+            if (EditorState.SelectedObject is not { } selected || !selected.IsConveyor)
+            {
+                return "Range: -";
+            }
+
+            if (selected.RouteStartCell is { } start && selected.RouteEndCell is { } end)
+            {
+                return $"{start} → {end}";
+            }
+
+            return $"X {selected.MinX}..{selected.MaxX}, Y {selected.MinY}..{selected.MaxY}, Z {selected.MinZ}..{selected.MaxZ}";
+        }
+    }
+
+    public bool InspectorConveyorDirectionEditable => EditorState.SelectedObject?.IsRouteConveyorSegment == true;
+
+    public bool InspectorConveyorFlowReversed
+    {
+        get => EditorState.SelectedObject?.RouteFlowReversed == true;
+        set
+        {
+            if (EditorState.SelectedObject is not { } selected || !selected.IsRouteConveyorSegment || selected.RouteFlowReversed == value)
+            {
+                return;
+            }
+
+            selected.RouteFlowReversed = value;
+            RefreshConveyorFlowTopology();
+            EditorState.StatusMessage = value ? "Inspector reversed conveyor flow" : "Inspector restored conveyor flow";
+            RaiseComputed();
+        }
+    }
+
+    public string InspectorTransferBehaviorText
+    {
+        get
+        {
+            if (EditorState.SelectedObject is null)
+            {
+                return "Select a part";
+            }
+
+            if (SelectedMtrlSrcPanelVisible)
+            {
+                return "Material source injects packets into the connected conveyor route.";
+            }
+
+            if (EditorState.SelectedObject.IsConveyor)
+            {
+                return "Conveyor transfers packets from input to output ports along the route.";
+            }
+
+            return "No editable transfer behavior is stored for this part.";
+        }
+    }
+
+    public string InspectorPaintText => EditorState.SelectedObject is null
+        ? "-"
+        : GetSelectedPartColorHex() is { } color ? $"Catalog paint {color} (read-only)" : "Catalog paint (read-only)";
+
+    public string InspectorAccentColorText => "Not stored on scene objects";
+
+    public string InspectorDiagnosticPositionText => InspectorPositionText;
+    public string InspectorDiagnosticSizeText => InspectorSizeText;
+    public string InspectorDiagnosticEffectiveSizeText => InspectorRotationText;
+    public string InspectorDiagnosticRotationText => InspectorStatusText;
+    public string InspectorDiagnosticZSpanText => InspectorContextText;
+    public string InspectorDiagnosticRangeText => InspectorRangeText;
+    public string InspectorDiagnosticExtraText => InspectorExtraText;
 
     public bool ShowConveyorDebug
     {
@@ -612,7 +792,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     }
 
     public bool FloatingDebugPanelVisible => _expertMode && ShowConveyorDebug;
-    public bool ExpertInspectorVisible => _expertMode;
+    public bool ExpertInspectorVisible => true;
     public bool ExpertGpuLabelsVisible => _expertMode;
 
     public string ConveyorDebugSelectionText
@@ -1132,6 +1312,69 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         ApplySelectedMtrlSrcRate();
     }
 
+
+    private PlacementValidationResult SelectedPlacementValidation()
+    {
+        if (EditorState.SelectedObject is not { } selected)
+        {
+            return PlacementValidationResult.Valid;
+        }
+
+        return EditorState.ValidatePlacement(selected.Position, selected.EffectiveSize, selected.Id);
+    }
+
+    private void TryMoveSelectedObject(Func<SceneObject, VoxelCoord> createTarget)
+    {
+        if (EditorState.SelectedObject is not { } selected)
+        {
+            return;
+        }
+
+        var target = createTarget(selected);
+        if (target == selected.Position)
+        {
+            return;
+        }
+
+        var validation = EditorState.ValidatePlacement(target, selected.EffectiveSize, selected.Id);
+        if (!validation.IsValid)
+        {
+            EditorState.StatusMessage = $"Inspector blocked move: {validation.Reason ?? "invalid"}";
+            RaiseComputed();
+            return;
+        }
+
+        var deltaX = target.X - selected.Position.X;
+        var deltaY = target.Y - selected.Position.Y;
+        var deltaZ = target.Z - selected.Position.Z;
+        selected.Position = target;
+        if (selected.RouteStartCell is { } start)
+        {
+            selected.RouteStartCell = start with { X = start.X + deltaX, Y = start.Y + deltaY, Z = start.Z + deltaZ };
+        }
+
+        if (selected.RouteEndCell is { } end)
+        {
+            selected.RouteEndCell = end with { X = end.X + deltaX, Y = end.Y + deltaY, Z = end.Z + deltaZ };
+        }
+
+        RefreshConveyorFlowTopology();
+        EditorState.StatusMessage = $"Inspector moved {selected.DisplayName} to {selected.Position}";
+        RaiseComputed();
+    }
+
+    private string? GetSelectedPartColorHex()
+    {
+        if (EditorState.SelectedObject is not { } selected)
+        {
+            return null;
+        }
+
+        var part = EditorState.PartDefinitions.FirstOrDefault(candidate =>
+            string.Equals(candidate.Id, selected.PartId, StringComparison.OrdinalIgnoreCase));
+        return part is null ? null : $"#{part.Color.R:X2}{part.Color.G:X2}{part.Color.B:X2}";
+    }
+
     private string MovePreviewText()
     {
         if (!EditorState.IsMovingSelection)
@@ -1616,6 +1859,30 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(HasSelectedObject));
         OnPropertyChanged(nameof(SelectedObjectThumbnailImage));
         OnPropertyChanged(nameof(SelectedObjectName));
+        OnPropertyChanged(nameof(InspectorPositionX));
+        OnPropertyChanged(nameof(InspectorPositionY));
+        OnPropertyChanged(nameof(InspectorPositionZ));
+        OnPropertyChanged(nameof(InspectorRotationZDegrees));
+        OnPropertyChanged(nameof(InspectorBaseSizeValue));
+        OnPropertyChanged(nameof(InspectorEffectiveSizeValue));
+        OnPropertyChanged(nameof(InspectorPartTypeText));
+        OnPropertyChanged(nameof(InspectorValidityText));
+        OnPropertyChanged(nameof(InspectorValidityDetail));
+        OnPropertyChanged(nameof(InspectorValidityBrush));
+        OnPropertyChanged(nameof(InspectorConveyorLengthText));
+        OnPropertyChanged(nameof(InspectorConveyorRangeText));
+        OnPropertyChanged(nameof(InspectorConveyorDirectionEditable));
+        OnPropertyChanged(nameof(InspectorConveyorFlowReversed));
+        OnPropertyChanged(nameof(InspectorTransferBehaviorText));
+        OnPropertyChanged(nameof(InspectorPaintText));
+        OnPropertyChanged(nameof(InspectorAccentColorText));
+        OnPropertyChanged(nameof(InspectorDiagnosticPositionText));
+        OnPropertyChanged(nameof(InspectorDiagnosticSizeText));
+        OnPropertyChanged(nameof(InspectorDiagnosticEffectiveSizeText));
+        OnPropertyChanged(nameof(InspectorDiagnosticRotationText));
+        OnPropertyChanged(nameof(InspectorDiagnosticZSpanText));
+        OnPropertyChanged(nameof(InspectorDiagnosticRangeText));
+        OnPropertyChanged(nameof(InspectorDiagnosticExtraText));
         OnPropertyChanged(nameof(ShowConveyorDebug));
         OnPropertyChanged(nameof(ShowGrid));
         OnPropertyChanged(nameof(ShowBounds));

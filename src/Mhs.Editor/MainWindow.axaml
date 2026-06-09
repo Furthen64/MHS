@@ -538,10 +538,22 @@
                                                      GotFocus="OnInspectorNameGotFocus"
                                                      KeyDown="OnInspectorNameKeyDown" />
                                         </Grid>
-                                        <Grid ColumnDefinitions="52,*" ColumnSpacing="8">
-                                            <TextBlock Grid.Column="0" Text="ID" Foreground="#AFC6E9" />
-                                            <TextBlock Grid.Column="1" Text="{Binding InspectorIdText}" Foreground="#D8DEE9" TextTrimming="CharacterEllipsis" />
-                                        </Grid>
+                                        <Border Background="#13251C"
+                                                BorderBrush="{Binding InspectorValidityBrush}"
+                                                BorderThickness="1"
+                                                CornerRadius="10"
+                                                Padding="8,4"
+                                                HorizontalAlignment="Left">
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <Ellipse Width="8" Height="8" Fill="{Binding InspectorValidityBrush}" VerticalAlignment="Center" />
+                                                <TextBlock Text="{Binding InspectorValidityText}"
+                                                           Foreground="{Binding InspectorValidityBrush}"
+                                                           FontWeight="SemiBold" />
+                                                <TextBlock Text="{Binding InspectorValidityDetail}"
+                                                           Foreground="#B8C7D9"
+                                                           TextTrimming="CharacterEllipsis" />
+                                            </StackPanel>
+                                        </Border>
                                     </StackPanel>
                                 </Grid>
 
@@ -555,17 +567,18 @@
                                                    Foreground="#8EA2BA"
                                                    FontSize="10"
                                                    FontWeight="Bold" />
-                                        <Grid ColumnDefinitions="82,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="5">
-                                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Position" Foreground="#AFC6E9" />
-                                            <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding InspectorPositionText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
-                                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Base" Foreground="#AFC6E9" />
-                                            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding InspectorSizeText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
-                                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Effective" Foreground="#AFC6E9" />
-                                            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding InspectorRotationText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
-                                            <TextBlock Grid.Row="3" Grid.Column="0" Text="Rotation" Foreground="#AFC6E9" />
-                                            <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding InspectorStatusText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
-                                            <TextBlock Grid.Row="4" Grid.Column="0" Text="Z Span" Foreground="#AFC6E9" />
-                                            <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding InspectorContextText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
+                                        <Grid ColumnDefinitions="82,*,*,*" RowDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="6">
+                                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Position" Foreground="#AFC6E9" VerticalAlignment="Center" />
+                                            <TextBox Grid.Row="0" Grid.Column="1" Watermark="X" IsEnabled="{Binding HasSelectedObject}" Text="{Binding InspectorPositionX, Mode=TwoWay}" />
+                                            <TextBox Grid.Row="0" Grid.Column="2" Watermark="Y" IsEnabled="{Binding HasSelectedObject}" Text="{Binding InspectorPositionY, Mode=TwoWay}" />
+                                            <TextBox Grid.Row="0" Grid.Column="3" Watermark="Z" IsEnabled="{Binding HasSelectedObject}" Text="{Binding InspectorPositionZ, Mode=TwoWay}" />
+                                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Rotation" Foreground="#AFC6E9" VerticalAlignment="Center" />
+                                            <TextBox Grid.Row="1" Grid.Column="1" IsEnabled="{Binding HasSelectedObject}" Text="{Binding InspectorRotationZDegrees, Mode=TwoWay}" />
+                                            <TextBlock Grid.Row="1" Grid.Column="2" Grid.ColumnSpan="2" Text="degrees around Z" Foreground="#8EA2BA" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Base" Foreground="#AFC6E9" />
+                                            <TextBlock Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="3" Text="{Binding InspectorBaseSizeValue}" Foreground="#D8DEE9" TextWrapping="Wrap" />
+                                            <TextBlock Grid.Row="3" Grid.Column="0" Text="Effective" Foreground="#AFC6E9" />
+                                            <TextBlock Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="3" Text="{Binding InspectorEffectiveSizeValue}" Foreground="#D8DEE9" TextWrapping="Wrap" />
                                         </Grid>
                                     </StackPanel>
                                 </Border>
@@ -580,13 +593,17 @@
                                                    Foreground="#8EA2BA"
                                                    FontSize="10"
                                                    FontWeight="Bold" />
-                                        <Grid ColumnDefinitions="82,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="5">
-                                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Ports" Foreground="#AFC6E9" />
-                                            <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding InspectorPortText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
+                                        <Grid ColumnDefinitions="82,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="6">
+                                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Length" Foreground="#AFC6E9" />
+                                            <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding InspectorConveyorLengthText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
                                             <TextBlock Grid.Row="1" Grid.Column="0" Text="Range" Foreground="#AFC6E9" />
-                                            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding InspectorRangeText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
-                                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Flow" Foreground="#AFC6E9" />
-                                            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding InspectorMaterialFlowText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
+                                            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding InspectorConveyorRangeText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
+                                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Speed" Foreground="#AFC6E9" VerticalAlignment="Center" />
+                                            <TextBox Grid.Row="2" Grid.Column="1" IsEnabled="{Binding SelectedMtrlSrcPanelVisible}" Text="{Binding SelectedMtrlSrcUnitsPerSecondText, Mode=TwoWay}" />
+                                            <TextBlock Grid.Row="3" Grid.Column="0" Text="Direction" Foreground="#AFC6E9" />
+                                            <CheckBox Grid.Row="3" Grid.Column="1" IsEnabled="{Binding InspectorConveyorDirectionEditable}" IsChecked="{Binding InspectorConveyorFlowReversed, Mode=TwoWay}" Content="Reverse conveyor flow" Foreground="#D8DEE9" />
+                                            <TextBlock Grid.Row="4" Grid.Column="0" Text="Transfer" Foreground="#AFC6E9" />
+                                            <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding InspectorTransferBehaviorText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
                                         </Grid>
 
                                         <Border IsVisible="{Binding SelectedMtrlSrcPanelVisible}"
@@ -600,7 +617,7 @@
                                                            FontSize="10"
                                                            FontWeight="Bold"
                                                            Foreground="#A7D397" />
-                                                <TextBlock Text="Choose how many units/second this source produces when connected to a conveyor route."
+                                                <TextBlock Text="Edit material and packet settings. Speed is shared with the conveyor Speed field above."
                                                            Foreground="#C8D2DE"
                                                            TextWrapping="Wrap" />
                                                 <Grid ColumnDefinitions="80,*" RowDefinitions="Auto" ColumnSpacing="6">
@@ -666,11 +683,15 @@
                                                    Foreground="#8EA2BA"
                                                    FontSize="10"
                                                    FontWeight="Bold" />
-                                        <Grid ColumnDefinitions="82,*" RowDefinitions="Auto,Auto" ColumnSpacing="8" RowSpacing="5">
-                                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Type" Foreground="#AFC6E9" />
-                                            <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding InspectorExtraText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
-                                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Object" Foreground="#AFC6E9" />
-                                            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding InspectorSelectedText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
+                                        <Grid ColumnDefinitions="82,*" RowDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="6">
+                                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Material" Foreground="#AFC6E9" VerticalAlignment="Center" />
+                                            <ComboBox Grid.Row="0" Grid.Column="1" IsEnabled="{Binding SelectedMtrlSrcPanelVisible}" ItemsSource="{Binding AvailableMtrlSrcMaterialIds}" SelectedItem="{Binding SelectedMtrlSrcMaterialId, Mode=TwoWay}" />
+                                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Paint" Foreground="#AFC6E9" VerticalAlignment="Center" />
+                                            <TextBox Grid.Row="1" Grid.Column="1" IsEnabled="False" Text="{Binding InspectorPaintText}" />
+                                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Accent" Foreground="#AFC6E9" VerticalAlignment="Center" />
+                                            <TextBox Grid.Row="2" Grid.Column="1" IsEnabled="False" Text="{Binding InspectorAccentColorText}" />
+                                            <TextBlock Grid.Row="3" Grid.Column="0" Text="Type" Foreground="#AFC6E9" />
+                                            <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding InspectorPartTypeText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
                                         </Grid>
                                     </StackPanel>
                                 </Border>
@@ -683,14 +704,15 @@
                                             Padding="8">
                                         <StackPanel Spacing="6">
                                             <TextBlock Text="{Binding InspectorIdText}" Foreground="#D8DEE9" />
-                                            <TextBlock Text="{Binding InspectorPositionText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
-                                            <TextBlock Text="{Binding InspectorSizeText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
-                                            <TextBlock Text="{Binding InspectorRotationText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
-                                            <TextBlock Text="{Binding InspectorStatusText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
-                                            <TextBlock Text="{Binding InspectorContextText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
-                                            <TextBlock Text="{Binding InspectorRangeText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
-                                            <TextBlock Text="{Binding InspectorExtraText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
+                                            <TextBlock Text="{Binding InspectorDiagnosticPositionText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
+                                            <TextBlock Text="{Binding InspectorDiagnosticSizeText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
+                                            <TextBlock Text="{Binding InspectorDiagnosticEffectiveSizeText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
+                                            <TextBlock Text="{Binding InspectorDiagnosticRotationText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
+                                            <TextBlock Text="{Binding InspectorDiagnosticZSpanText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
+                                            <TextBlock Text="{Binding InspectorDiagnosticRangeText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
+                                            <TextBlock Text="{Binding InspectorDiagnosticExtraText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
                                             <TextBlock Text="{Binding InspectorPortText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
+                                            <TextBlock Text="{Binding InspectorMaterialFlowText}" Foreground="#D8DEE9" TextWrapping="Wrap" />
                                         </StackPanel>
                                     </Border>
                                 </Expander>
