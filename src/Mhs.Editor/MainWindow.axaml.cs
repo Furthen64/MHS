@@ -40,6 +40,7 @@ public partial class MainWindow : Window
             _preferences.PreferredOpenGlGpuName = "System default GPU";
         }
 
+        AppThemeService.Apply(_preferences.ThemeMode);
         GpuDiscoveryService.ApplyProcessGpuPreference(_preferences.PreferredOpenGlGpuName);
         StartupDiagnostics.Log($"Main window constructing. Preferred GPU: {_preferences.PreferredOpenGlGpuName}");
 
@@ -239,6 +240,7 @@ public partial class MainWindow : Window
                 _preferences.PreferredOpenGlGpuName = "System default GPU";
             }
 
+            AppThemeService.Apply(_preferences.ThemeMode);
             _preferencesStore.Save(_preferences);
             GpuDiscoveryService.ApplyProcessGpuPreference(_preferences.PreferredOpenGlGpuName);
             ApplyWindowPreferences();

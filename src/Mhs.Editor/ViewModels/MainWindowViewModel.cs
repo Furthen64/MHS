@@ -288,15 +288,17 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         ? "Presentation"
         : "Technical";
 
-    public string ViewportPanelBackground => IsPresentationViewportVisualMode ? "#D8D0C2" : "#121519";
-    public string ViewportPanelBorderBrush => IsPresentationViewportVisualMode ? "#AFA694" : "#3B4252";
-    public string ViewportSurfaceBackground => IsPresentationViewportVisualMode ? "#E6DECF" : "#121519";
-    public string ViewportToolbarBackground => IsPresentationViewportVisualMode ? "#EAF5F0E6" : "#E5182028";
-    public string ViewportToolbarBorderBrush => IsPresentationViewportVisualMode ? "#B8AB95" : "#5A6B80";
-    public string ViewportToolbarTextBrush => IsPresentationViewportVisualMode ? "#667181" : "#9FB4CC";
-    public string ViewportToolbarControlBrush => IsPresentationViewportVisualMode ? "#3E4652" : "#D4DEE9";
-    public string ViewportToolbarSeparatorBrush => IsPresentationViewportVisualMode ? "#C4B8A6" : "#455366";
-    public string ViewportToolbarSubtleTextBrush => IsPresentationViewportVisualMode ? "#667181" : "#8EA2BA";
+    public string ViewportPanelBackground => ThemeHex(IsPresentationViewportVisualMode ? "#D8D0C2" : "#121519");
+    public string ViewportPanelBorderBrush => ThemeHex(IsPresentationViewportVisualMode ? "#AFA694" : "#3B4252");
+    public string ViewportSurfaceBackground => ThemeHex(IsPresentationViewportVisualMode ? "#E6DECF" : "#121519");
+    public string ViewportToolbarBackground => ThemeHex(IsPresentationViewportVisualMode ? "#EAF5F0E6" : "#E5182028");
+    public string ViewportToolbarBorderBrush => ThemeHex(IsPresentationViewportVisualMode ? "#B8AB95" : "#5A6B80");
+    public string ViewportToolbarTextBrush => ThemeHex(IsPresentationViewportVisualMode ? "#667181" : "#9FB4CC");
+    public string ViewportToolbarControlBrush => ThemeHex(IsPresentationViewportVisualMode ? "#3E4652" : "#D4DEE9");
+    public string ViewportToolbarSeparatorBrush => ThemeHex(IsPresentationViewportVisualMode ? "#C4B8A6" : "#455366");
+    public string ViewportToolbarSubtleTextBrush => ThemeHex(IsPresentationViewportVisualMode ? "#667181" : "#8EA2BA");
+    private static string ThemeHex(string originalHex)
+        => AppThemeService.GetHex(originalHex);
 
     public IReadOnlyList<MaterialTrayItemViewModel> MaterialTrayItems => MaterialCatalog.AvailableMaterials
         .Select(material => new MaterialTrayItemViewModel(
@@ -557,9 +559,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
-    public string InspectorValidityBrush => EditorState.SelectedObject is null
+    public string InspectorValidityBrush => ThemeHex(EditorState.SelectedObject is null
         ? "#8EA2BA"
-        : SelectedPlacementValidation().IsValid ? "#7EE787" : "#FF7B72";
+        : SelectedPlacementValidation().IsValid ? "#7EE787" : "#FF7B72");
 
     public string InspectorConveyorLengthText
     {
@@ -971,12 +973,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public string ActiveAbsoluteZSummaryText => $"Absolute Z: {EditorState.ActiveAbsoluteZ}";
     public string OpenGlBackendSummaryText => $"OpenGL: {EditorState.OpenGlBackendInfo}";
     public string PreferredOpenGlGpuSummaryText => $"Preferred GPU: {PreferredOpenGlGpuName}";
-    public string Floor2StackBackground => EditorState.ActiveFloor == 2 ? "#324563" : "#1E242E";
-    public string Floor1StackBackground => EditorState.ActiveFloor == 1 ? "#324563" : "#1E242E";
-    public string Floor0StackBackground => EditorState.ActiveFloor == 0 ? "#324563" : "#1E242E";
-    public string Floor2StackBorder => EditorState.ActiveFloor == 2 ? "#88B8FF" : "#394454";
-    public string Floor1StackBorder => EditorState.ActiveFloor == 1 ? "#88B8FF" : "#394454";
-    public string Floor0StackBorder => EditorState.ActiveFloor == 0 ? "#88B8FF" : "#394454";
+    public string Floor2StackBackground => ThemeHex(EditorState.ActiveFloor == 2 ? "#324563" : "#1E242E");
+    public string Floor1StackBackground => ThemeHex(EditorState.ActiveFloor == 1 ? "#324563" : "#1E242E");
+    public string Floor0StackBackground => ThemeHex(EditorState.ActiveFloor == 0 ? "#324563" : "#1E242E");
+    public string Floor2StackBorder => ThemeHex(EditorState.ActiveFloor == 2 ? "#88B8FF" : "#394454");
+    public string Floor1StackBorder => ThemeHex(EditorState.ActiveFloor == 1 ? "#88B8FF" : "#394454");
+    public string Floor0StackBorder => ThemeHex(EditorState.ActiveFloor == 0 ? "#88B8FF" : "#394454");
 
     public bool HandleKeyDown(Key key)
     {
@@ -2847,5 +2849,5 @@ public sealed record MaterialTrayItemViewModel(
     string EdgeBrush,
     string CountText)
 {
-    public string TextBrush => string.Equals(Id, "Coal", StringComparison.OrdinalIgnoreCase) ? "#DDE7F3" : "#F6FBFF";
+    public string TextBrush => AppThemeService.GetHex(string.Equals(Id, "Coal", StringComparison.OrdinalIgnoreCase) ? "#DDE7F3" : "#F6FBFF");
 }

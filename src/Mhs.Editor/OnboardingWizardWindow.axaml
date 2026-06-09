@@ -24,7 +24,7 @@
             <ComboBox ItemsSource="{Binding AvailableGpus}"
                       SelectedItem="{Binding SelectedGpu, Mode=TwoWay}" />
             <TextBlock Text="Tip: choose the NVIDIA GeForce GPU on dual-GPU laptops."
-                       Foreground="#808080" />
+                       Foreground="{DynamicResource ThemeBrush_808080}" />
         </StackPanel>
 
         <StackPanel Grid.Row="2"
