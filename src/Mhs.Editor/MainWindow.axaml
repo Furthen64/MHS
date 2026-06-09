@@ -72,23 +72,34 @@
             <Setter Property="BorderBrush" Value="#8FC6FF" />
         </Style>
         <Style Selector="Button.ribbon-button">
-            <Setter Property="Background" Value="#222831" />
+            <Setter Property="Background" Value="#202834" />
             <Setter Property="Foreground" Value="#E6ECF4" />
-            <Setter Property="BorderBrush" Value="#323C48" />
+            <Setter Property="BorderBrush" Value="#354352" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="CornerRadius" Value="4" />
-            <Setter Property="Padding" Value="10,6" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Padding" Value="9,5" />
             <Setter Property="FontSize" Value="11" />
-            <Setter Property="MinHeight" Value="34" />
+            <Setter Property="MinHeight" Value="42" />
+            <Setter Property="MinWidth" Value="60" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
         </Style>
         <Style Selector="Button.ribbon-button:pointerover">
-            <Setter Property="Background" Value="#2D3744" />
-            <Setter Property="BorderBrush" Value="#4F6F96" />
+            <Setter Property="Background" Value="#2A3A4D" />
+            <Setter Property="BorderBrush" Value="#6BA9FF" />
         </Style>
         <Style Selector="Button.ribbon-button.accent">
-            <Setter Property="Background" Value="#274C7A" />
-            <Setter Property="BorderBrush" Value="#5CA8FF" />
+            <Setter Property="Background" Value="#1D5D97" />
+            <Setter Property="BorderBrush" Value="#8BC7FF" />
+            <Setter Property="BorderThickness" Value="2" />
             <Setter Property="Foreground" Value="#FFFFFF" />
+        </Style>
+        <Style Selector="Button.ribbon-button.accent:pointerover">
+            <Setter Property="Background" Value="#2472B8" />
+            <Setter Property="BorderBrush" Value="#B5DDFF" />
+        </Style>
+        <Style Selector="Button.ribbon-button:focus">
+            <Setter Property="BorderBrush" Value="#FFD15A" />
+            <Setter Property="BorderThickness" Value="2" />
         </Style>
         <Style Selector="Button.ribbon-button:disabled">
             <Setter Property="Opacity" Value="0.45" />
@@ -98,21 +109,40 @@
             <Setter Property="Foreground" Value="#DDE7F3" />
             <Setter Property="BorderBrush" Value="#303946" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="CornerRadius" Value="4" />
+            <Setter Property="CornerRadius" Value="8" />
             <Setter Property="Padding" Value="8,5" />
             <Setter Property="FontSize" Value="16" />
             <Setter Property="MinWidth" Value="42" />
-            <Setter Property="MinHeight" Value="34" />
+            <Setter Property="MinHeight" Value="38" />
         </Style>
-        <Style Selector="TextBlock.ribbon-label">
-            <Setter Property="Foreground" Value="#7E8EA2" />
+        <Style Selector="TextBlock.toolbar-icon">
+            <Setter Property="FontSize" Value="16" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="LineHeight" Value="18" />
+        </Style>
+        <Style Selector="TextBlock.toolbar-label">
             <Setter Property="FontSize" Value="10" />
             <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="TextAlignment" Value="Center" />
+        </Style>
+        <Style Selector="TextBlock.ribbon-label">
+            <Setter Property="Foreground" Value="#9AAABD" />
+            <Setter Property="FontSize" Value="9.5" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="LetterSpacing" Value="0.4" />
         </Style>
         <Style Selector="Border.ribbon-group">
-            <Setter Property="BorderBrush" Value="#313946" />
+            <Setter Property="BorderBrush" Value="#35404D" />
             <Setter Property="BorderThickness" Value="0,0,1,0" />
             <Setter Property="Padding" Value="8,0" />
+        </Style>
+        <Style Selector="Border.active-tool-pill">
+            <Setter Property="Background" Value="#243750" />
+            <Setter Property="BorderBrush" Value="#69B6FF" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="12" />
+            <Setter Property="Padding" Value="10,4" />
         </Style>
         <Style Selector="Border.workflow-card">
             <Setter Property="Background" Value="#26313B" />
@@ -138,7 +168,7 @@
                 Background="#171C22"
                 BorderBrush="#2D343F"
                 BorderThickness="0,0,0,1">
-            <Grid RowDefinitions="48,54">
+            <Grid RowDefinitions="64,66">
                 <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Background="#151A20">
                     <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="12" Margin="10,0" VerticalAlignment="Center">
                         <Border Width="32" Height="32" CornerRadius="6" Background="#213247" BorderBrush="#3F6C99" BorderThickness="1">
@@ -152,23 +182,48 @@
 
                     <WrapPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Center">
                         <Border Classes="ribbon-group">
-                            <StackPanel Orientation="Horizontal" Spacing="6">
-                                <Button Classes="ribbon-button" Content="New" Click="OnNewSceneClick" />
-                                <Button Classes="ribbon-button" Content="Open" Click="OnOpenSceneClick" />
-                                <Button Classes="ribbon-button" Content="Save" Click="OnSaveSceneClick" />
-                                <Button Classes="ribbon-button" Content="Save As" Click="OnSaveSceneAsClick" />
+                            <StackPanel Spacing="2">
+                                <TextBlock Classes="ribbon-label" Text="FILE" HorizontalAlignment="Center" />
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <Button Classes="ribbon-button" Click="OnNewSceneClick" AutomationProperties.Name="New scene">
+                                        <StackPanel Spacing="1"><TextBlock Classes="toolbar-icon" Text="✦" /><TextBlock Classes="toolbar-label" Text="New" /></StackPanel>
+                                    </Button>
+                                    <Button Classes="ribbon-button" Click="OnOpenSceneClick" AutomationProperties.Name="Open scene">
+                                        <StackPanel Spacing="1"><TextBlock Classes="toolbar-icon" Text="📂" /><TextBlock Classes="toolbar-label" Text="Open" /></StackPanel>
+                                    </Button>
+                                    <Button Classes="ribbon-button" Click="OnSaveSceneClick" AutomationProperties.Name="Save scene">
+                                        <StackPanel Spacing="1"><TextBlock Classes="toolbar-icon" Text="💾" /><TextBlock Classes="toolbar-label" Text="Save" /></StackPanel>
+                                    </Button>
+                                    <Button Classes="ribbon-button" Click="OnSaveSceneAsClick" AutomationProperties.Name="Save scene as">
+                                        <StackPanel Spacing="1"><TextBlock Classes="toolbar-icon" Text="⇪" /><TextBlock Classes="toolbar-label" Text="Save As" /></StackPanel>
+                                    </Button>
+                                </StackPanel>
                             </StackPanel>
                         </Border>
                         <Border Classes="ribbon-group">
-                            <StackPanel Orientation="Horizontal" Spacing="6">
-                                <Button Classes="ribbon-button" Content="Undo" Command="{Binding UndoCommand}" />
-                                <Button Classes="ribbon-button" Content="Redo" Command="{Binding RedoCommand}" />
+                            <StackPanel Spacing="2">
+                                <TextBlock Classes="ribbon-label" Text="EDIT" HorizontalAlignment="Center" />
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <Button Classes="ribbon-button" Command="{Binding UndoCommand}" AutomationProperties.Name="Undo last edit">
+                                        <StackPanel Spacing="1"><TextBlock Classes="toolbar-icon" Text="↶" /><TextBlock Classes="toolbar-label" Text="Undo" /></StackPanel>
+                                    </Button>
+                                    <Button Classes="ribbon-button" Command="{Binding RedoCommand}" AutomationProperties.Name="Redo last edit">
+                                        <StackPanel Spacing="1"><TextBlock Classes="toolbar-icon" Text="↷" /><TextBlock Classes="toolbar-label" Text="Redo" /></StackPanel>
+                                    </Button>
+                                </StackPanel>
                             </StackPanel>
                         </Border>
                         <Border Classes="ribbon-group">
-                            <StackPanel Orientation="Horizontal" Spacing="6">
-                                <Button Classes="ribbon-button accent" Content="▶ Test (F5)" Command="{Binding RunTestCommand}" />
-                                <Button Classes="ribbon-button" Content="Demo Factory" Command="{Binding LoadDemoFactorySceneCommand}" ToolTip.Tip="Load a representative material-handling demo scene" />
+                            <StackPanel Spacing="2">
+                                <TextBlock Classes="ribbon-label" Text="RUN" HorizontalAlignment="Center" />
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <Button Classes="ribbon-button accent" Command="{Binding RunTestCommand}" AutomationProperties.Name="Run test mode with F5">
+                                        <StackPanel Spacing="1"><TextBlock Classes="toolbar-icon" Text="▶" /><TextBlock Classes="toolbar-label" Text="Test F5" /></StackPanel>
+                                    </Button>
+                                    <Button Classes="ribbon-button" Command="{Binding LoadDemoFactorySceneCommand}" ToolTip.Tip="Load a representative material-handling demo scene" AutomationProperties.Name="Load demo factory scene">
+                                        <StackPanel Spacing="1"><TextBlock Classes="toolbar-icon" Text="🏭" /><TextBlock Classes="toolbar-label" Text="Demo" /></StackPanel>
+                                    </Button>
+                                </StackPanel>
                             </StackPanel>
                         </Border>
                     </WrapPanel>
@@ -209,46 +264,94 @@
                     </StackPanel>
                 </Grid>
 
-                <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto,Auto" Background="#20262E">
+                <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto,Auto,Auto" Background="#20262E">
                     <Border Grid.Column="0" Classes="ribbon-group">
-                        <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                            <Button Classes="ribbon-button" Classes.accent="{Binding IsSelectActive}" Content="Select" Command="{Binding SelectToolCommand}" />
-                            <Button Classes="ribbon-button" Classes.accent="{Binding IsMoveActionActive}" Content="Move" Command="{Binding MoveSelectionCommand}" />
-                            <Button Classes="ribbon-button" Classes.accent="{Binding IsRotateActionActive}" Content="Rotate" Command="{Binding RotateSelectionCommand}" />
-                            <Button Classes="ribbon-button" Content="Delete" Command="{Binding DeleteSelectionCommand}" />
+                        <StackPanel Spacing="2" VerticalAlignment="Center">
+                            <TextBlock Classes="ribbon-label" Text="SELECT" HorizontalAlignment="Center" />
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <Button Classes="ribbon-button" Classes.accent="{Binding IsSelectActive}" Command="{Binding SelectToolCommand}" AutomationProperties.Name="Select tool">
+                                    <StackPanel Spacing="1"><TextBlock Classes="toolbar-icon" Text="☝" /><TextBlock Classes="toolbar-label" Text="Select" /></StackPanel>
+                                </Button>
+                                <Button Classes="ribbon-button" Classes.accent="{Binding IsMoveActionActive}" Command="{Binding MoveSelectionCommand}" AutomationProperties.Name="Move selection">
+                                    <StackPanel Spacing="1"><TextBlock Classes="toolbar-icon" Text="↔" /><TextBlock Classes="toolbar-label" Text="Move" /></StackPanel>
+                                </Button>
+                                <Button Classes="ribbon-button" Classes.accent="{Binding IsRotateActionActive}" Command="{Binding RotateSelectionCommand}" AutomationProperties.Name="Rotate selection">
+                                    <StackPanel Spacing="1"><TextBlock Classes="toolbar-icon" Text="⟳" /><TextBlock Classes="toolbar-label" Text="Rotate" /></StackPanel>
+                                </Button>
+                                <Button Classes="ribbon-button" Command="{Binding DeleteSelectionCommand}" AutomationProperties.Name="Delete selection">
+                                    <StackPanel Spacing="1"><TextBlock Classes="toolbar-icon" Text="⌫" /><TextBlock Classes="toolbar-label" Text="Delete" /></StackPanel>
+                                </Button>
+                            </StackPanel>
                         </StackPanel>
                     </Border>
                     <ScrollViewer Grid.Column="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
-                        <StackPanel Orientation="Horizontal" Spacing="6" Margin="8,0" VerticalAlignment="Center">
-                            <Button Classes="ribbon-button" Classes.accent="{Binding IsConveyorRouteActive}" Content="Conveyor" Command="{Binding ConveyorRouteToolCommand}" />
-                            <Button Classes="ribbon-button" Classes.accent="{Binding IsHopperActive}" Content="Hopper" Command="{Binding HopperToolCommand}" />
-                            <Button Classes="ribbon-button" Classes.accent="{Binding IsChuteActive}" Content="Chute" Command="{Binding ChuteToolCommand}" />
-                            <Button Classes="ribbon-button" Classes.accent="{Binding IsBinActive}" Content="Bin" Command="{Binding BinToolCommand}" />
-                            <Button Classes="ribbon-button" Classes.accent="{Binding IsSplitterActive}" Content="Splitter" Command="{Binding SplitterToolCommand}" />
-                            <Button Classes="ribbon-button" Classes.accent="{Binding IsLiftActive}" Content="Lift" Command="{Binding LiftToolCommand}" />
-                            <Button Classes="ribbon-button" Classes.accent="{Binding IsTurnActive}" Content="Turn" Command="{Binding TurnToolCommand}" />
-                            <Button Classes="ribbon-button" Classes.accent="{Binding IsMergeActive}" Content="Merge" Command="{Binding MergeToolCommand}" />
-                            <Button Classes="ribbon-button" Classes.accent="{Binding IsSupportActive}" Content="Support" Command="{Binding SupportToolCommand}" />
-                            <Button Classes="ribbon-button" Content="Other" Command="{Binding OtherPartsCommand}" />
+                        <StackPanel Orientation="Horizontal" Spacing="6" Margin="8,3,8,0" VerticalAlignment="Center">
+                            <Button Classes="ribbon-button" Classes.accent="{Binding IsConveyorRouteActive}" Command="{Binding ConveyorRouteToolCommand}" ToolTip.Tip="{Binding ConveyorToolAccessibilityText}" AutomationProperties.Name="{Binding ConveyorToolAccessibilityText}">
+                                <StackPanel Spacing="1"><TextBlock Classes="toolbar-icon" Text="▭▭" /><TextBlock Classes="toolbar-label" Text="Conveyor" /></StackPanel>
+                            </Button>
+                            <Button Classes="ribbon-button" Classes.accent="{Binding IsHopperActive}" Command="{Binding HopperToolCommand}" ToolTip.Tip="{Binding HopperToolAccessibilityText}" AutomationProperties.Name="{Binding HopperToolAccessibilityText}">
+                                <StackPanel Spacing="1"><TextBlock Classes="toolbar-icon" Text="▽" /><TextBlock Classes="toolbar-label" Text="Hopper" /></StackPanel>
+                            </Button>
+                            <Button Classes="ribbon-button" Classes.accent="{Binding IsChuteActive}" Command="{Binding ChuteToolCommand}" ToolTip.Tip="{Binding ChuteToolAccessibilityText}" AutomationProperties.Name="{Binding ChuteToolAccessibilityText}">
+                                <StackPanel Spacing="1"><TextBlock Classes="toolbar-icon" Text="╲" /><TextBlock Classes="toolbar-label" Text="Chute" /></StackPanel>
+                            </Button>
+                            <Button Classes="ribbon-button" Classes.accent="{Binding IsBinActive}" Command="{Binding BinToolCommand}" ToolTip.Tip="{Binding BinToolAccessibilityText}" AutomationProperties.Name="{Binding BinToolAccessibilityText}">
+                                <StackPanel Spacing="1"><TextBlock Classes="toolbar-icon" Text="▣" /><TextBlock Classes="toolbar-label" Text="Bin" /></StackPanel>
+                            </Button>
+                            <Button Classes="ribbon-button" Classes.accent="{Binding IsSplitterActive}" Command="{Binding SplitterToolCommand}" ToolTip.Tip="{Binding SplitterToolAccessibilityText}" AutomationProperties.Name="{Binding SplitterToolAccessibilityText}">
+                                <StackPanel Spacing="1"><TextBlock Classes="toolbar-icon" Text="Y" /><TextBlock Classes="toolbar-label" Text="Splitter" /></StackPanel>
+                            </Button>
+                            <Button Classes="ribbon-button" Classes.accent="{Binding IsLiftActive}" Command="{Binding LiftToolCommand}" ToolTip.Tip="{Binding LiftToolAccessibilityText}" AutomationProperties.Name="{Binding LiftToolAccessibilityText}">
+                                <StackPanel Spacing="1"><TextBlock Classes="toolbar-icon" Text="↕" /><TextBlock Classes="toolbar-label" Text="Lift" /></StackPanel>
+                            </Button>
+                            <Button Classes="ribbon-button" Classes.accent="{Binding IsTurnActive}" Command="{Binding TurnToolCommand}" AutomationProperties.Name="Curve conveyor tool">
+                                <StackPanel Spacing="1"><TextBlock Classes="toolbar-icon" Text="⤴" /><TextBlock Classes="toolbar-label" Text="Turn" /></StackPanel>
+                            </Button>
+                            <Button Classes="ribbon-button" Classes.accent="{Binding IsMergeActive}" Command="{Binding MergeToolCommand}" AutomationProperties.Name="Merge conveyor tool">
+                                <StackPanel Spacing="1"><TextBlock Classes="toolbar-icon" Text="⤵" /><TextBlock Classes="toolbar-label" Text="Merge" /></StackPanel>
+                            </Button>
+                            <Button Classes="ribbon-button" Classes.accent="{Binding IsSupportActive}" Command="{Binding SupportToolCommand}" AutomationProperties.Name="Support frame tool">
+                                <StackPanel Spacing="1"><TextBlock Classes="toolbar-icon" Text="▥" /><TextBlock Classes="toolbar-label" Text="Support" /></StackPanel>
+                            </Button>
+                            <Button Classes="ribbon-button" Command="{Binding OtherPartsCommand}" AutomationProperties.Name="Browse other part tools">
+                                <StackPanel Spacing="1"><TextBlock Classes="toolbar-icon" Text="⋯" /><TextBlock Classes="toolbar-label" Text="Other" /></StackPanel>
+                            </Button>
                         </StackPanel>
                     </ScrollViewer>
                     <Border Grid.Column="2" Classes="ribbon-group">
-                        <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                            <Button Classes="ribbon-button" Classes.accent="{Binding IsIsoViewActive}" Content="Iso" Command="{Binding IsoViewCommand}" />
-                            <Button Classes="ribbon-button" Classes.accent="{Binding IsTopViewActive}" Content="Top" Command="{Binding TopViewCommand}" />
-                            <Button Classes="ribbon-button" Classes.accent="{Binding IsFrontViewActive}" Content="Front" Command="{Binding FrontViewCommand}" />
-                            <Button Classes="ribbon-button" Classes.accent="{Binding IsRightViewActive}" Content="Right" Command="{Binding RightViewCommand}" />
+                        <StackPanel Spacing="2" VerticalAlignment="Center">
+                            <TextBlock Classes="ribbon-label" Text="CAMERA" HorizontalAlignment="Center" />
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <Button Classes="ribbon-button" Classes.accent="{Binding IsIsoViewActive}" Command="{Binding IsoViewCommand}" AutomationProperties.Name="Isometric camera view">
+                                    <StackPanel Spacing="1"><TextBlock Classes="toolbar-icon" Text="◩" /><TextBlock Classes="toolbar-label" Text="Iso" /></StackPanel>
+                                </Button>
+                                <Button Classes="ribbon-button" Classes.accent="{Binding IsTopViewActive}" Command="{Binding TopViewCommand}" AutomationProperties.Name="Top camera view">
+                                    <StackPanel Spacing="1"><TextBlock Classes="toolbar-icon" Text="▤" /><TextBlock Classes="toolbar-label" Text="Top" /></StackPanel>
+                                </Button>
+                                <Button Classes="ribbon-button" Classes.accent="{Binding IsFrontViewActive}" Command="{Binding FrontViewCommand}" AutomationProperties.Name="Front camera view">
+                                    <StackPanel Spacing="1"><TextBlock Classes="toolbar-icon" Text="▦" /><TextBlock Classes="toolbar-label" Text="Front" /></StackPanel>
+                                </Button>
+                                <Button Classes="ribbon-button" Classes.accent="{Binding IsRightViewActive}" Command="{Binding RightViewCommand}" AutomationProperties.Name="Right camera view">
+                                    <StackPanel Spacing="1"><TextBlock Classes="toolbar-icon" Text="▧" /><TextBlock Classes="toolbar-label" Text="Right" /></StackPanel>
+                                </Button>
+                            </StackPanel>
                         </StackPanel>
                     </Border>
                     <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="8" Margin="8,0,10,0" VerticalAlignment="Center">
-                        <TextBlock Classes="ribbon-label" Text="Snap" VerticalAlignment="Center" />
-                        <Border Background="#151A20" BorderBrush="#354152" BorderThickness="1" CornerRadius="4" Padding="12,7" MinWidth="92">
+                        <TextBlock Classes="ribbon-label" Text="SNAP" VerticalAlignment="Center" />
+                        <Border Background="#151A20" BorderBrush="#49617A" BorderThickness="1" CornerRadius="8" Padding="10,5" MinWidth="94" AutomationProperties.Name="Snap grid controls">
                             <DockPanel LastChildFill="False">
-                                <TextBlock DockPanel.Dock="Left" Text="Grid" Foreground="#E4ECF6" />
-                                <TextBlock DockPanel.Dock="Right" Text="⌄" Foreground="#8DA0B7" Margin="12,0,0,0" />
+                                <TextBlock DockPanel.Dock="Left" Text="⌗ Grid" Foreground="#E4ECF6" FontWeight="SemiBold" />
+                                <TextBlock DockPanel.Dock="Right" Text="⌄" Foreground="#8DA0B7" Margin="10,0,0,0" />
                             </DockPanel>
                         </Border>
                     </StackPanel>
+                    <Border Grid.Column="4" Classes="active-tool-pill" Margin="0,0,10,0" VerticalAlignment="Center" ToolTip.Tip="{Binding ActiveToolAccessibilityText}" AutomationProperties.Name="{Binding ActiveToolAccessibilityText}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock Text="●" Foreground="#7FDBFF" />
+                            <TextBlock Text="{Binding ActiveToolBadgeText}" Foreground="#F7FBFF" FontWeight="SemiBold" FontSize="11" />
+                        </StackPanel>
+                    </Border>
                 </Grid>
             </Grid>
         </Border>
