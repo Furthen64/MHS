@@ -1091,7 +1091,7 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
         }
         if (drawOutline)
         {
-            DrawOutline(position, new VoxelSize(size.WidthX, size.DepthY, (int)Math.Ceiling(visualHeight)), Color.FromRgb(230, 230, 230), Math.Min(opacity + 0.20, 1), state);
+            DrawOutline(position, new VoxelSize(size.WidthX, size.DepthY, visualHeight), Color.FromRgb(230, 230, 230), Math.Min(opacity + 0.20, 1), state);
         }
     }
 

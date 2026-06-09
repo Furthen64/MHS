@@ -1318,7 +1318,7 @@ public sealed class SoftwareCubeViewport : Control
         var railColor = Color.FromRgb(210, 218, 226);
         foreach (var (x, y) in new[] { (cx - half * 1.7, cy - half * 1.7), (cx + half * 1.5, cy - half * 1.7), (cx - half * 1.7, cy + half * 1.5), (cx + half * 1.5, cy + half * 1.5) }) DrawConveyorBarSw(context, x, x + half * 0.20, y, y + half * 0.20, position.Z, position.Z + visualHeight, railColor, Darken(railColor, 0.72), Darken(railColor, 0.60), opacity, state);
         if (spiral) { var pen = new Pen(new SolidColorBrush(WithOpacity(Color.FromRgb(255, 211, 80), Math.Min(opacity + 0.10, 1))), 1.5); Point? prev = null; for (var i = 0; i <= 16; i++) { var t = i / 16.0; var a = t * Math.PI * 4.5; var r = half * 1.55; var pt = Project(cx + Math.Cos(a) * r, cy + Math.Sin(a) * r, position.Z + visualHeight * t, state); if (prev is { } pp) context.DrawLine(pen, pp, pt); prev = pt; } }
-        if (drawOutline) DrawOutline(context, position, new VoxelSize(size.WidthX, size.DepthY, (int)Math.Ceiling(visualHeight)), Color.FromRgb(230, 230, 230), 1.2, state);
+        if (drawOutline) DrawOutline(context, position, new VoxelSize(size.WidthX, size.DepthY, visualHeight), Color.FromRgb(230, 230, 230), 1.2, state);
     }
 
     private void DrawIsoBox(DrawingContext context, VoxelCoord position, VoxelSize size, Color color, double opacity, bool drawOutline, EditorState state)
