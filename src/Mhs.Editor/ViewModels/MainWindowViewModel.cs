@@ -75,6 +75,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         AutoCadLikeSettingsCommand = new RelayCommand(() => SetInteractionPreset(ViewportInteractionPreset.AutoCadLike));
         UseSoftwareViewportCommand = new RelayCommand(() => SetViewportMode(useOpenGl: false));
         UseOpenGlViewportCommand = new RelayCommand(() => SetViewportMode(useOpenGl: true));
+        UsePresentationViewportModeCommand = new RelayCommand(() => SetViewportVisualMode(ViewportVisualMode.Presentation));
+        UseTechnicalViewportModeCommand = new RelayCommand(() => SetViewportVisualMode(ViewportVisualMode.Technical));
         InjectDebugOreCommand = new RelayCommand(InjectDebugOre);
         StepMaterialFlowCommand = new RelayCommand(StepMaterialFlow);
         ClearMaterialFlowCommand = new RelayCommand(ClearMaterialFlow);
@@ -152,6 +154,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand AutoCadLikeSettingsCommand { get; }
     public ICommand UseSoftwareViewportCommand { get; }
     public ICommand UseOpenGlViewportCommand { get; }
+    public ICommand UsePresentationViewportModeCommand { get; }
+    public ICommand UseTechnicalViewportModeCommand { get; }
     public ICommand InjectDebugOreCommand { get; }
     public ICommand StepMaterialFlowCommand { get; }
     public ICommand ClearMaterialFlowCommand { get; }
@@ -234,6 +238,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public bool IsAutoCadLikeSettingsActive => _interactionPreset == ViewportInteractionPreset.AutoCadLike;
     public bool IsSoftwareViewportMode => !_useOpenGlViewport;
     public bool IsOpenGlViewportMode => _useOpenGlViewport;
+    public bool IsPresentationViewportVisualMode => EditorState.ViewportVisualMode == ViewportVisualMode.Presentation;
+    public bool IsTechnicalViewportVisualMode => EditorState.ViewportVisualMode == ViewportVisualMode.Technical;
     public bool IsExpertMode => _expertMode;
     public bool IsSimpleMode => !_expertMode;
     public ViewportInteractionPreset InteractionPreset => _interactionPreset;
@@ -258,7 +264,21 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     }
     public string LayerDisplayText => $"Layer {EditorState.ActiveLayer}/{WorldVerticalSettings.LayersPerFloor - 1}";
     public string AbsoluteZDisplayText => $"Z {EditorState.ActiveAbsoluteZ}";
-    public string ViewportSummaryText => $"{_activeViewMode} · Snap Grid · Floor {EditorState.ActiveFloor} · Layer {EditorState.ActiveLayer}";
+    public string ViewportSummaryText => $"{_activeViewMode} · {ViewportVisualModeLabel} · Floor {EditorState.ActiveFloor} · Layer {EditorState.ActiveLayer}";
+
+    public string ViewportVisualModeLabel => EditorState.ViewportVisualMode == ViewportVisualMode.Presentation
+        ? "Presentation"
+        : "Technical";
+
+    public string ViewportPanelBackground => IsPresentationViewportVisualMode ? "#D8D0C2" : "#121519";
+    public string ViewportPanelBorderBrush => IsPresentationViewportVisualMode ? "#AFA694" : "#3B4252";
+    public string ViewportSurfaceBackground => IsPresentationViewportVisualMode ? "#E6DECF" : "#121519";
+    public string ViewportToolbarBackground => IsPresentationViewportVisualMode ? "#EAF5F0E6" : "#E5182028";
+    public string ViewportToolbarBorderBrush => IsPresentationViewportVisualMode ? "#B8AB95" : "#5A6B80";
+    public string ViewportToolbarTextBrush => IsPresentationViewportVisualMode ? "#667181" : "#9FB4CC";
+    public string ViewportToolbarControlBrush => IsPresentationViewportVisualMode ? "#3E4652" : "#D4DEE9";
+    public string ViewportToolbarSeparatorBrush => IsPresentationViewportVisualMode ? "#C4B8A6" : "#455366";
+    public string ViewportToolbarSubtleTextBrush => IsPresentationViewportVisualMode ? "#667181" : "#8EA2BA";
 
     public string StatusText
     {
@@ -835,6 +855,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             Objects = objects
         });
 
+        EditorState.ViewportVisualMode = ViewportVisualMode.Presentation;
         EditorState.StatusMessage = "Loaded demo factory scene";
         RaiseComputed();
     }
@@ -1270,6 +1291,18 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         RaiseComputed();
     }
 
+    private void SetViewportVisualMode(ViewportVisualMode visualMode)
+    {
+        if (EditorState.ViewportVisualMode == visualMode)
+        {
+            return;
+        }
+
+        EditorState.ViewportVisualMode = visualMode;
+        EditorState.StatusMessage = $"Viewport visual mode set to {ViewportVisualModeLabel}.";
+        RaiseComputed();
+    }
+
     private PartDefinition ResolvePartDefinition(string partId)
     {
         if (TryResolvePartDefinition(partId) is { } definition)
@@ -1551,6 +1584,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(IsAutoCadLikeSettingsActive));
         OnPropertyChanged(nameof(IsSoftwareViewportMode));
         OnPropertyChanged(nameof(IsOpenGlViewportMode));
+        OnPropertyChanged(nameof(IsPresentationViewportVisualMode));
+        OnPropertyChanged(nameof(IsTechnicalViewportVisualMode));
         OnPropertyChanged(nameof(IsExpertMode));
         OnPropertyChanged(nameof(IsSimpleMode));
         OnPropertyChanged(nameof(InteractionPreset));
@@ -1558,6 +1593,16 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(LayerDisplayText));
         OnPropertyChanged(nameof(AbsoluteZDisplayText));
         OnPropertyChanged(nameof(ViewportSummaryText));
+        OnPropertyChanged(nameof(ViewportVisualModeLabel));
+        OnPropertyChanged(nameof(ViewportPanelBackground));
+        OnPropertyChanged(nameof(ViewportPanelBorderBrush));
+        OnPropertyChanged(nameof(ViewportSurfaceBackground));
+        OnPropertyChanged(nameof(ViewportToolbarBackground));
+        OnPropertyChanged(nameof(ViewportToolbarBorderBrush));
+        OnPropertyChanged(nameof(ViewportToolbarTextBrush));
+        OnPropertyChanged(nameof(ViewportToolbarControlBrush));
+        OnPropertyChanged(nameof(ViewportToolbarSeparatorBrush));
+        OnPropertyChanged(nameof(ViewportToolbarSubtleTextBrush));
         OnPropertyChanged(nameof(StatusText));
         OnPropertyChanged(nameof(InspectorSelectedText));
         OnPropertyChanged(nameof(InspectorIdText));

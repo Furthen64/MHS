@@ -384,12 +384,12 @@
             <Border Grid.Column="1"
                     Grid.ColumnSpan="{Binding SceneViewportColumnSpan}"
                     Margin="8"
-                    Background="#121519"
-                    CornerRadius="4"
+                    Background="{Binding ViewportPanelBackground}"
+                    CornerRadius="8"
                     BorderThickness="1"
-                    BorderBrush="#3B4252">
+                    BorderBrush="{Binding ViewportPanelBorderBrush}">
                 <DockPanel>
-                    <Border DockPanel.Dock="Top" Background="#171C22" BorderBrush="#2D343F" BorderThickness="0,0,0,1" Padding="10,7">
+                    <Border DockPanel.Dock="Top" Background="#242830" BorderBrush="{Binding ViewportPanelBorderBrush}" BorderThickness="0,0,0,1" Padding="10,7">
                         <DockPanel LastChildFill="False">
                             <TextBlock DockPanel.Dock="Left"
                                        Text="Factory View"
@@ -403,7 +403,7 @@
                                        VerticalAlignment="Center" />
                         </DockPanel>
                     </Border>
-                    <Grid>
+                    <Grid Background="{Binding ViewportSurfaceBackground}">
                     <viewport:SoftwareCubeViewport x:Name="SoftwareViewport"
                                                    IsVisible="{Binding IsSoftwareViewportMode}"
                                                    EditorState="{Binding EditorState}"
@@ -417,32 +417,38 @@
                                 VerticalAlignment="Bottom"
                                 Margin="0,0,0,18"
                                 Padding="12,9"
-                                Background="#E5182028"
-                                BorderBrush="#5A6B80"
+                                Background="{Binding ViewportToolbarBackground}"
+                                BorderBrush="{Binding ViewportToolbarBorderBrush}"
                                 BorderThickness="1"
                                 CornerRadius="10"
                                 BoxShadow="0 8 24 0 #80000000">
                             <StackPanel Orientation="Horizontal" Spacing="14" VerticalAlignment="Center">
                                 <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
-                                    <TextBlock Text="Floor" Foreground="#9FB4CC" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" />
-                                    <RadioButton Content="0" GroupName="FloorSelect" IsChecked="{Binding IsFloor0Active}" Command="{Binding Floor0Command}" />
-                                    <RadioButton Content="1" GroupName="FloorSelect" IsChecked="{Binding IsFloor1Active}" Command="{Binding Floor1Command}" />
-                                    <RadioButton Content="2" GroupName="FloorSelect" IsChecked="{Binding IsFloor2Active}" Command="{Binding Floor2Command}" />
+                                    <TextBlock Text="Floor" Foreground="{Binding ViewportToolbarTextBrush}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                    <RadioButton Content="0" Foreground="{Binding ViewportToolbarControlBrush}" GroupName="FloorSelect" IsChecked="{Binding IsFloor0Active}" Command="{Binding Floor0Command}" />
+                                    <RadioButton Content="1" Foreground="{Binding ViewportToolbarControlBrush}" GroupName="FloorSelect" IsChecked="{Binding IsFloor1Active}" Command="{Binding Floor1Command}" />
+                                    <RadioButton Content="2" Foreground="{Binding ViewportToolbarControlBrush}" GroupName="FloorSelect" IsChecked="{Binding IsFloor2Active}" Command="{Binding Floor2Command}" />
                                 </StackPanel>
-                                <Border Width="1" Background="#455366" />
+                                <Border Width="1" Background="{Binding ViewportToolbarSeparatorBrush}" />
                                 <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
-                                    <TextBlock Text="{Binding LayerDisplayText}" Foreground="#9FB4CC" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" />
-                                    <RadioButton Content="0" GroupName="LayerSelect" IsChecked="{Binding IsLayer0Active}" Command="{Binding Layer0Command}" />
-                                    <RadioButton Content="1" GroupName="LayerSelect" IsChecked="{Binding IsLayer1Active}" Command="{Binding Layer1Command}" />
-                                    <RadioButton Content="2" GroupName="LayerSelect" IsChecked="{Binding IsLayer2Active}" Command="{Binding Layer2Command}" />
+                                    <TextBlock Text="{Binding LayerDisplayText}" Foreground="{Binding ViewportToolbarTextBrush}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                    <RadioButton Content="0" Foreground="{Binding ViewportToolbarControlBrush}" GroupName="LayerSelect" IsChecked="{Binding IsLayer0Active}" Command="{Binding Layer0Command}" />
+                                    <RadioButton Content="1" Foreground="{Binding ViewportToolbarControlBrush}" GroupName="LayerSelect" IsChecked="{Binding IsLayer1Active}" Command="{Binding Layer1Command}" />
+                                    <RadioButton Content="2" Foreground="{Binding ViewportToolbarControlBrush}" GroupName="LayerSelect" IsChecked="{Binding IsLayer2Active}" Command="{Binding Layer2Command}" />
                                 </StackPanel>
-                                <Border Width="1" Background="#455366" />
+                                <Border Width="1" Background="{Binding ViewportToolbarSeparatorBrush}" />
+                                <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+                                    <TextBlock Text="Style" Foreground="{Binding ViewportToolbarTextBrush}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                    <RadioButton Content="Presentation" Foreground="{Binding ViewportToolbarControlBrush}" GroupName="ViewportVisualMode" IsChecked="{Binding IsPresentationViewportVisualMode}" Command="{Binding UsePresentationViewportModeCommand}" />
+                                    <RadioButton Content="Technical" Foreground="{Binding ViewportToolbarControlBrush}" GroupName="ViewportVisualMode" IsChecked="{Binding IsTechnicalViewportVisualMode}" Command="{Binding UseTechnicalViewportModeCommand}" />
+                                </StackPanel>
+                                <Border Width="1" Background="{Binding ViewportToolbarSeparatorBrush}" />
                                 <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                    <CheckBox Content="Show Grid" IsChecked="{Binding ShowGrid, Mode=TwoWay}" Foreground="#D4DEE9" />
-                                    <CheckBox Content="Show Bounds" IsChecked="{Binding ShowBounds, Mode=TwoWay}" Foreground="#D4DEE9" />
-                                    <CheckBox Content="Show Flow" IsChecked="{Binding ShowFlow, Mode=TwoWay}" Foreground="#D4DEE9" />
+                                    <CheckBox Content="Show Grid" IsChecked="{Binding ShowGrid, Mode=TwoWay}" Foreground="{Binding ViewportToolbarControlBrush}" />
+                                    <CheckBox Content="Show Bounds" IsChecked="{Binding ShowBounds, Mode=TwoWay}" Foreground="{Binding ViewportToolbarControlBrush}" />
+                                    <CheckBox Content="Show Flow" IsChecked="{Binding ShowFlow, Mode=TwoWay}" Foreground="{Binding ViewportToolbarControlBrush}" />
                                 </StackPanel>
-                                <TextBlock Text="{Binding AbsoluteZDisplayText}" Foreground="#8EA2BA" FontSize="11" VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding AbsoluteZDisplayText}" Foreground="{Binding ViewportToolbarSubtleTextBrush}" FontSize="11" VerticalAlignment="Center" />
                             </StackPanel>
                         </Border>
 
