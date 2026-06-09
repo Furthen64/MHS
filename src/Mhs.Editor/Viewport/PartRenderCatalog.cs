@@ -22,7 +22,13 @@ public enum PartRenderStyle
     ConveyorStraight,
     ConveyorCurve,
     OpenContainer,
+    Hopper,
+    Chute,
+    MaterialSource,
+    MaterialReceiver,
     SupportFrame,
+    Platform,
+    Fence,
     VerticalLift,
     SpiralLift
 }
@@ -61,8 +67,8 @@ public static class PartRenderCatalog
             PartId = "hopper",
             DisplayName = "Hopper",
             BaseColor = new Rgba(0.94f, 0.78f, 0.35f, 1f),
-            RenderStyle = PartRenderStyle.OpenContainer,
-            DetailColor = new Rgba(0.56f, 0.38f, 0.18f, 1f),
+            RenderStyle = PartRenderStyle.Hopper,
+            DetailColor = new Rgba(0.68f, 0.48f, 0.20f, 1f),
             ShowFacingMarker = true,
             FacingMarkerColor = new Rgba(1f, 0.43f, 0.16f, 1f)
         },
@@ -71,8 +77,8 @@ public static class PartRenderCatalog
             PartId = "tall_hopper",
             DisplayName = "Tall Hopper",
             BaseColor = new Rgba(0.84f, 0.52f, 0.26f, 1f),
-            RenderStyle = PartRenderStyle.OpenContainer,
-            DetailColor = new Rgba(0.50f, 0.31f, 0.16f, 1f),
+            RenderStyle = PartRenderStyle.Hopper,
+            DetailColor = new Rgba(0.55f, 0.35f, 0.14f, 1f),
             ShowFacingMarker = true,
             FacingMarkerColor = new Rgba(1f, 0.43f, 0.16f, 1f)
         },
@@ -82,7 +88,7 @@ public static class PartRenderCatalog
             DisplayName = "Bin",
             BaseColor = new Rgba(0.35f, 0.59f, 0.94f, 1f),
             RenderStyle = PartRenderStyle.OpenContainer,
-            DetailColor = new Rgba(0.36f, 0.28f, 0.16f, 1f),
+            DetailColor = new Rgba(0.34f, 0.28f, 0.18f, 1f),
             ShowFacingMarker = false,
             FacingMarkerColor = new Rgba(0.94f, 0.94f, 0.94f, 1f)
         },
@@ -148,7 +154,9 @@ public static class PartRenderCatalog
         {
             PartId = "chute",
             DisplayName = "Chute",
-            BaseColor = new Rgba(0.59f, 0.59f, 0.59f, 1f),
+            BaseColor = new Rgba(0.70f, 0.66f, 0.56f, 1f),
+            RenderStyle = PartRenderStyle.Chute,
+            DetailColor = new Rgba(0.34f, 0.34f, 0.32f, 1f),
             ShowFacingMarker = true,
             FacingMarkerColor = new Rgba(0.70f, 0.86f, 1f, 1f)
         },
@@ -156,7 +164,9 @@ public static class PartRenderCatalog
         {
             PartId = "mtrlsrc",
             DisplayName = "MtrlSrc",
-            BaseColor = new Rgba(0.78f, 0.42f, 0.24f, 1f),
+            BaseColor = new Rgba(0.82f, 0.46f, 0.25f, 1f),
+            RenderStyle = PartRenderStyle.MaterialSource,
+            DetailColor = new Rgba(0.95f, 0.70f, 0.30f, 1f),
             ShowFacingMarker = true,
             FacingMarkerColor = new Rgba(1f, 0.90f, 0.24f, 1f)
         },
@@ -164,7 +174,9 @@ public static class PartRenderCatalog
         {
             PartId = "mtrlrecv",
             DisplayName = "MtrlRecv",
-            BaseColor = new Rgba(0.31f, 0.70f, 0.57f, 1f),
+            BaseColor = new Rgba(0.24f, 0.63f, 0.57f, 1f),
+            RenderStyle = PartRenderStyle.MaterialReceiver,
+            DetailColor = new Rgba(0.33f, 0.27f, 0.17f, 1f),
             ShowFacingMarker = true,
             FacingMarkerColor = new Rgba(0.87f, 0.98f, 1f, 1f),
             FlowMarkerKind = FlowMarkerKind.Incoming
@@ -182,7 +194,9 @@ public static class PartRenderCatalog
         {
             PartId = "drop_chute",
             DisplayName = "Drop Chute",
-            BaseColor = new Rgba(0.53f, 0.53f, 0.53f, 1f),
+            BaseColor = new Rgba(0.58f, 0.58f, 0.55f, 1f),
+            RenderStyle = PartRenderStyle.Chute,
+            DetailColor = new Rgba(0.30f, 0.31f, 0.32f, 1f),
             ShowFacingMarker = true,
             FacingMarkerColor = new Rgba(0.7f, 0.86f, 1f, 1f)
         },
@@ -216,7 +230,9 @@ public static class PartRenderCatalog
         {
             PartId = "platform",
             DisplayName = "Platform",
-            BaseColor = new Rgba(0.54f, 0.51f, 0.39f, 1f),
+            BaseColor = new Rgba(0.49f, 0.48f, 0.42f, 1f),
+            RenderStyle = PartRenderStyle.Platform,
+            DetailColor = new Rgba(0.93f, 0.78f, 0.24f, 1f),
             ShowFacingMarker = false,
             FacingMarkerColor = new Rgba(0.94f, 0.94f, 0.94f, 1f)
         },
@@ -232,7 +248,9 @@ public static class PartRenderCatalog
         {
             PartId = "fence",
             DisplayName = "Fence",
-            BaseColor = new Rgba(0.52f, 0.48f, 0.38f, 1f),
+            BaseColor = new Rgba(0.64f, 0.58f, 0.42f, 1f),
+            RenderStyle = PartRenderStyle.Fence,
+            DetailColor = new Rgba(0.94f, 0.82f, 0.34f, 1f),
             ShowFacingMarker = false,
             FacingMarkerColor = new Rgba(0.94f, 0.94f, 0.94f, 1f)
         },
