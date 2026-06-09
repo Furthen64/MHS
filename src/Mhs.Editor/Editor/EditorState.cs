@@ -37,7 +37,7 @@ public sealed class EditorState : INotifyPropertyChanged
     private string _openGlBackendInfo = "N/A";
     private string _statusMessage = "Ready";
     private ConveyorRouteDraft? _activeConveyorRoute;
-    private bool _showConveyorDebug = true;
+    private bool _showConveyorDebug;
     private bool _showGrid = true;
     private bool _showBounds = true;
     private bool _showFlow = true;
