@@ -65,6 +65,8 @@ public static class MaterialCatalog
 
     public static IReadOnlyList<string> AvailableMaterialIds => MaterialIds;
 
+    public static IReadOnlyList<MaterialDefinition> AvailableMaterials => Materials;
+
     public static MaterialDefinition Resolve(string? materialId)
     {
         foreach (var material in Materials)

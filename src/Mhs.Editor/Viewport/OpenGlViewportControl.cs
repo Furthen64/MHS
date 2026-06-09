@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.ComponentModel;
+using System.Globalization;
 using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
@@ -71,6 +72,7 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
     {
         context.FillRectangle(Brushes.Transparent, Bounds);
         base.Render(context);
+        DrawViewCubeOverlay(context);
     }
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
@@ -2324,6 +2326,81 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
         var startY = Project(x, position.Y + 0.12, z, state);
         var endY = Project(x, position.Y + effectiveSize.DepthY - 0.12, z, state);
         _renderer.AddLine(startY, endY, markerColor, Math.Min(opacity + 0.22, 1.0));
+    }
+
+    private void DrawViewCubeOverlay(DrawingContext context)
+    {
+        if (Bounds.Width < 160 || Bounds.Height < 140)
+        {
+            return;
+        }
+
+        var cubeSize = 92.0;
+        var origin = new Point(Bounds.Width - cubeSize - 18, Bounds.Height - cubeSize - 18);
+        var panelRect = new Rect(origin.X - 10, origin.Y - 10, cubeSize + 20, cubeSize + 20);
+        var isPresentation = EditorState?.ViewportVisualMode == ViewportVisualMode.Presentation;
+        var panelBrush = new SolidColorBrush(isPresentation
+            ? Color.FromArgb(218, 246, 241, 232)
+            : Color.FromArgb(218, 18, 24, 32));
+        var borderPen = new Pen(new SolidColorBrush(isPresentation
+            ? Color.FromRgb(177, 165, 145)
+            : Color.FromRgb(78, 95, 116)), 1);
+        context.DrawRectangle(panelBrush, borderPen, new RoundedRect(panelRect, 12));
+
+        var center = new Point(origin.X + 44, origin.Y + 50);
+        var top = new Point(center.X, center.Y - 33);
+        var left = new Point(center.X - 34, center.Y + 10);
+        var right = new Point(center.X + 34, center.Y + 10);
+        var bottom = new Point(center.X, center.Y + 34);
+
+        var upBrush = new SolidColorBrush(Color.FromRgb(105, 168, 229));
+        var leftBrush = new SolidColorBrush(Color.FromRgb(236, 201, 91));
+        var frontBrush = new SolidColorBrush(Color.FromRgb(112, 192, 102));
+        var edgePen = new Pen(new SolidColorBrush(Color.FromArgb(180, 255, 255, 255)), 1);
+
+        context.DrawGeometry(leftBrush, edgePen, BuildPolygon(center, left, bottom, new Point(center.X - 2, center.Y + 20)));
+        context.DrawGeometry(frontBrush, edgePen, BuildPolygon(center, right, bottom, new Point(center.X + 2, center.Y + 20)));
+        context.DrawGeometry(upBrush, edgePen, BuildPolygon(center, left, top, right));
+
+        var axisPenX = new Pen(new SolidColorBrush(Color.FromRgb(238, 99, 82)), 2);
+        var axisPenY = new Pen(new SolidColorBrush(Color.FromRgb(112, 192, 102)), 2);
+        var axisPenZ = new Pen(new SolidColorBrush(Color.FromRgb(105, 168, 229)), 2);
+        context.DrawLine(axisPenX, new Point(origin.X + 44, origin.Y + 86), new Point(origin.X + 72, origin.Y + 86));
+        context.DrawLine(axisPenY, new Point(origin.X + 44, origin.Y + 86), new Point(origin.X + 24, origin.Y + 72));
+        context.DrawLine(axisPenZ, new Point(origin.X + 44, origin.Y + 86), new Point(origin.X + 44, origin.Y + 58));
+
+        DrawOverlayLabel(context, "Up", new Point(origin.X + 35, origin.Y + 8), Brushes.White);
+        DrawOverlayLabel(context, "Left", new Point(origin.X + 5, origin.Y + 54), Brushes.White);
+        DrawOverlayLabel(context, "Front", new Point(origin.X + 50, origin.Y + 54), Brushes.White);
+    }
+
+    private static StreamGeometry BuildPolygon(params Point[] points)
+    {
+        var geometry = new StreamGeometry();
+        using (var ctx = geometry.Open())
+        {
+            ctx.BeginFigure(points[0], isFilled: true);
+            for (var i = 1; i < points.Length; i++)
+            {
+                ctx.LineTo(points[i]);
+            }
+
+            ctx.EndFigure(isClosed: true);
+        }
+
+        return geometry;
+    }
+
+    private static void DrawOverlayLabel(DrawingContext context, string text, Point point, IBrush brush)
+    {
+        var formatted = new FormattedText(
+            text,
+            CultureInfo.CurrentCulture,
+            FlowDirection.LeftToRight,
+            Typeface.Default,
+            10,
+            brush);
+        context.DrawText(formatted, point);
     }
 
     private static bool CanStartPan(PointerPointProperties pointerProperties, EditorState? state)
