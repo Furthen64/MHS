@@ -694,12 +694,14 @@ public sealed class SoftwareCubeViewport : Control
         {
             DrawConveyorCellSw(context, cell, committedColor, 0.55, state);
         }
+        DrawConveyorStraightRunOverlaysSw(context, committedCells, 0.55, state, isSelected: false);
 
         var previewColor = route.PreviewIsValid ? Color.FromRgb(70, 190, 90) : Color.FromRgb(230, 90, 90);
         foreach (var cell in previewCells)
         {
             DrawConveyorCellSw(context, cell, previewColor, 0.45, state);
         }
+        DrawConveyorStraightRunOverlaysSw(context, previewCells, 0.45, state, isSelected: false);
 
         foreach (var anchor in route.Anchors)
         {
@@ -744,7 +746,106 @@ public sealed class SoftwareCubeViewport : Control
         {
             DrawConveyorCellSw(context, cell, color, opacity, state, isSelected, isHovered);
         }
+
+        DrawConveyorStraightRunOverlaysSw(context, cells, opacity, state, isSelected);
     }
+
+    private void DrawConveyorStraightRunOverlaysSw(
+        DrawingContext context,
+        IReadOnlyList<ConveyorVisualCell> cells,
+        double opacity,
+        EditorState state,
+        bool isSelected)
+    {
+        const double railH = 0.18;
+        const double railW = 0.09;
+
+        var railTop = Color.FromRgb(196, 203, 212);
+        var railRight = Color.FromRgb(142, 151, 163);
+        var railFront = Color.FromRgb(120, 129, 142);
+        if (isSelected)
+        {
+            railTop = TintColor(Color.FromRgb(170, 210, 255), railTop, 0.20);
+            railRight = TintColor(Color.FromRgb(170, 210, 255), railRight, 0.16);
+            railFront = TintColor(Color.FromRgb(170, 210, 255), railFront, 0.16);
+        }
+
+        for (var i = 0; i < cells.Count;)
+        {
+            var first = cells[i];
+            if (!IsStraightRunOverlayCell(first))
+            {
+                i++;
+                continue;
+            }
+
+            var isXFlow = first.MainFlowDirection is PortDirection.PositiveX or PortDirection.NegativeX;
+            var end = i + 1;
+            while (end < cells.Count && CanContinueStraightRunOverlay(cells[end - 1], cells[end], isXFlow))
+            {
+                end++;
+            }
+
+            if (end - i > 1)
+            {
+                DrawConveyorStraightRunRailOverlaySw(context, cells, i, end, isXFlow, railW, railH, railTop, railRight, railFront, opacity, state);
+            }
+
+            i = end;
+        }
+    }
+
+    private void DrawConveyorStraightRunRailOverlaySw(
+        DrawingContext context,
+        IReadOnlyList<ConveyorVisualCell> cells,
+        int startIndex,
+        int endIndex,
+        bool isXFlow,
+        double railW,
+        double railH,
+        Color railTop,
+        Color railRight,
+        Color railFront,
+        double opacity,
+        EditorState state)
+    {
+        var z0 = cells[startIndex].Position.Z;
+        if (isXFlow)
+        {
+            var x0 = cells.Skip(startIndex).Take(endIndex - startIndex).Min(cell => cell.Position.X);
+            var x1 = cells.Skip(startIndex).Take(endIndex - startIndex).Max(cell => cell.Position.X) + 1.0;
+            var y0 = cells[startIndex].Position.Y;
+            var y1 = y0 + 1.0;
+            DrawConveyorBarSw(context, x0, x1, y0, y0 + railW, z0, z0 + railH, railTop, railRight, railFront, opacity, state);
+            DrawConveyorBarSw(context, x0, x1, y1 - railW, y1, z0, z0 + railH, railTop, railRight, railFront, opacity, state);
+            return;
+        }
+
+        var y0Run = cells.Skip(startIndex).Take(endIndex - startIndex).Min(cell => cell.Position.Y);
+        var y1Run = cells.Skip(startIndex).Take(endIndex - startIndex).Max(cell => cell.Position.Y) + 1.0;
+        var x0Run = cells[startIndex].Position.X;
+        var x1Run = x0Run + 1.0;
+        DrawConveyorBarSw(context, x0Run, x0Run + railW, y0Run, y1Run, z0, z0 + railH, railTop, railRight, railFront, opacity, state);
+        DrawConveyorBarSw(context, x1Run - railW, x1Run, y0Run, y1Run, z0, z0 + railH, railTop, railRight, railFront, opacity, state);
+    }
+
+    private static bool CanContinueStraightRunOverlay(ConveyorVisualCell previous, ConveyorVisualCell next, bool isXFlow)
+    {
+        if (!IsStraightRunOverlayCell(next)
+            || previous.Position.Z != next.Position.Z
+            || (previous.MainFlowDirection is PortDirection.PositiveX or PortDirection.NegativeX) != isXFlow
+            || (next.MainFlowDirection is PortDirection.PositiveX or PortDirection.NegativeX) != isXFlow)
+        {
+            return false;
+        }
+
+        return isXFlow
+            ? previous.Position.Y == next.Position.Y && Math.Abs(previous.Position.X - next.Position.X) == 1
+            : previous.Position.X == next.Position.X && Math.Abs(previous.Position.Y - next.Position.Y) == 1;
+    }
+
+    private static bool IsStraightRunOverlayCell(ConveyorVisualCell cell)
+        => cell.Kind is ConveyorVisualCellKind.Straight or ConveyorVisualCellKind.Endpoint;
 
     private void DrawConveyorCellSw(
         DrawingContext context,
@@ -758,6 +859,7 @@ public sealed class SoftwareCubeViewport : Control
         const double beltH = 0.14;
         const double railH = 0.18;
         const double railW = 0.09;
+        const double seamOverlap = 0.018;
 
         var x0 = cell.Position.X;
         var x1 = cell.Position.X + 1;
@@ -789,28 +891,52 @@ public sealed class SoftwareCubeViewport : Control
 
         var isXFlow = cell.MainFlowDirection is PortDirection.PositiveX or PortDirection.NegativeX;
 
+        var hasNegativeXConnection = cell.EntryDirection == PortDirection.NegativeX || cell.ExitDirection == PortDirection.NegativeX;
+        var hasPositiveXConnection = cell.EntryDirection == PortDirection.PositiveX || cell.ExitDirection == PortDirection.PositiveX;
+        var hasNegativeYConnection = cell.EntryDirection == PortDirection.NegativeY || cell.ExitDirection == PortDirection.NegativeY;
+        var hasPositiveYConnection = cell.EntryDirection == PortDirection.PositiveY || cell.ExitDirection == PortDirection.PositiveY;
+
+        var connectedX0 = hasNegativeXConnection ? x0 - seamOverlap : x0;
+        var connectedX1 = hasPositiveXConnection ? x1 + seamOverlap : x1;
+        var connectedY0 = hasNegativeYConnection ? y0 - seamOverlap : y0;
+        var connectedY1 = hasPositiveYConnection ? y1 + seamOverlap : y1;
+
         if (cell.Kind is ConveyorVisualCellKind.Straight or ConveyorVisualCellKind.Endpoint)
         {
             if (isXFlow)
             {
-                DrawConveyorBarSw(context, x0, x1, y0 + railW, y1 - railW, z0, z0 + beltH, beltTop, beltRight, beltFront, opacity, state);
-                DrawConveyorBarSw(context, x0, x1, y0, y0 + railW, z0, z0 + railH, railTop, railRight, railFront, opacity, state);
-                DrawConveyorBarSw(context, x0, x1, y1 - railW, y1, z0, z0 + railH, railTop, railRight, railFront, opacity, state);
+                DrawConveyorBarSw(context, connectedX0, connectedX1, y0 + railW, y1 - railW, z0, z0 + beltH, beltTop, beltRight, beltFront, opacity, state);
+                DrawConveyorBarSw(context, connectedX0, connectedX1, y0, y0 + railW, z0, z0 + railH, railTop, railRight, railFront, opacity, state);
+                DrawConveyorBarSw(context, connectedX0, connectedX1, y1 - railW, y1, z0, z0 + railH, railTop, railRight, railFront, opacity, state);
             }
             else
             {
-                DrawConveyorBarSw(context, x0 + railW, x1 - railW, y0, y1, z0, z0 + beltH, beltTop, beltRight, beltFront, opacity, state);
-                DrawConveyorBarSw(context, x0, x0 + railW, y0, y1, z0, z0 + railH, railTop, railRight, railFront, opacity, state);
-                DrawConveyorBarSw(context, x1 - railW, x1, y0, y1, z0, z0 + railH, railTop, railRight, railFront, opacity, state);
+                DrawConveyorBarSw(context, x0 + railW, x1 - railW, connectedY0, connectedY1, z0, z0 + beltH, beltTop, beltRight, beltFront, opacity, state);
+                DrawConveyorBarSw(context, x0, x0 + railW, connectedY0, connectedY1, z0, z0 + railH, railTop, railRight, railFront, opacity, state);
+                DrawConveyorBarSw(context, x1 - railW, x1, connectedY0, connectedY1, z0, z0 + railH, railTop, railRight, railFront, opacity, state);
             }
         }
         else
         {
-            DrawConveyorBarSw(context, x0 + railW, x1 - railW, y0 + railW, y1 - railW, z0, z0 + beltH, beltTop, beltRight, beltFront, opacity, state);
-            DrawConveyorBarSw(context, x0,          x1,          y0,          y0 + railW,  z0, z0 + railH, railTop, railRight, railFront, opacity, state);
-            DrawConveyorBarSw(context, x0,          x1,          y1 - railW,  y1,          z0, z0 + railH, railTop, railRight, railFront, opacity, state);
-            DrawConveyorBarSw(context, x0,          x0 + railW,  y0 + railW,  y1 - railW,  z0, z0 + railH, railTop, railRight, railFront, opacity, state);
-            DrawConveyorBarSw(context, x1 - railW,  x1,          y0 + railW,  y1 - railW,  z0, z0 + railH, railTop, railRight, railFront, opacity, state);
+            DrawConveyorCornerCellSw(
+                context,
+                cell,
+                x0,
+                x1,
+                y0,
+                y1,
+                z0,
+                railW,
+                beltH,
+                railH,
+                beltTop,
+                beltRight,
+                beltFront,
+                railTop,
+                railRight,
+                railFront,
+                opacity,
+                state);
         }
 
         DrawConveyorBeltMotionSw(context, cell, opacity, state);
@@ -843,6 +969,101 @@ public sealed class SoftwareCubeViewport : Control
         if (state.ShowFlow)
         {
             DrawConveyorCellFlowSw(context, cell, opacity, state);
+        }
+    }
+
+    private void DrawConveyorCornerCellSw(
+        DrawingContext context,
+        ConveyorVisualCell cell,
+        double x0,
+        double x1,
+        double y0,
+        double y1,
+        double z0,
+        double railW,
+        double beltH,
+        double railH,
+        Color beltTop,
+        Color beltRight,
+        Color beltFront,
+        Color railTop,
+        Color railRight,
+        Color railFront,
+        double opacity,
+        EditorState state)
+    {
+        DrawConveyorCornerBeltLegSw(context, cell.EntryDirection, x0, x1, y0, y1, z0, railW, beltH, beltTop, beltRight, beltFront, opacity, state);
+        DrawConveyorCornerBeltLegSw(context, cell.ExitDirection, x0, x1, y0, y1, z0, railW, beltH, beltTop, beltRight, beltFront, opacity, state);
+
+        var connectedSides = new HashSet<PortDirection>();
+        if (cell.EntryDirection is { } entryDirection)
+        {
+            connectedSides.Add(entryDirection);
+        }
+
+        if (cell.ExitDirection is { } exitDirection)
+        {
+            connectedSides.Add(exitDirection);
+        }
+
+        if (!connectedSides.Contains(PortDirection.NegativeY))
+        {
+            DrawConveyorBarSw(context, x0, x1, y0, y0 + railW, z0, z0 + railH, railTop, railRight, railFront, opacity, state);
+        }
+
+        if (!connectedSides.Contains(PortDirection.PositiveY))
+        {
+            DrawConveyorBarSw(context, x0, x1, y1 - railW, y1, z0, z0 + railH, railTop, railRight, railFront, opacity, state);
+        }
+
+        if (!connectedSides.Contains(PortDirection.NegativeX))
+        {
+            DrawConveyorBarSw(context, x0, x0 + railW, y0 + railW, y1 - railW, z0, z0 + railH, railTop, railRight, railFront, opacity, state);
+        }
+
+        if (!connectedSides.Contains(PortDirection.PositiveX))
+        {
+            DrawConveyorBarSw(context, x1 - railW, x1, y0 + railW, y1 - railW, z0, z0 + railH, railTop, railRight, railFront, opacity, state);
+        }
+    }
+
+    private void DrawConveyorCornerBeltLegSw(
+        DrawingContext context,
+        PortDirection? direction,
+        double x0,
+        double x1,
+        double y0,
+        double y1,
+        double z0,
+        double railW,
+        double beltH,
+        Color beltTop,
+        Color beltRight,
+        Color beltFront,
+        double opacity,
+        EditorState state)
+    {
+        if (direction is null)
+        {
+            return;
+        }
+
+        var cx = (x0 + x1) * 0.5;
+        var cy = (y0 + y1) * 0.5;
+        switch (direction)
+        {
+            case PortDirection.NegativeX:
+                DrawConveyorTopQuadSw(context, x0, cx, y0 + railW, y1 - railW, z0 + beltH, beltTop, opacity, state);
+                break;
+            case PortDirection.PositiveX:
+                DrawConveyorTopQuadSw(context, cx, x1, y0 + railW, y1 - railW, z0 + beltH, beltTop, opacity, state);
+                break;
+            case PortDirection.NegativeY:
+                DrawConveyorTopQuadSw(context, x0 + railW, x1 - railW, y0, cy, z0 + beltH, beltTop, opacity, state);
+                break;
+            case PortDirection.PositiveY:
+                DrawConveyorTopQuadSw(context, x0 + railW, x1 - railW, cy, y1, z0 + beltH, beltTop, opacity, state);
+                break;
         }
     }
 
@@ -905,18 +1126,43 @@ public sealed class SoftwareCubeViewport : Control
         var directionSign = flowDirection is PortDirection.PositiveX or PortDirection.PositiveY ? 1.0 : -1.0;
         var phase = GetConveyorAnimationPhase(cell.Position, 0.95, directionSign);
 
+        var travelMinX = minX;
+        var travelMaxX = maxX;
+        var travelMinY = minY;
+        var travelMaxY = maxY;
+        if (cell.Kind == ConveyorVisualCellKind.Corner && cell.ExitDirection is { } exitDirection)
+        {
+            var centerX = cell.Position.X + 0.5;
+            var centerY = cell.Position.Y + 0.5;
+            switch (exitDirection)
+            {
+                case PortDirection.NegativeX:
+                    travelMaxX = centerX;
+                    break;
+                case PortDirection.PositiveX:
+                    travelMinX = centerX;
+                    break;
+                case PortDirection.NegativeY:
+                    travelMaxY = centerY;
+                    break;
+                case PortDirection.PositiveY:
+                    travelMinY = centerY;
+                    break;
+            }
+        }
+
         const double stripeHalfWidth = 0.027;
         for (var i = -1; i <= 2; i++)
         {
             var t = Wrap01(phase + i * 0.31);
             if (alongX)
             {
-                var cx = Lerp(minX, maxX, t);
+                var cx = Lerp(travelMinX, travelMaxX, t);
                 DrawConveyorTopQuadSw(context, cx - stripeHalfWidth, cx + stripeHalfWidth, minY, maxY, z, stripeColor, stripeOpacity, state);
             }
             else
             {
-                var cy = Lerp(minY, maxY, t);
+                var cy = Lerp(travelMinY, travelMaxY, t);
                 DrawConveyorTopQuadSw(context, minX, maxX, cy - stripeHalfWidth, cy + stripeHalfWidth, z, stripeColor, stripeOpacity, state);
             }
         }
