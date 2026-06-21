@@ -20,6 +20,9 @@ namespace Mhs.Editor.Viewport;
 
 public sealed class OpenGlViewportControl : OpenGlControlBase
 {
+    private const double CommittedConveyorRoutePreviewOpacity = 1.0;
+    private const double PendingConveyorRoutePreviewOpacity = 1.0;
+
     public static readonly StyledProperty<EditorState?> EditorStateProperty =
         AvaloniaProperty.Register<OpenGlViewportControl, EditorState?>(nameof(EditorState));
     public static readonly StyledProperty<ViewportInteractionPreset> InteractionPresetProperty =
@@ -31,9 +34,9 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
     private string? _initError;
     private bool _isPanning;
     private Point _lastPanPoint;
-    private readonly DispatcherTimer _blinkTimer = new()
+    private readonly DispatcherTimer _animationFrameTimer = new()
     {
-        Interval = TimeSpan.FromMilliseconds(250)
+        Interval = TimeSpan.FromMilliseconds(16)
     };
 
     static OpenGlViewportControl()
@@ -52,8 +55,8 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
         AddHandler(PointerReleasedEvent, OnPointerReleased, RoutingStrategies.Tunnel | RoutingStrategies.Bubble, handledEventsToo: true);
         AddHandler(PointerExitedEvent, OnPointerExited, RoutingStrategies.Tunnel | RoutingStrategies.Bubble, handledEventsToo: true);
         AddHandler(PointerWheelChangedEvent, OnPointerWheelChanged, RoutingStrategies.Tunnel | RoutingStrategies.Bubble, handledEventsToo: true);
-        _blinkTimer.Tick += OnBlinkTick;
-        _blinkTimer.Start();
+        _animationFrameTimer.Tick += OnAnimationFrameTick;
+        _animationFrameTimer.Start();
     }
 
     public EditorState? EditorState
@@ -304,16 +307,22 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
         RequestNextFrameRendering();
     }
 
-    private void OnBlinkTick(object? sender, EventArgs e)
+    private void OnAnimationFrameTick(object? sender, EventArgs e)
     {
-        if (EditorState is { } state
-            && (state.Scene.MaterialFlow.GetTokens().Count > 0
-                || state.Scene.Objects.Any(static obj => obj.IsConveyor)
-                || state.ActiveConveyorRoute is not null))
+        if (ShouldRenderAnimationFrame(EditorState))
         {
             RequestNextFrameRendering();
         }
     }
+
+    private bool ShouldRenderAnimationFrame(EditorState? state)
+        => IsVisible
+            && Bounds.Width >= 2
+            && Bounds.Height >= 2
+            && state is not null
+            && (state.Scene.MaterialFlow.GetTokens().Count > 0
+                || state.Scene.Objects.Any(static obj => obj.IsConveyor)
+                || state.ActiveConveyorRoute is not null);
 
     private void OnPointerMoved(object? sender, PointerEventArgs e)
     {
@@ -1452,6 +1461,7 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
         }
 
         const double beltH = 0.14;
+        const double deckH = 0.06;
         const double railH = 0.18;
         const double railW = 0.09;
 
@@ -1464,6 +1474,9 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
         var beltTop = Color.FromRgb(44, 47, 54);
         var beltRight = Color.FromRgb(33, 36, 43);
         var beltFront = Color.FromRgb(29, 32, 39);
+        var deckTop = Color.FromRgb(58, 64, 74);
+        var deckRight = Color.FromRgb(46, 52, 62);
+        var deckFront = Color.FromRgb(39, 45, 55);
         var railTop = Color.FromRgb(196, 203, 212);
         var railRight = Color.FromRgb(142, 151, 163);
         var railFront = Color.FromRgb(120, 129, 142);
@@ -1472,6 +1485,9 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
             beltTop = TintColor(Color.FromRgb(120, 180, 255), beltTop, 0.22);
             beltRight = TintColor(Color.FromRgb(120, 180, 255), beltRight, 0.18);
             beltFront = TintColor(Color.FromRgb(120, 180, 255), beltFront, 0.18);
+            deckTop = TintColor(Color.FromRgb(120, 180, 255), deckTop, 0.16);
+            deckRight = TintColor(Color.FromRgb(120, 180, 255), deckRight, 0.14);
+            deckFront = TintColor(Color.FromRgb(120, 180, 255), deckFront, 0.14);
             railTop = TintColor(Color.FromRgb(170, 210, 255), railTop, 0.20);
             railRight = TintColor(Color.FromRgb(170, 210, 255), railRight, 0.16);
             railFront = TintColor(Color.FromRgb(170, 210, 255), railFront, 0.16);
@@ -1481,9 +1497,14 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
             beltTop = TintColor(Color.FromRgb(235, 220, 130), beltTop, 0.14);
             beltRight = TintColor(Color.FromRgb(235, 220, 130), beltRight, 0.10);
             beltFront = TintColor(Color.FromRgb(235, 220, 130), beltFront, 0.10);
+            deckTop = TintColor(Color.FromRgb(235, 220, 130), deckTop, 0.10);
+            deckRight = TintColor(Color.FromRgb(235, 220, 130), deckRight, 0.08);
+            deckFront = TintColor(Color.FromRgb(235, 220, 130), deckFront, 0.08);
         }
 
         var isXFlow = cell.MainFlowDirection is PortDirection.PositiveX or PortDirection.NegativeX;
+
+        DrawConveyorBar(x0, x1, y0, y1, z0, z0 + deckH, deckTop, deckRight, deckFront, opacity, state);
 
         if (cell.Kind is ConveyorVisualCellKind.Straight or ConveyorVisualCellKind.Endpoint)
         {
@@ -1557,8 +1578,8 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
         var bC = Project(x1, y1, z0, state);
         var bD = Project(x0, y1, z0, state);
         _renderer.AddFilledQuad(tA, tB, tC, tD, topColor, opacity);
-        _renderer.AddFilledQuad(tB, bB, bC, tC, rightColor, opacity * 0.80);
-        _renderer.AddFilledQuad(tD, tC, bC, bD, frontColor, opacity * 0.80);
+        _renderer.AddFilledQuad(tB, bB, bC, tC, rightColor, opacity);
+        _renderer.AddFilledQuad(tD, tC, bC, bD, frontColor, opacity);
     }
 
     private static Color TintColor(Color tint, Color baseColor, double tintStrength)
@@ -2056,8 +2077,8 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
         var bottomD = Project(x0, y1, z0, state);
 
         _renderer.AddFilledQuad(topA, topB, topC, topD, Darken(color, 0.92), opacity);
-        _renderer.AddFilledQuad(topB, bottomB, bottomC, topC, Darken(color, 0.70), opacity * 0.7);
-        _renderer.AddFilledQuad(topD, topC, bottomC, bottomD, Darken(color, 0.58), opacity * 0.7);
+        _renderer.AddFilledQuad(topB, bottomB, bottomC, topC, Darken(color, 0.70), opacity);
+        _renderer.AddFilledQuad(topD, topC, bottomC, bottomD, Darken(color, 0.58), opacity);
 
         DrawConveyorMarker(position, size, rotationZDegrees, renderInfo, opacity, state);
 
@@ -2093,8 +2114,8 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
         var bottomD = Project(x0, y1, z0, state);
 
         _renderer.AddFilledQuad(topA, topB, topC, topD, Darken(color, 0.96), opacity);
-        _renderer.AddFilledQuad(topB, bottomB, bottomC, topC, Darken(color, 0.76), opacity * 0.8);
-        _renderer.AddFilledQuad(topD, topC, bottomC, bottomD, Darken(color, 0.68), opacity * 0.8);
+        _renderer.AddFilledQuad(topB, bottomB, bottomC, topC, Darken(color, 0.76), opacity);
+        _renderer.AddFilledQuad(topD, topC, bottomC, bottomD, Darken(color, 0.68), opacity);
 
         DrawOutline(position, capSize, Color.FromRgb(230, 230, 230), Math.Min(opacity + 0.12, 1), state);
     }
@@ -2137,13 +2158,13 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
         var committedColor = Color.FromRgb(78, 158, 216);
         foreach (var cell in committedCells)
         {
-            DrawConveyorCell(cell, committedColor, 0.55, state, isPreview: true, previewIsValid: true);
+            DrawConveyorCell(cell, committedColor, CommittedConveyorRoutePreviewOpacity, state, isPreview: true, previewIsValid: true);
         }
 
         var previewColor = route.PreviewIsValid ? Color.FromRgb(70, 190, 90) : Color.FromRgb(230, 90, 90);
         foreach (var cell in previewCells)
         {
-            DrawConveyorCell(cell, previewColor, 0.45, state, isPreview: true, previewIsValid: route.PreviewIsValid);
+            DrawConveyorCell(cell, previewColor, PendingConveyorRoutePreviewOpacity, state, isPreview: true, previewIsValid: route.PreviewIsValid);
         }
 
         foreach (var anchor in route.Anchors)
