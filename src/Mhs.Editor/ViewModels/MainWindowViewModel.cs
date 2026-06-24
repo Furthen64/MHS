@@ -504,7 +504,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 return;
             }
 
-            var normalized = RotationHelper.NormalizeDegrees(value);
+            var normalized = RotationHelper.SnapToRightAngle(value);
             var targetSize = selected.GetEffectiveSize(normalized);
             var validation = EditorState.ValidatePlacement(selected.Position, targetSize, selected.Id);
             if (!validation.IsValid)
@@ -1169,7 +1169,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 DisplayName = objectData.DisplayName?.Trim() ?? string.Empty,
                 Position = objectData.Position,
                 BaseSize = baseSize,
-                RotationZDegrees = RotationHelper.NormalizeDegrees(objectData.RotationZDegrees),
+                RotationZDegrees = RotationHelper.SnapToRightAngle(objectData.RotationZDegrees),
                 MaterialUnitsPerSecond = ResolveMaterialUnitsPerSecond(partDefinition.Id, objectData.MaterialUnitsPerSecond),
                 MaterialGranulesPerPacket = ResolveMaterialGranulesPerPacket(partDefinition.Id, objectData.MaterialGranulesPerPacket),
                 MaterialId = ResolveMaterialId(partDefinition.Id, objectData.MaterialId),

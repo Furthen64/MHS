@@ -2483,6 +2483,10 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
             return;
         }
 
+        var shaftTail = Project(cx - fdx * arrowLen * 0.55, cy - fdy * arrowLen * 0.55, z1, state);
+        var shaftHead = Project(cx + fdx * arrowLen * 0.15, cy + fdy * arrowLen * 0.15, z1, state);
+        _renderer.AddLine(shaftTail, shaftHead, markerColor, markerOpacity);
+
         _renderer.AddFilledTriangle(tip, base1, base2, markerColor, markerOpacity);
     }
 

@@ -162,7 +162,7 @@ public sealed class EditorState : INotifyPropertyChanged
     public int ActivePlacementRotationZDegrees
     {
         get => _activePlacementRotationZDegrees;
-        set => SetField(ref _activePlacementRotationZDegrees, RotationHelper.NormalizeDegrees(value));
+        set => SetField(ref _activePlacementRotationZDegrees, RotationHelper.SnapToRightAngle(value));
     }
 
     public bool IsMovingSelection
@@ -209,7 +209,7 @@ public sealed class EditorState : INotifyPropertyChanged
     public int SelectionRotationPreviewDegrees
     {
         get => _selectionRotationPreviewDegrees;
-        set => SetField(ref _selectionRotationPreviewDegrees, RotationHelper.NormalizeDegrees(value));
+        set => SetField(ref _selectionRotationPreviewDegrees, RotationHelper.SnapToRightAngle(value));
     }
 
     public VoxelCoord? SelectionRotationPreviewPosition
