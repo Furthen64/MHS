@@ -82,12 +82,12 @@ public sealed class GlbModelLoader
 
         // TODO: add texture support for custom .glb materials.
         var color = ToColor(primitive.Material);
-        var indices = primitive.GetIndices()?.AsIndicesArray();
+        var indices = primitive.GetIndices();
         if (indices is { Count: >= 3 })
         {
             for (var i = 0; i + 2 < indices.Count; i += 3)
             {
-                AddTriangle(indices[i], indices[i + 1], indices[i + 2]);
+                AddTriangle((int)indices[i], (int)indices[i + 1], (int)indices[i + 2]);
             }
         }
         else
@@ -115,7 +115,7 @@ public sealed class GlbModelLoader
 
     private static Color ToColor(Material? material)
     {
-        var color = material?.PbrMetallicRoughness?.BaseColorFactor ?? Vector4.One;
+        var color = material?.FindChannel("BaseColor")?.Color ?? Vector4.One;
         return Color.FromArgb(ToByte(color.W), ToByte(color.X), ToByte(color.Y), ToByte(color.Z));
         static byte ToByte(float value) => (byte)Math.Clamp((int)Math.Round(value * 255f), 0, 255);
     }
