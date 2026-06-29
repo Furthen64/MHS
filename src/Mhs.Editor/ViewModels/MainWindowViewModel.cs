@@ -23,12 +23,13 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private const float MaterialFlowTickSeconds = 0.25f;
     private const float ManualMaterialFlowStepSeconds = 0.35f;
     private const string CatalogAllCategoryName = "All";
-    private static readonly IReadOnlyList<string> CatalogCategoryOrder = ["Transport", "Feed & Discharge", "Vertical", "Structure", "Utilities"];
+    private static readonly IReadOnlyList<string> CatalogCategoryOrder = ["Transport", "Feed & Discharge", "Vertical", "Structure", "Utilities", "Custom"];
     private static readonly IReadOnlyList<int> MtrlSrcGranuleCountOptions = [1, 5, 10, 50, 100];
     private readonly IEditorTool _selectTool = new SelectTool();
     private readonly ConveyorRouteTool _conveyorRouteTool = new();
     private readonly Dictionary<string, RelayCommand> _placePartToolCommandsByPartId = new(StringComparer.OrdinalIgnoreCase);
-    private readonly IReadOnlyList<PartCatalogMetadataEntry> _partCatalogEntries;
+    private readonly List<PartCatalogMetadataEntry> _partCatalogEntries;
+    private readonly CustomGlbAssetCatalog _customGlbCatalog = new();
     private ViewportInteractionPreset _interactionPreset = ViewportInteractionPreset.BlenderLike;
     private bool _useOpenGlViewport = true;
     private string _preferredOpenGlGpuName = "System default GPU";
@@ -66,6 +67,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         });
         LoadDemoFactorySceneCommand = new RelayCommand(LoadDemoFactoryScene);
         BrowseMorePartsCommand = new RelayCommand(ToggleCatalogBrowser);
+        ImportCustomGlbCommand = new RelayCommand(() => CustomGlbImportRequested?.Invoke(this, EventArgs.Empty));
         Floor0Command = new RelayCommand(() => SetActiveFloor(0));
         Floor1Command = new RelayCommand(() => SetActiveFloor(1));
         Floor2Command = new RelayCommand(() => SetActiveFloor(2));
@@ -108,7 +110,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         FrontViewCommand = new RelayCommand(() => SetActiveViewMode("Front"));
         RightViewCommand = new RelayCommand(() => SetActiveViewMode("Right"));
 
-        _partCatalogEntries = PartCatalogLoader.LoadCatalog();
+        _partCatalogEntries = PartCatalogLoader.LoadCatalog().ToList();
+        LoadRecentCustomGlbs();
         RebuildPartCatalogCategoryFilters();
         RebuildPartCatalogSections();
 
@@ -117,6 +120,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
+    public event EventHandler? CustomGlbImportRequested;
 
     public EditorState EditorState { get; }
 
@@ -130,6 +134,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand RunTestCommand { get; }
     public ICommand LoadDemoFactorySceneCommand { get; }
     public ICommand BrowseMorePartsCommand { get; }
+    public ICommand ImportCustomGlbCommand { get; }
     public ICommand HopperToolCommand { get; }
     public ICommand BinToolCommand { get; }
     public ICommand ChuteToolCommand { get; }
@@ -1455,6 +1460,80 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         return $"Move Preview: Target X {target.X}, Y {target.Y}, Z {target.Z} | Valid: {validity}";
     }
 
+
+    public CustomGlbAssetEntry ImportCustomGlb(string sourcePath)
+    {
+        var entry = _customGlbCatalog.Import(sourcePath);
+        RegisterCustomGlbEntry(entry);
+        RefreshCustomGlbCatalogEntries();
+        RebuildPartCatalogCategoryFilters();
+        RebuildPartCatalogSections();
+        EditorState.StatusMessage = $"Imported custom .glb: {entry.DisplayName}";
+        RaiseComputed();
+        return entry;
+    }
+
+    public void SetCustomGlbImportStatus(string message)
+    {
+        EditorState.StatusMessage = message;
+        RaiseComputed();
+    }
+
+    private void LoadRecentCustomGlbs()
+    {
+        foreach (var entry in _customGlbCatalog.LoadRecent())
+        {
+            RegisterCustomGlbEntry(entry);
+        }
+
+        RefreshCustomGlbCatalogEntries();
+    }
+
+    private void RegisterCustomGlbEntry(CustomGlbAssetEntry entry)
+    {
+        var part = EditorState.RegisterCustomGlbPart(entry);
+        _placePartToolCommandsByPartId[part.Id] = new RelayCommand(() => SetTool(new PlacePartTool(part)));
+    }
+
+    private void RefreshCustomGlbCatalogEntries()
+    {
+        _partCatalogEntries.RemoveAll(entry => entry.Id.Equals("custom_glb_import", StringComparison.OrdinalIgnoreCase)
+                                               || entry.Id.StartsWith("custom_glb_", StringComparison.OrdinalIgnoreCase));
+        _partCatalogEntries.Add(new PartCatalogMetadataEntry
+        {
+            Id = "custom_glb_import",
+            DisplayName = "Custom .glb",
+            Category = "Custom",
+            Description = "Browse for a binary .glb model and copy it into the MHS custom asset catalog.",
+            Tags = ["custom", "glb", "import"],
+            SearchTerms = ["custom", "glb", "model", "import"],
+            ToolType = "custom-glb-import",
+            IsPlaceable = false,
+            VisualStyle = "import-custom-glb"
+        });
+
+        foreach (var entry in _customGlbCatalog.LoadRecent())
+        {
+            if (!File.Exists(entry.InternalAssetPath))
+            {
+                continue;
+            }
+
+            _partCatalogEntries.Add(new PartCatalogMetadataEntry
+            {
+                Id = entry.Id,
+                DisplayName = entry.DisplayName,
+                Category = "Custom",
+                Description = $"Recent custom .glb imported {entry.ImportedAtUtc.LocalDateTime:g}.",
+                Tags = ["custom", "glb"],
+                SearchTerms = [entry.DisplayName, "custom", "glb"],
+                ToolType = "place",
+                IsPlaceable = true,
+                VisualStyle = "custom-glb"
+            });
+        }
+    }
+
     private RelayCommand ResolvePlacePartToolCommand(string partId)
     {
         if (_placePartToolCommandsByPartId.TryGetValue(partId, out var command))
@@ -1595,6 +1674,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private void ActivatePartCatalogEntry(PartCatalogMetadataEntry entry)
     {
+        if (entry.ToolType.Equals("custom-glb-import", StringComparison.OrdinalIgnoreCase))
+        {
+            CustomGlbImportRequested?.Invoke(this, EventArgs.Empty);
+            return;
+        }
+
         if (entry.ToolType.Equals("route", StringComparison.OrdinalIgnoreCase))
         {
             SetTool(_conveyorRouteTool);

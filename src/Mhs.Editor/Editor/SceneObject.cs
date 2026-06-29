@@ -12,6 +12,8 @@ public sealed class SceneObject
     public string PartId { get; init; } = string.Empty;
     public string PartType { get; init; } = string.Empty;
     public string DisplayName { get; set; } = string.Empty;
+    // TODO: include custom .glb asset references in project serialization.
+    public string CustomGlbAssetPath { get; init; } = string.Empty;
     public VoxelCoord Position { get; set; }
     public VoxelSize BaseSize { get; init; }
 

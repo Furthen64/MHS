@@ -45,7 +45,7 @@ public sealed class EditorState : INotifyPropertyChanged
 
     public EditorState()
     {
-        PartDefinitions =
+        _partDefinitions =
         [
             new PartDefinition { Id = "hopper", DisplayName = "Hopper", Size = new VoxelSize(1, 1, 2), Color = Color.FromRgb(240, 200, 90) },
             new PartDefinition { Id = "bin", DisplayName = "Bin", Size = new VoxelSize(2, 2, 1), Color = Color.FromRgb(90, 150, 240) },
@@ -79,11 +79,29 @@ public sealed class EditorState : INotifyPropertyChanged
         _activeLayer = 0;
     }
 
+
+    public PartDefinition RegisterCustomGlbPart(CustomGlbAssetEntry entry)
+    {
+        _partDefinitions.RemoveAll(part => string.Equals(part.Id, entry.Id, StringComparison.OrdinalIgnoreCase));
+        var definition = new PartDefinition
+        {
+            Id = entry.Id,
+            DisplayName = entry.DisplayName,
+            Size = new VoxelSize(2, 2, 2),
+            Color = Color.FromRgb(144, 196, 255),
+            CustomGlbAssetPath = entry.InternalAssetPath
+        };
+        _partDefinitions.Add(definition);
+        return definition;
+    }
+
     public event PropertyChangedEventHandler? PropertyChanged;
 
     public Scene Scene { get; } = new();
 
-    public IReadOnlyList<PartDefinition> PartDefinitions { get; }
+    private readonly List<PartDefinition> _partDefinitions;
+
+    public IReadOnlyList<PartDefinition> PartDefinitions => _partDefinitions;
 
     public IEditorTool ActiveTool
     {
