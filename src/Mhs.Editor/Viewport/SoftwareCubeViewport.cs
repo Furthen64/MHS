@@ -1858,6 +1858,11 @@ public sealed class SoftwareCubeViewport : Control
             return;
         }
 
+        var shaftTail = Project(cx - fdx * arrowLen * 0.55, cy - fdy * arrowLen * 0.55, z1, state);
+        var shaftHead = Project(cx + fdx * arrowLen * 0.15, cy + fdy * arrowLen * 0.15, z1, state);
+        var shaftPen = new Pen(new SolidColorBrush(WithOpacity(markerColor, markerOpacity)), 2.0);
+        context.DrawLine(shaftPen, shaftTail, shaftHead);
+
         var brush = new SolidColorBrush(WithOpacity(markerColor, markerOpacity));
         context.DrawGeometry(brush, null, Polygon(tip, base1, base2));
     }

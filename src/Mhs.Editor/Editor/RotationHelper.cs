@@ -6,6 +6,13 @@ public static class RotationHelper
 {
     public static int NormalizeDegrees(int value) => ((value % 360) + 360) % 360;
 
+    public static int SnapToRightAngle(int value)
+    {
+        var normalized = NormalizeDegrees(value);
+        var snapped = (int)Math.Round(normalized / 90.0, MidpointRounding.AwayFromZero) * 90;
+        return NormalizeDegrees(snapped);
+    }
+
     public static int RotateClockwise90(int current) => (NormalizeDegrees(current) + 90) % 360;
 
     public static VoxelSize GetEffectiveSize(VoxelSize baseSize, int rotationZDegrees)
