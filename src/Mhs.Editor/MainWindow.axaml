@@ -313,6 +313,9 @@
                             <Button Classes="ribbon-button" Classes.accent="{Binding IsSupportActive}" Command="{Binding SupportToolCommand}" AutomationProperties.Name="Support frame tool">
                                 <StackPanel Spacing="1"><TextBlock Classes="toolbar-icon" Text="▥" /><TextBlock Classes="toolbar-label" Text="Support" /></StackPanel>
                             </Button>
+                            <Button Classes="ribbon-button accent" Command="{Binding ImportCustomGlbCommand}" AutomationProperties.Name="Import custom glb model">
+                                <StackPanel Spacing="1"><TextBlock Classes="toolbar-icon" Text="⬢" /><TextBlock Classes="toolbar-label" Text="Custom .glb" /></StackPanel>
+                            </Button>
                             <Button Classes="ribbon-button" Command="{Binding OtherPartsCommand}" AutomationProperties.Name="Browse other part tools">
                                 <StackPanel Spacing="1"><TextBlock Classes="toolbar-icon" Text="⋯" /><TextBlock Classes="toolbar-label" Text="Other" /></StackPanel>
                             </Button>

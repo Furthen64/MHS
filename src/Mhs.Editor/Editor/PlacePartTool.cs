@@ -57,7 +57,8 @@ public sealed class PlacePartTool : IEditorTool
                 : 0f,
             MaterialId = string.Equals(_partDefinition.Id, "mtrlsrc", StringComparison.OrdinalIgnoreCase)
                 ? SceneObject.DefaultMaterialId
-                : string.Empty
+                : string.Empty,
+            CustomGlbAssetPath = _partDefinition.CustomGlbAssetPath
         };
 
         state.Scene.Objects.Add(sceneObject);

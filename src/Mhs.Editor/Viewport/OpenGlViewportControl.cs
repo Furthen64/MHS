@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Globalization;
+using System.IO;
 using System.Linq;
+using System.Numerics;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -34,6 +36,7 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
     private string? _initError;
     private bool _isPanning;
     private Point _lastPanPoint;
+    private readonly GlbModelLoader _glbModelLoader = new();
     private readonly DispatcherTimer _animationFrameTimer = new()
     {
         Interval = TimeSpan.FromMilliseconds(16)
@@ -200,7 +203,14 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
             }
             else
             {
-                DrawPartShape(drawPosition, drawSize, drawRotation, color, renderInfo, opacity, drawOutline: false, state);
+                if (!string.IsNullOrWhiteSpace(sceneObject.CustomGlbAssetPath))
+                {
+                    DrawCustomGlbModel(sceneObject, drawPosition, drawSize, drawRotation, opacity, drawOutline: false, state);
+                }
+                else
+                {
+                    DrawPartShape(drawPosition, drawSize, drawRotation, color, renderInfo, opacity, drawOutline: false, state);
+                }
                 DrawFacingMarker(drawPosition, drawSize, drawRotation, renderInfo, opacity, state);
                 if (string.Equals(sceneObject.PartId, "mtrlsrc", StringComparison.OrdinalIgnoreCase))
                 {
@@ -215,7 +225,14 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
                 ? PartRenderCatalog.Resolve(moving.PartType).BaseColor.ToAvaloniaColor()
                 : Color.FromRgb(230, 90, 90);
             var movingRenderInfo = PartRenderCatalog.Resolve(moving.PartType);
-            DrawPartShape(target, moving.EffectiveSize, moving.RotationZDegrees, moveColor, movingRenderInfo, 0.45, drawOutline: true, state);
+            if (!string.IsNullOrWhiteSpace(moving.CustomGlbAssetPath))
+            {
+                DrawCustomGlbModel(moving, target, moving.EffectiveSize, moving.RotationZDegrees, 0.45, drawOutline: true, state);
+            }
+            else
+            {
+                DrawPartShape(target, moving.EffectiveSize, moving.RotationZDegrees, moveColor, movingRenderInfo, 0.45, drawOutline: true, state);
+            }
             DrawFacingMarker(target, moving.EffectiveSize, moving.RotationZDegrees, movingRenderInfo, 0.45, state);
         }
 
@@ -225,7 +242,15 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
                 ? ghost.Part.Color
                 : Color.FromRgb(230, 90, 90);
             var ghostRenderInfo = PartRenderCatalog.Resolve(ghost.Part.Id);
-            DrawPartShape(ghost.Position, ghost.EffectiveSize, ghost.RotationZDegrees, ghostColor, ghostRenderInfo, 0.4, drawOutline: true, state);
+            if (!string.IsNullOrWhiteSpace(ghost.Part.CustomGlbAssetPath))
+            {
+                var ghostObject = new SceneObject { PartId = ghost.Part.Id, PartType = ghost.Part.DisplayName, BaseSize = ghost.Part.Size, CustomGlbAssetPath = ghost.Part.CustomGlbAssetPath };
+                DrawCustomGlbModel(ghostObject, ghost.Position, ghost.EffectiveSize, ghost.RotationZDegrees, 0.4, drawOutline: true, state);
+            }
+            else
+            {
+                DrawPartShape(ghost.Position, ghost.EffectiveSize, ghost.RotationZDegrees, ghostColor, ghostRenderInfo, 0.4, drawOutline: true, state);
+            }
             DrawFacingMarker(ghost.Position, ghost.EffectiveSize, ghost.RotationZDegrees, ghostRenderInfo, 0.4, state);
         }
 
@@ -959,6 +984,57 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
         }
     }
 
+
+
+    private void DrawCustomGlbModel(SceneObject sceneObject, VoxelCoord position, VoxelSize size, int rotationZDegrees, double opacity, bool drawOutline, EditorState state)
+    {
+        if (_renderer is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var model = _glbModelLoader.Load(sceneObject.CustomGlbAssetPath);
+            var extent = model.Max - model.Min;
+            var maxExtent = Math.Max(Math.Max(extent.X, extent.Y), Math.Max(extent.Z, 0.0001f));
+            // TODO: add user-controlled scale normalization for custom models.
+            var scale = (float)(Math.Min(Math.Min(size.WidthX, size.DepthY), Math.Max(size.HeightZ, 1)) / maxExtent);
+            var center = (model.Min + model.Max) * 0.5f;
+            var angle = Math.PI * rotationZDegrees / 180.0;
+            var cos = (float)Math.Cos(angle);
+            var sin = (float)Math.Sin(angle);
+
+            foreach (var triangle in model.Triangles)
+            {
+                var a = Transform(triangle.A);
+                var b = Transform(triangle.B);
+                var c = Transform(triangle.C);
+                _renderer.AddFilledTriangle(Project(a.X, a.Y, a.Z, state), Project(b.X, b.Y, b.Z, state), Project(c.X, c.Y, c.Z, state), triangle.Color, opacity);
+            }
+
+            if (drawOutline)
+            {
+                DrawOutline(position, size, Color.FromRgb(142, 208, 255), Math.Min(opacity + 0.25, 1.0), state);
+            }
+
+            Vector3 Transform(Vector3 source)
+            {
+                var normalized = (source - center) * scale;
+                var rx = normalized.X * cos - normalized.Y * sin;
+                var ry = normalized.X * sin + normalized.Y * cos;
+                return new Vector3(
+                    (float)(position.X + size.WidthX * 0.5) + rx,
+                    (float)(position.Y + size.DepthY * 0.5) + ry,
+                    (float)position.Z + normalized.Z + (float)(size.HeightZ * 0.5));
+            }
+        }
+        catch (Exception ex) when (ex is IOException or InvalidOperationException or ArgumentException)
+        {
+            state.StatusMessage = $"Custom .glb render failed: {ex.Message}";
+            DrawIsoBox(position, size, Color.FromRgb(230, 90, 90), opacity, drawOutline: true, state);
+        }
+    }
 
     private void DrawPartShape(VoxelCoord position, VoxelSize size, int rotationZDegrees, Color color,
         PartRenderInfo renderInfo, double opacity, bool drawOutline, EditorState state)
