@@ -195,17 +195,17 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
                 opacity = 0.2;
             }
 
-            var renderInfo = PartRenderCatalog.Resolve(sceneObject.PartType);
-            var color = renderInfo.BaseColor.ToAvaloniaColor();
-            if (sceneObject.IsConveyor)
+            if (!string.IsNullOrWhiteSpace(sceneObject.CustomGlbAssetPath) && !sceneObject.IsConveyor)
             {
-                DrawConveyorCells(sceneObject, drawPosition, drawSize, drawRotation, color, renderInfo, opacity, state, conveyorCellsByObject);
+                DrawCustomGlbModel(sceneObject, drawPosition, drawSize, drawRotation, opacity, drawOutline: false, state);
             }
             else
             {
-                if (!string.IsNullOrWhiteSpace(sceneObject.CustomGlbAssetPath))
+                var renderInfo = PartRenderCatalog.Resolve(sceneObject.PartType);
+                var color = renderInfo.BaseColor.ToAvaloniaColor();
+                if (sceneObject.IsConveyor)
                 {
-                    DrawCustomGlbModel(sceneObject, drawPosition, drawSize, drawRotation, opacity, drawOutline: false, state);
+                    DrawConveyorCells(sceneObject, drawPosition, drawSize, drawRotation, color, renderInfo, opacity, state, conveyorCellsByObject);
                 }
                 else
                 {
@@ -221,27 +221,23 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
 
         if (state.IsMovingSelection && state.SelectedObject is { } moving && state.MovePreviewPosition is { } target)
         {
-            var moveColor = state.MovePreviewIsValid
-                ? PartRenderCatalog.Resolve(moving.PartType).BaseColor.ToAvaloniaColor()
-                : Color.FromRgb(230, 90, 90);
-            var movingRenderInfo = PartRenderCatalog.Resolve(moving.PartType);
             if (!string.IsNullOrWhiteSpace(moving.CustomGlbAssetPath))
             {
                 DrawCustomGlbModel(moving, target, moving.EffectiveSize, moving.RotationZDegrees, 0.45, drawOutline: true, state);
             }
             else
             {
+                var moveColor = state.MovePreviewIsValid
+                    ? PartRenderCatalog.Resolve(moving.PartType).BaseColor.ToAvaloniaColor()
+                    : Color.FromRgb(230, 90, 90);
+                var movingRenderInfo = PartRenderCatalog.Resolve(moving.PartType);
                 DrawPartShape(target, moving.EffectiveSize, moving.RotationZDegrees, moveColor, movingRenderInfo, 0.45, drawOutline: true, state);
+                DrawFacingMarker(target, moving.EffectiveSize, moving.RotationZDegrees, movingRenderInfo, 0.45, state);
             }
-            DrawFacingMarker(target, moving.EffectiveSize, moving.RotationZDegrees, movingRenderInfo, 0.45, state);
         }
 
         if (state.GhostPreview is { } ghost)
         {
-            var ghostColor = ghost.IsValid
-                ? ghost.Part.Color
-                : Color.FromRgb(230, 90, 90);
-            var ghostRenderInfo = PartRenderCatalog.Resolve(ghost.Part.Id);
             if (!string.IsNullOrWhiteSpace(ghost.Part.CustomGlbAssetPath))
             {
                 var ghostObject = new SceneObject { PartId = ghost.Part.Id, PartType = ghost.Part.DisplayName, BaseSize = ghost.Part.Size, CustomGlbAssetPath = ghost.Part.CustomGlbAssetPath };
@@ -249,9 +245,13 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
             }
             else
             {
+                var ghostColor = ghost.IsValid
+                    ? ghost.Part.Color
+                    : Color.FromRgb(230, 90, 90);
+                var ghostRenderInfo = PartRenderCatalog.Resolve(ghost.Part.Id);
                 DrawPartShape(ghost.Position, ghost.EffectiveSize, ghost.RotationZDegrees, ghostColor, ghostRenderInfo, 0.4, drawOutline: true, state);
+                DrawFacingMarker(ghost.Position, ghost.EffectiveSize, ghost.RotationZDegrees, ghostRenderInfo, 0.4, state);
             }
-            DrawFacingMarker(ghost.Position, ghost.EffectiveSize, ghost.RotationZDegrees, ghostRenderInfo, 0.4, state);
         }
 
         if (state.ActiveConveyorRoute is { } route)
@@ -1010,7 +1010,9 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
                 var a = Transform(triangle.A);
                 var b = Transform(triangle.B);
                 var c = Transform(triangle.C);
-                _renderer.AddFilledTriangle(Project(a.X, a.Y, a.Z, state), Project(b.X, b.Y, b.Z, state), Project(c.X, c.Y, c.Z, state), triangle.Color, opacity);
+                var normal = RotateNormal(triangle.Normal);
+                var color = ShadeGlbTriangle(triangle.Color, normal);
+                _renderer.AddFilledTriangle(Project(a.X, a.Y, a.Z, state), Project(b.X, b.Y, b.Z, state), Project(c.X, c.Y, c.Z, state), color, opacity);
             }
 
             if (drawOutline)
@@ -1028,12 +1030,32 @@ public sealed class OpenGlViewportControl : OpenGlControlBase
                     (float)(position.Y + size.DepthY * 0.5) + ry,
                     (float)position.Z + normalized.Z + (float)(size.HeightZ * 0.5));
             }
+
+            Vector3 RotateNormal(Vector3 source)
+            {
+                var rx = source.X * cos - source.Y * sin;
+                var ry = source.X * sin + source.Y * cos;
+                var normal = new Vector3(rx, ry, source.Z);
+                return normal.LengthSquared() > 0.000001f ? Vector3.Normalize(normal) : Vector3.UnitZ;
+            }
         }
         catch (Exception ex) when (ex is IOException or InvalidOperationException or ArgumentException)
         {
             state.StatusMessage = $"Custom .glb render failed: {ex.Message}";
             DrawIsoBox(position, size, Color.FromRgb(230, 90, 90), opacity, drawOutline: true, state);
         }
+    }
+
+    private static Color ShadeGlbTriangle(Color color, Vector3 normal)
+    {
+        var light = Vector3.Normalize(new Vector3(-0.45f, -0.55f, 0.72f));
+        var diffuse = Math.Max(0f, Vector3.Dot(normal, light));
+        var factor = 0.42f + diffuse * 0.58f;
+        return Color.FromArgb(
+            color.A,
+            (byte)Math.Clamp((int)Math.Round(color.R * factor), 0, 255),
+            (byte)Math.Clamp((int)Math.Round(color.G * factor), 0, 255),
+            (byte)Math.Clamp((int)Math.Round(color.B * factor), 0, 255));
     }
 
     private void DrawPartShape(VoxelCoord position, VoxelSize size, int rotationZDegrees, Color color,

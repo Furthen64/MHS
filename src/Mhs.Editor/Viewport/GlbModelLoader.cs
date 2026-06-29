@@ -1,14 +1,18 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Numerics;
+using Avalonia;
+using Avalonia.Media.Imaging;
+using Avalonia.Platform;
 using Avalonia.Media;
 using SharpGLTF.Schema2;
 
 namespace Mhs.Editor.Viewport;
 
-public sealed record GlbTriangle(Vector3 A, Vector3 B, Vector3 C, Color Color);
+public sealed record GlbTriangle(Vector3 A, Vector3 B, Vector3 C, Color Color, Vector3 Normal);
 
 public sealed class GlbModel
 {
@@ -80,8 +84,9 @@ public sealed class GlbModelLoader
             return;
         }
 
-        // TODO: add texture support for custom .glb materials.
-        var color = ToColor(primitive.Material);
+        var materialColor = ToColor(primitive.Material);
+        var textureSampler = TryCreateBaseColorTextureSampler(primitive.Material);
+        var texCoords = textureSampler is null ? null : primitive.GetVertexAccessor("TEXCOORD_0")?.AsVector2Array();
         var indices = primitive.GetIndices();
         if (indices is { Count: >= 3 })
         {
@@ -109,7 +114,29 @@ public sealed class GlbModelLoader
                 Vector3.Transform(positions[ia], transform),
                 Vector3.Transform(positions[ib], transform),
                 Vector3.Transform(positions[ic], transform),
-                color));
+                ResolveTriangleColor(ia, ib, ic),
+                ResolveTriangleNormal(ia, ib, ic)));
+        }
+
+        Color ResolveTriangleColor(int ia, int ib, int ic)
+        {
+            if (textureSampler is null || texCoords is null
+                || (uint)ia >= texCoords.Count || (uint)ib >= texCoords.Count || (uint)ic >= texCoords.Count)
+            {
+                return materialColor;
+            }
+
+            var uv = (texCoords[ia] + texCoords[ib] + texCoords[ic]) / 3f;
+            return Modulate(materialColor, textureSampler(uv));
+        }
+
+        Vector3 ResolveTriangleNormal(int ia, int ib, int ic)
+        {
+            var a = Vector3.Transform(positions[ia], transform);
+            var b = Vector3.Transform(positions[ib], transform);
+            var c = Vector3.Transform(positions[ic], transform);
+            var normal = Vector3.Cross(b - a, c - a);
+            return normal.LengthSquared() > 0.000001f ? Vector3.Normalize(normal) : Vector3.UnitZ;
         }
     }
 
@@ -118,5 +145,58 @@ public sealed class GlbModelLoader
         var color = material?.FindChannel("BaseColor")?.Color ?? Vector4.One;
         return Color.FromArgb(ToByte(color.W), ToByte(color.X), ToByte(color.Y), ToByte(color.Z));
         static byte ToByte(float value) => (byte)Math.Clamp((int)Math.Round(value * 255f), 0, 255);
+    }
+
+    private static Func<Vector2, Color>? TryCreateBaseColorTextureSampler(Material? material)
+    {
+        var channel = material?.FindChannel("BaseColor");
+        var texture = channel?.GetType().GetProperty("Texture")?.GetValue(channel);
+        var image = texture?.GetType().GetProperty("PrimaryImage")?.GetValue(texture);
+        var content = image?.GetType().GetProperty("Content")?.GetValue(image);
+        var rawBytes = content?.GetType().GetProperty("Content")?.GetValue(content);
+        var bytes = rawBytes switch
+        {
+            ArraySegment<byte> segment => segment,
+            byte[] array => new ArraySegment<byte>(array),
+            _ => default
+        };
+        if (bytes.Array is null || bytes.Count == 0)
+        {
+            return null;
+        }
+
+        using var stream = new MemoryStream(bytes.Array, bytes.Offset, bytes.Count, writable: false);
+        using var bitmap = new Bitmap(stream);
+        var width = bitmap.PixelSize.Width;
+        var height = bitmap.PixelSize.Height;
+        if (width <= 0 || height <= 0)
+        {
+            return null;
+        }
+
+        var stride = width * 4;
+        var pixels = new byte[stride * height];
+        bitmap.CopyPixels(new PixelRect(0, 0, width, height), pixels, stride, 0, PixelFormats.Bgra8888);
+
+        return uv =>
+        {
+            var u = uv.X - MathF.Floor(uv.X);
+            var v = uv.Y - MathF.Floor(uv.Y);
+            var x = Math.Clamp((int)MathF.Floor(u * width), 0, width - 1);
+            var y = Math.Clamp((int)MathF.Floor((1f - v) * height), 0, height - 1);
+            var offset = y * stride + x * 4;
+            return Color.FromArgb(pixels[offset + 3], pixels[offset + 2], pixels[offset + 1], pixels[offset]);
+        };
+    }
+
+    private static Color Modulate(Color baseColor, Color textureColor)
+    {
+        return Color.FromArgb(
+            Multiply(baseColor.A, textureColor.A),
+            Multiply(baseColor.R, textureColor.R),
+            Multiply(baseColor.G, textureColor.G),
+            Multiply(baseColor.B, textureColor.B));
+
+        static byte Multiply(byte a, byte b) => (byte)Math.Clamp((a * b + 127) / 255, 0, 255);
     }
 }
