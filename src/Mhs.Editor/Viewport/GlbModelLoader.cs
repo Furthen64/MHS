@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Numerics;
+using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
@@ -176,7 +177,15 @@ public sealed class GlbModelLoader
 
         var stride = width * 4;
         var pixels = new byte[stride * height];
-        bitmap.CopyPixels(new PixelRect(0, 0, width, height), pixels, stride, 0, PixelFormats.Bgra8888);
+        var handle = GCHandle.Alloc(pixels, GCHandleType.Pinned);
+        try
+        {
+            bitmap.CopyPixels(new PixelRect(0, 0, width, height), handle.AddrOfPinnedObject(), pixels.Length, stride);
+        }
+        finally
+        {
+            handle.Free();
+        }
 
         return uv =>
         {
