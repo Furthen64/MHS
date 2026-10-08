@@ -8,4 +8,5 @@ public sealed class PartDefinition
     public string DisplayName { get; init; } = string.Empty;
     public VoxelSize Size { get; init; }
     public Color Color { get; init; }
+    public string CustomGlbAssetPath { get; init; } = string.Empty;
 }

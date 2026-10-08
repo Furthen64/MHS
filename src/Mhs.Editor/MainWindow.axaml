@@ -313,6 +313,9 @@
                             <Button Classes="ribbon-button" Classes.accent="{Binding IsSupportActive}" Command="{Binding SupportToolCommand}" AutomationProperties.Name="Support frame tool">
                                 <StackPanel Spacing="1"><TextBlock Classes="toolbar-icon" Text="▥" /><TextBlock Classes="toolbar-label" Text="Support" /></StackPanel>
                             </Button>
+                            <Button Classes="ribbon-button accent" Command="{Binding ImportCustomGlbCommand}" AutomationProperties.Name="Import custom glb model">
+                                <StackPanel Spacing="1"><TextBlock Classes="toolbar-icon" Text="⬢" /><TextBlock Classes="toolbar-label" Text="Custom .glb" /></StackPanel>
+                            </Button>
                             <Button Classes="ribbon-button" Command="{Binding OtherPartsCommand}" AutomationProperties.Name="Browse other part tools">
                                 <StackPanel Spacing="1"><TextBlock Classes="toolbar-icon" Text="⋯" /><TextBlock Classes="toolbar-label" Text="Other" /></StackPanel>
                             </Button>
@@ -792,9 +795,9 @@
                                                    FontWeight="Bold" />
                                         <Grid ColumnDefinitions="82,*,*,*" RowDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="6">
                                             <TextBlock Grid.Row="0" Grid.Column="0" Text="Position" Foreground="{DynamicResource ThemeBrush_AFC6E9}" VerticalAlignment="Center" />
-                                            <TextBox Grid.Row="0" Grid.Column="1" Watermark="X" IsEnabled="{Binding HasSelectedObject}" Text="{Binding InspectorPositionX, Mode=TwoWay}" />
-                                            <TextBox Grid.Row="0" Grid.Column="2" Watermark="Y" IsEnabled="{Binding HasSelectedObject}" Text="{Binding InspectorPositionY, Mode=TwoWay}" />
-                                            <TextBox Grid.Row="0" Grid.Column="3" Watermark="Z" IsEnabled="{Binding HasSelectedObject}" Text="{Binding InspectorPositionZ, Mode=TwoWay}" />
+                                            <TextBox Grid.Row="0" Grid.Column="1" PlaceholderText="X" IsEnabled="{Binding HasSelectedObject}" Text="{Binding InspectorPositionX, Mode=TwoWay}" />
+                                            <TextBox Grid.Row="0" Grid.Column="2" PlaceholderText="Y" IsEnabled="{Binding HasSelectedObject}" Text="{Binding InspectorPositionY, Mode=TwoWay}" />
+                                            <TextBox Grid.Row="0" Grid.Column="3" PlaceholderText="Z" IsEnabled="{Binding HasSelectedObject}" Text="{Binding InspectorPositionZ, Mode=TwoWay}" />
                                             <TextBlock Grid.Row="1" Grid.Column="0" Text="Rotation" Foreground="{DynamicResource ThemeBrush_AFC6E9}" VerticalAlignment="Center" />
                                             <TextBox Grid.Row="1" Grid.Column="1" IsEnabled="{Binding HasSelectedObject}" Text="{Binding InspectorRotationZDegrees, Mode=TwoWay}" />
                                             <TextBlock Grid.Row="1" Grid.Column="2" Grid.ColumnSpan="2" Text="degrees around Z" Foreground="{DynamicResource ThemeBrush_8EA2BA}" VerticalAlignment="Center" />

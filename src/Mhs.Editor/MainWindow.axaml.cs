@@ -20,6 +20,12 @@ namespace Mhs.Editor;
 
 public partial class MainWindow : Window
 {
+    private static readonly FilePickerFileType GlbFileType = new("Binary glTF")
+    {
+        Patterns = ["*.glb"],
+        MimeTypes = ["model/gltf-binary", "application/octet-stream"]
+    };
+
     private static readonly FilePickerFileType SceneJsonFileType = new("Scene JSON")
     {
         Patterns = ["*.json"]
@@ -50,6 +56,7 @@ public partial class MainWindow : Window
         if (DataContext is MainWindowViewModel vm)
         {
             vm.ApplyAppPreferences(_preferences);
+            vm.CustomGlbImportRequested += OnCustomGlbImportRequested;
         }
 
         _materialFlowTimer = new DispatcherTimer
@@ -61,6 +68,43 @@ public partial class MainWindow : Window
 
         AddHandler(KeyDownEvent, OnKeyDown, RoutingStrategies.Tunnel, handledEventsToo: true);
         Opened += OnOpened;
+    }
+
+
+    private async void OnCustomGlbImportRequested(object? sender, EventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel vm)
+        {
+            return;
+        }
+
+        try
+        {
+            var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+            {
+                Title = "Import Custom .glb",
+                AllowMultiple = false,
+                FileTypeFilter = [GlbFileType]
+            });
+
+            if (files.Count == 0)
+            {
+                return;
+            }
+
+            var path = files[0].TryGetLocalPath();
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                vm.SetCustomGlbImportStatus("Custom .glb import failed: the selected file is not available as a local path.");
+                return;
+            }
+
+            vm.ImportCustomGlb(path);
+        }
+        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException)
+        {
+            vm.SetCustomGlbImportStatus($"Custom .glb import failed: {ex.Message}");
+        }
     }
 
     private void OnKeyDown(object? sender, KeyEventArgs e)
